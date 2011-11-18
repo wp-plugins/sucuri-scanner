@@ -44,7 +44,7 @@ function sucuri_removal_page()
 
     echo "<hr />";
 
-    echo "<p>If our scanner is identifying any security problem on your site, we can get that
+    echo "<p>If our scanner is identifying any security problems on your site, we can get that
     cleaned for you. Just sign up with us here: <a href='http://sucuri.net/signup'>http://sucuri.net/signup</a> and our team will take care of it for you.</p>";
     echo "<hr />";
     echo "<h3>Get your site cleaned in under 4 hours (3 simple steps)</h3>";
@@ -55,7 +55,7 @@ function sucuri_removal_page()
     echo "</ol>";
     ?>
     <br /><br />
-    <b>If you have any question about these checks or this plugin, contact us at support@sucuri.net or visit <a href="http://sucuri.net">http://sucuri.net</a></b>
+    <b>If you have any questions about these checks or this plugin, contact us at support@sucuri.net or visit <a href="http://sucuri.net">http://sucuri.net</a></b>
    <br />
 
     </div>
@@ -91,7 +91,7 @@ function sucuri_scan_page()
     echo '<h2>Sucuri Malware Scanner</h2><hr />';
   
 
-    echo '<h3>Execute an external malware scanner on your site, using the <a href="http://sucuri.net">Sucuri</a> scanner. It will alert you if your site is compromised with malware, blackhat spam, defaced, or with any security problem.</h3>'; 
+    echo '<h3>Scan your site for malware using <a href="http://sitecheck.sucuri.net">Sucuri SiteCheck</a> right in your WordPress dashboard. The Sucuri SiteCheck scans will let you know if your site is compromised with malware, blackhat spam, website defacement, or if you are blacklisted.</h3>'; 
     ?>
 
     <form action="" method="post">
@@ -100,7 +100,7 @@ function sucuri_scan_page()
     </form>
 
     <br /><br />
-    <b>If you have any question about these checks or this plugin, contact us at support@sucuri.net or visit <a href="http://sucuri.net">http://sucuri.net</a></b>
+    <strong>If you have any questions about these checks or this plugin, contact us at support@sucuri.net or visit <a href="http://sucuri.net">sucuri.net</a></strong>
    <br />
     </div>
 
