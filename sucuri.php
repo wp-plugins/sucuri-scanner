@@ -2,7 +2,7 @@
 /*
 Plugin Name: Sucuri Scanner
 Plugin URI: http://sitecheck.sucuri.net/
-Description: This plugin allows you to execute a remote malware scanner on your WordPres site. It will check for malware, spam, blacklisting and other security issues (htaccess redirections, hidden code, etc). And yes, it is free. Similar to the scan provided online at http://sitecheck.sucuri.net
+Description: This plugin allows you to execute a remote malware scanner on your WordPres site. It will check for malware, spam, blacklisting and other security issues (htaccess redirections, hidden code, etc). Yes, it is free. Similar to the scans provided online at http://sitecheck.sucuri.net
 Author: http://sucuri.net
 Version: 1.1.2
 Author URI: http://sucuri.net
@@ -142,13 +142,13 @@ function sucuriscan_print_scan()
     echo "<h3>Security Scan</h3>";
     if(!isset($res['MALWARE']['WARN']))
     {
-        echo "<p>Malware not identified.</p>";
-        echo "<p>Malware: No.</p>";
-        echo "<p>Malicious javascript: No.</p>";
-        echo "<p>Malicious iframes: No.</p>";
-        echo "<p>Suspicious redirections (htaccess): No.</p>";
-        echo "<p>Blackhat SEO Spam: No.</p>";
-        echo "<p>Anomaly detection: Clean.</p>";
+        echo "<h3>No malware was identified</h3>";
+        echo "<p><strong>Malware:</strong> No.</p>";
+        echo "<p><strong>Malicious javascript:</strong> No.</p>";
+        echo "<p><strong>Malicious iframes:</strong> No.</p>";
+        echo "<p><strong>Suspicious redirections (htaccess):</strong> No.</p>";
+        echo "<p><strong>Blackhat SEO Spam:</strong> No.</p>";
+        echo "<p><strong>Anomaly detection:</strong> Clean.</p>";
     }
     else
     {
@@ -181,7 +181,7 @@ function sucuriscan_print_scan()
 
     ?>
     <br /><br />
-    <b>If you have any question about these checks or this plugin, contact us at support@sucuri.net or visit <a href="http://sucuri.net">http://sucuri.net</a></b>
+    <b>If you have any questions about these scan results, or this plugin, contact us at support@sucuri.net or visit <a href="http://sucuri.net">http://sucuri.net</a></b>
     <br />
     </div>
     <?php
