@@ -1,18 +1,18 @@
-=== Sucuri Scanner Free Wordpress Plugin ===
-Contributors: dd@sucuri.net
+=== Sucuri SiteCheck Scanner ===
+Contributors: Daniel Cid & Dre Armeda
 Donate Link: http://sitecheck.sucuri.net
 Tags: malware,security,scan,spam,virus
 Requires at least:3.2.1
-Stable tag:1.1.1
+Stable tag:1.1.2
 Tested up to: 3.2.1
 
-Sucuri Securit Scanner right into your WordPress dashboard. Check if your site is compromised or infected with malware, spam or blacklisted.
+Get Sucuri SiteCheck scan results directly in your WordPress dashboard. The best way to know if your site is infected with malware or blacklist by Google, in the click of a button.
 
 == Description ==
 
-This plugin allows you to execute a remote malware scanner on your WordPres site. It will check for malware, spam, blacklisting and other security issues (htaccess redirections, hidden code, etc). And yes, it is free.
+This plugin enables full malware and blacklisting scan capabilities from Sucuri SiteCheck right in your WordPress dashboard. It will check for malware, spam, blacklisting and other security issues like htaccess redirections, hidden eval code, etc. The best thing about it is it's completely free.
 
-Similar to the scan provided online at <a href="http://sitecheck.sucuri.net">http://sitecheck.sucuri.net</a>.
+You can also scan your site at <a href="http://sitecheck.sucuri.net">http://sitecheck.sucuri.net</a>.
 
 
 == Installation  ==
@@ -27,6 +27,8 @@ Similar to the scan provided online at <a href="http://sitecheck.sucuri.net">htt
 = 1.1.1 = 
  * First public release. 
 
+= 1.1.2 = 
+ * Modified readme.txt 
 
 
 == Credits ==
