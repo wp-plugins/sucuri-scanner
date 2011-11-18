@@ -4,12 +4,12 @@ Plugin Name: Sucuri Scanner
 Plugin URI: http://sitecheck.sucuri.net/
 Description: This plugin allows you to execute a remote malware scanner on your WordPres site. It will check for malware, spam, blacklisting and other security issues (htaccess redirections, hidden code, etc). And yes, it is free. Similar to the scan provided online at http://sitecheck.sucuri.net
 Author: http://sucuri.net
-Version: 1.1.1
+Version: 1.1.2
 Author URI: http://sucuri.net
 */
 
 define('SUCURISCAN','sucuriscan');
-define('SUCURISCAN_VERSION','1.1.1');
+define('SUCURISCAN_VERSION','1.1.2');
 define( 'SUCURI_URL',plugin_dir_url( __FILE__ ));
 define( 'SUCURI_IMG',SUCURI_URL.'images/');
 
@@ -30,7 +30,6 @@ function sucuriscan_menu()
 
 function sucuri_removal_page()
 {
-    $U_ERROR = NULL;
     if(!current_user_can('manage_options'))
     {
         wp_die(__('You do not have sufficient permissions to access this page.') );
@@ -89,7 +88,8 @@ function sucuri_scan_page()
 
     /* Setting's header. */
     echo '<div class="wrap">';
-    echo '<h2>Sucuri Malware Scanner</h2>';
+    echo '<h2>Sucuri Malware Scanner</h2><hr />';
+  
 
     echo '<h3>Execute an external malware scanner on your site, using the <a href="http://sucuri.net">Sucuri</a> scanner. It will alert you if your site is compromised with malware, blackhat spam, defaced, or with any security problem.</h3>'; 
     ?>
@@ -121,71 +121,64 @@ function sucuriscan_print_scan()
     $res = unserialize($doresult);
 
     echo '<div class="wrap">';
-    echo '<h2>Sucuri Malware Scanner</h2>';
+    echo '<h2><a href="http://sitecheck.sucuri.net">Sucuri Malware Scanner</a></h2>';
     echo "<h3>System info</h3>";
-   
-    echo "Site: ".$res['SCAN']['SITE'][0]."<br />\n";
-    foreach($res['SCAN'] as $myscan)
-    {
-        echo $myscan[0] . " ". $myscan[1];
-    }
+
+    
+
+    echo "Site: ".$res['SCAN']['SITE'][0]." (".$res['SCAN']['IP'][0].")<br />\n";
     foreach($res['SYSTEM']['NOTICE'] as $notres)
     {
         if(is_array($notres))
         {
-            echo $notres[0]. " ".$notres[1];
+            echo htmlspecialchars($notres[0]). " ".htmlspecialchars($notres[1]);
         }
         else
         {
-            echo $notres."<br />\n";
+            echo htmlspecialchars($notres)."<br />\n";
         }
     }
 
     echo "<h3>Security Scan</h3>";
-    if(!isset($res['MALWARE']))
+    if(!isset($res['MALWARE']['WARN']))
     {
         echo "<p>Malware not identified.</p>";
         echo "<p>Malware: No.</p>";
-        echo "<p>Malicious javascript: NO.</p>";
-        echo "<p>Malicious iframes: NO.</p>";
-        echo "<p>Suspicious redirections (htaccess): NO.</p>";
-        echo "<p>Blackhat SEO Spam: NO.</p>";
-        echo "<p>Anomaly detection: CLean.</p>";
+        echo "<p>Malicious javascript: No.</p>";
+        echo "<p>Malicious iframes: No.</p>";
+        echo "<p>Suspicious redirections (htaccess): No.</p>";
+        echo "<p>Blackhat SEO Spam: No.</p>";
+        echo "<p>Anomaly detection: Clean.</p>";
     }
     else
     {
-        echo "<p>Malware FOUND.</p>";
-        print_r($res['MALWARE']);
+        foreach($res['MALWARE']['WARN'] as $malres)
+        {
+            if(!is_array($malres))
+            {
+                echo htmlspecialchars($malres);
+            }
+            else
+            {
+                $mwdetails = explode("\n", htmlspecialchars($malres[1]));
+                echo htmlspecialchars($malres[0])."\n<br />". substr($mwdetails[0], 1)."<br />\n";
+            }
+        }
+        echo "<br />";
     }
+    echo '<i>More details here <a href="http://sitecheck.sucuri.net/scanner/?&scan='.home_url().'">http://sitecheck.sucuri.net/scanner/?&scan='.home_url().'</a></i>';
+
 
     echo "<h3>Blacklisting</h3>";
     foreach($res['BLACKLIST']['INFO'] as $blres)
     {
-        echo "CLEAN: ".$blres[0]." ".$blres[1]."<br />";
+        echo "CLEAN: ".htmlspecialchars($blres[0])." <a href=''>".htmlspecialchars($blres[1])."</a><br />";
     }
     foreach($res['BLACKLIST']['WARN'] as $blres)
     {
-        echo "WARN: ".$blres[0]." ".$blres[1]."<br />";
+        echo "WARN: ".htmlspecialchars($blres[0])." <a href=''>".htmlspecialchars($blres[1])."</a><br />";
     }
 
-    echo "<h3>ALL</h3>";
-    foreach($res as $mytop => $mytopval)
-    {
-        foreach($res[$mytop] as $typename => $type)
-	{
-		foreach($res[$mytop][$typename] as $entry)
-		{
-			if(!is_array($entry))
-			{
-				echo "$mytop: $typename: $entry\n<br />";
-			}
-			else
-			{
-				echo "$mytop: $typename: ".$entry[0]." (".$entry[1].")\n<br />";
-			}
-		}
-	}
-    }
     ?>
     <br /><br />
     <b>If you have any question about these checks or this plugin, contact us at support@sucuri.net or visit <a href="http://sucuri.net">http://sucuri.net</a></b>

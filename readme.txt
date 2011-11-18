@@ -1,5 +1,5 @@
-=== Sucuri SiteCheck Scanner ===
-Contributors: Daniel Cid & Dre Armeda
+=== Sucuri Sitecheck Free Security Scanner ===
+Contributors: dd@sucuri.net,dremeda
 Donate Link: http://sitecheck.sucuri.net
 Tags: malware,security,scan,spam,virus
 Requires at least:3.2.1
@@ -24,11 +24,12 @@ You can also scan your site at <a href="http://sitecheck.sucuri.net">http://site
 
 == Changelog ==
 
+
+= 1.1.2 =
+ * First release that is good to be used (debugging code removed). 
+
 = 1.1.1 = 
  * First public release. 
-
-= 1.1.2 = 
- * Modified readme.txt 
 
 
 == Credits ==
