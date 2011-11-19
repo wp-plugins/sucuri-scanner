@@ -2,7 +2,7 @@
 /*
 Plugin Name: Sucuri Scanner
 Plugin URI: http://sitecheck.sucuri.net/
-Description: This plugin allows you to scan your website using the Sucuri SiteCheck Malware Scanner on your WordPres site. It will check for malware, spam, blacklisting and other security issues (htaccess redirections, hidden code, etc). Yes, it is free. Similar to the scans provided online at http://sitecheck.sucuri.net
+Description: This plugin allows you to scan your website using the Sucuri SiteCheck Malware Scanner on your WordPress site. It will check for malware, spam, blacklisting and other security issues (htaccess redirections, hidden code, etc). Yes, it is free. Similar to the scans provided online at http://sitecheck.sucuri.net
 Author: http://sucuri.net
 Version: 1.1.2
 Author URI: http://sucuri.net
