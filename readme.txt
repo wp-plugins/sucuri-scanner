@@ -34,5 +34,5 @@ You can also scan your site at <a href="http://sitecheck.sucuri.net">http://site
 
 == Credits ==
 
- * <a href="http://sucuri.net">http://sucuri.net</a>
+ * <a href="http://sucuri.net">Sucuri Security</a>
 

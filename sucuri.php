@@ -88,7 +88,7 @@ function sucuri_scan_page()
 
     /* Setting's header. */
     echo '<div class="wrap">';
-    echo '<h2>Sucuri Malware Scanner</h2><hr />';
+    echo '<h2>Sucuri SiteCheck Malware Scanner</h2>';
   
 
     echo '<h3>Scan your site for malware using <a href="http://sitecheck.sucuri.net">Sucuri SiteCheck</a> right in your WordPress dashboard. The Sucuri SiteCheck scans will let you know if your site is compromised with malware, blackhat spam, website defacement, or if you are blacklisted.</h3>'; 
@@ -121,7 +121,7 @@ function sucuriscan_print_scan()
     $res = unserialize($doresult);
 
     echo '<div class="wrap">';
-    echo '<h2><a href="http://sitecheck.sucuri.net">Sucuri Malware Scanner</a></h2>';
+    echo '<h2>Sucuri SiteCheck Malware Scanner</h2>';
     echo "<h3>System info</h3>";
 
     
