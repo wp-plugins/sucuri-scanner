@@ -184,9 +184,12 @@ function sucuriscan_print_scan()
     {
         echo "<b>CLEAN: </b>".htmlspecialchars($blres[0])." <a href=''>".htmlspecialchars($blres[1])."</a><br />";
     }
-    foreach($res['BLACKLIST']['WARN'] as $blres)
+    if(isset($res['BLACKLIST']['WARN']))
     {
-        echo "<b>WARN: </b>".htmlspecialchars($blres[0])." <a href=''>".htmlspecialchars($blres[1])."</a><br />";
+        foreach($res['BLACKLIST']['WARN'] as $blres)
+        {
+            echo "<b>WARN: </b>".htmlspecialchars($blres[0])." <a href=''>".htmlspecialchars($blres[1])."</a><br />";
+        }
     }
 
 
