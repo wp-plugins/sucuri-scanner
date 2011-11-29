@@ -3,7 +3,7 @@ Contributors: dd@sucuri.net, dremeda
 Donate Link: http://sitecheck.sucuri.net
 Tags: malware,security,scan,spam,virus
 Requires at least:3.0
-Stable tag:1.1.4
+Stable tag:1.1.5
 Tested up to: 3.2.1
 
 Get free Sucuri SiteCheck scan results directly in your WordPress dashboard. The best way to know if your site is infected with malware or blacklist by Google, all with the click of a button.
@@ -23,6 +23,9 @@ You can also scan your site at <a href="http://sitecheck.sucuri.net">http://site
 
 
 == Changelog ==
+
+= 1.1.5 =
+ * Removing PHP warnings / code cleaning.
 
 = 1.1.3 =
  * Cleaning up the results.
