@@ -4,7 +4,7 @@ Plugin Name: Sucuri Scanner
 Plugin URI: http://sitecheck.sucuri.net/
 Description: This plugin allows you to scan your website using the Sucuri SiteCheck Malware Scanner on your WordPress site. It will check for malware, spam, blacklisting and other security issues (htaccess redirections, hidden code, etc). Yes, it is free. Similar to the scans provided online at http://sitecheck.sucuri.net
 Author: http://sucuri.net
-Version: 1.1.5
+Version: 1.1.6
 Author URI: http://sucuri.net
 */
 
@@ -16,7 +16,7 @@ if(!function_exists('add_action'))
 }
 
 define('SUCURISCAN','sucuriscan');
-define('SUCURISCAN_VERSION','1.1.5');
+define('SUCURISCAN_VERSION','1.1.6');
 define( 'SUCURI_URL',plugin_dir_url( __FILE__ ));
 define( 'SUCURI_IMG',SUCURI_URL.'images/');
 
@@ -195,7 +195,7 @@ function sucuriscan_print_scan()
 
     echo "<hr />\n";
     global $wp_version;
-    if(strcmp($wp_version, "3.2.1") >= 0)
+    if(strcmp($wp_version, "3.3") >= 0)
     {
         echo '<h3><img style="position:relative;top:5px" height="22" width="22" src="
                  '.site_url().'/wp-content/plugins/sucuri-scanner/images/ok.png" /> &nbsp;
