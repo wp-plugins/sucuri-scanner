@@ -1,16 +1,44 @@
-=== Sucuri Scanner ===
+=== Sucuri SiteCheck Scanner ===
 Contributors: dd@sucuri.net, dremeda
 Donate Link: http://sitecheck.sucuri.net
-Tags: malware,security,scan,spam,virus
-Requires at least:3.0
+Tags: malware, security, scan, spam, virus, sucuri, WordPress,  
+Requires at least:3.2
 Stable tag:1.1.7
 Tested up to: 3.5-RC3
 
+The Sucuri SiteCheck Scanner plugin enables you to scan your WordPress site using Sucuri SiteCheck right in your WordPress dashboard. 
+
 == Description ==
 
-The Sucuri Scanner plugin enables you to scan your WordPress site using Sucuri SiteCheck right in your WordPress dashboard. SiteCheck will check for malware, spam, blacklisting and other security issues like .htaccess redirects, hidden eval code, etc. The best thing about it is it's completely free.
+SiteCheck will check for malware, spam, blacklisting and other security issues like .htaccess redirects, hidden eval code, etc. The best thing about it is it's completely free.
 
-You can also scan your site at <a href="http://sitecheck.sucuri.net">sitecheck.sucuri.net</a>.
+You can also scan your site at <a href="http://sitecheck.sucuri.net">SiteCheck.Sucuri.net</a>.
+
+Sucuri SiteCheck detects various types of malware, SPAM injections, website errors, disabled sites, database connection issues and code anomalies that require special attention to include:
+
+* Obfuscated JavaScript injections
+* Cross Site Scripting (XSS)
+* Website Defacements
+* Hidden & Malicious iFrames
+* PHP Mailers
+* Phishing Attempts
+* Malicious Redirects
+* Backdoors (e.g., C99, R57, Webshells)
+* Anomalies
+* Drive-by-Downloads
+* IP Cloaking
+* Social Engineering Attacks
+
+
+There are a number of blacklisting authorities that monitor for malware, SPAM, and phishing attempts. Sucuri SiteCheck leverages the APIs for these authorities to check your website blacklisting status:
+
+* Sucuri
+* Google Safe Browsing
+* Norton
+* AVG
+* Phish Tank (Phishing Specifically)
+* McAfee SiteAdvisor
+* Yandex
 
 == Installation  ==
 

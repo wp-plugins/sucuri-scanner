@@ -1,10 +1,10 @@
 <?php
 /*
-Plugin Name: Sucuri Scanner
+Plugin Name: Sucuri SiteCheck Scanner
 Plugin URI: http://sitecheck.sucuri.net/
-Description: The Sucuri Scanner plugin enables you to scan your WordPress site using Sucuri SiteCheck right in your WordPress dashboard. SiteCheck will check for malware, spam, blacklisting and other security issues like .htaccess redirects, hidden eval code, etc. The best thing about it is it's completely free.
+Description: The Sucuri SiteCheck Scanner plugin enables you to scan your WordPress site using Sucuri SiteCheck right in your WordPress dashboard. SiteCheck will check for malware, spam, blacklisting and other security issues like .htaccess redirects, hidden eval code, etc. The best thing about it is it's completely free.
 
-You can also scan your site at <a href="http://sitecheck.sucuri.net">sitecheck.sucuri.net</a>.
+You can also scan your site at <a href="http://sitecheck.sucuri.net">SiteCheck.Sucuri.net</a>.
 
 Author: http://sucuri.net
 Version: 1.1.7

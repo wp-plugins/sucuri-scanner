@@ -1,9 +1,8 @@
 <?php
-/* Sucuri Scanner Plugin
+/* Sucuri SiteCheck Scanner
  * Copyright (C) 2011-2012 Sucuri Security - http://sucuri.net
  * Released under the GPL - see LICENSE file for details.
  */
-
 
 if(!defined('SUCURISCAN'))
 {
@@ -77,7 +76,6 @@ function sucuriscan_harden_status($status, $type, $messageok, $messagewarn,
 
 }
 
-
 function sucuriscan_harden_version()
 {
     global $wp_version;
@@ -95,7 +93,7 @@ function sucuriscan_harden_version()
     {
         $cp = 1;
     }
-    if(strcmp($wp_version, "3.3") < 0)
+    if(strcmp($wp_version, "3.4.2") < 0)
     {
         $cp = 0;
     }
