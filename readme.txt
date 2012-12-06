@@ -30,7 +30,7 @@ You can also scan your site at <a href="http://sitecheck.sucuri.net">sitecheck.s
  * Upgrading for WP 3.3.
 
 = 1.1.5 =
- * Removing PHP warnings / code cleaning.
+ * Removed PHP warnings / code cleaning.
 
 = 1.1.3 =
  * Cleaning up the results.
