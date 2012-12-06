@@ -1,6 +1,6 @@
 <?php
-/* Sucuri Security WordPress Plugin
- * Copyright (C) 2011 Sucuri Security - http://sucuri.net
+/* Sucuri Scanner Plugin
+ * Copyright (C) 2011-2012 Sucuri Security - http://sucuri.net
  * Released under the GPL - see LICENSE file for details.
  */
 
