@@ -1,4 +1,4 @@
-=== Sucuri SiteCheck Scanner ===
+=== Sucuri SiteCheck Malware Scanner ===
 Contributors: dd@sucuri.net, dremeda
 Donate Link: http://sitecheck.sucuri.net
 Tags: malware, security, scan, spam, virus, sucuri, WordPress,  

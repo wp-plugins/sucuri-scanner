@@ -1,5 +1,5 @@
 <?php
-/* Sucuri SiteCheck Scanner
+/* Sucuri SiteCheck Malware Scanner
  * Copyright (C) 2011-2012 Sucuri Security - http://sucuri.net
  * Released under the GPL - see LICENSE file for details.
  */
