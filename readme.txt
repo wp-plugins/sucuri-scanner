@@ -1,16 +1,16 @@
-=== Sucuri SiteCheck Malware Scanner ===
+=== Sucuri Security - SiteCheck Malware Scanner ===
 Contributors: dd@sucuri.net, dremeda
 Donate Link: http://sitecheck.sucuri.net
 Tags: malware, security, scan, spam, virus, sucuri, WordPress,  
 Requires at least:3.2
-Stable tag:1.1.7
+Stable tag:1.2
 Tested up to: 3.5-RC3
 
-The Sucuri SiteCheck Scanner plugin enables you to scan your WordPress site using Sucuri SiteCheck right in your WordPress dashboard. 
+The Sucuri Security - SiteCheck Malware Scanner plugin enables you to scan your WordPress site using Sucuri SiteCheck right in your WordPress dashboard. 
 
 == Description ==
 
-SiteCheck will check for malware, spam, blacklisting and other security issues like .htaccess redirects, hidden eval code, etc. The best thing about it is it's completely free.
+Sucuri SiteCheck will check for malware, spam, blacklisting and other security issues like .htaccess redirects, hidden eval code, etc. The best thing about it is it's completely free.
 
 You can also scan your site at <a href="http://sitecheck.sucuri.net">SiteCheck.Sucuri.net</a>.
 
@@ -40,6 +40,15 @@ There are a number of blacklisting authorities that monitor for malware, SPAM, a
 * McAfee SiteAdvisor
 * Yandex
 
+We augment the SiteCheck Malware Scanner with various. 1-click hardening options. Some of these options do not provide a high level of security, but collectively these options do lower your risk floor:
+
+* Verify WordPress Version
+* Protect Uploads Directory
+* Restrict wp-content Access
+* Restrict wp-includes Access
+* Verify PHP Version
+
+
 == Installation  ==
 
 1. Download the plugin.
@@ -49,9 +58,19 @@ There are a number of blacklisting authorities that monitor for malware, SPAM, a
 
 == Changelog ==
 
+= 1.2 =
+* Cleared PHP warnings
+* Added /inc directory
+* Added /lib directory
+* Logo added
+* Default stylesheet added
+* Header area added
+* Sidebar area added
+* Restyled 1-click hardening page
+* Removed old malware page
+
 = 1.1.7 =
  * Tested on WP 3.5-RC3.
-
 
 = 1.1.6 =
  * Upgrading for WP 3.3.

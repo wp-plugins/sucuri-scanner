@@ -1,13 +1,13 @@
 <?php
 /*
-Plugin Name: Sucuri SiteCheck Malware Scanner
+Plugin Name: Sucuri Security - SiteCheck Malware Scanner
 Plugin URI: http://sitecheck.sucuri.net/
-Description: The Sucuri SiteCheck Scanner plugin enables you to scan your WordPress site using Sucuri SiteCheck right in your WordPress dashboard. SiteCheck will check for malware, spam, blacklisting and other security issues like .htaccess redirects, hidden eval code, etc. The best thing about it is it's completely free.
+Description: The <a href="http://sucuri.net">Sucuri Security</a> - SiteCheck Malware Scanner plugin enables you to <strong>scan your WordPress site using <a href="http://sitecheck.sucuri.net">Sucuri SiteCheck</a></strong> right in your WordPress dashboard. SiteCheck will check for malware, spam, blacklisting and other security issues like .htaccess redirects, hidden eval code, etc. The best thing about it is it's completely free.
 
 You can also scan your site at <a href="http://sitecheck.sucuri.net">SiteCheck.Sucuri.net</a>.
 
-Author: http://sucuri.net
-Version: 1.1.7
+Author: Sucuri Security
+Version: 1.2
 Author URI: http://sucuri.net
 */
 
@@ -19,64 +19,42 @@ if(!function_exists('add_action'))
 }
 
 define('SUCURISCAN','sucuriscan');
-define('SUCURISCAN_VERSION','1.1.6');
+define('SUCURISCAN_VERSION','1.1.7');
 define( 'SUCURI_URL',plugin_dir_url( __FILE__ ));
-define( 'SUCURI_IMG',SUCURI_URL.'images/');
+
+/* Requires files. */
+//require_once(dirname(__FILE__ ) . '/inc/scripts.php');
 
 
+add_action( 'admin_enqueue_scripts', 'sucuriscan_admin_script_style_registration', 1 );
+function sucuriscan_admin_script_style_registration() {
+
+echo '<link rel="stylesheet" href="'.SUCURI_URL.'/inc/css/sucuriscan-default-css.css" type="text/css" media="all" />';
+
+}
+
+/* sucuri_dir_filepath:
+ * Returns the system filepath to the relevant user uploads
+ * directory for this site. Multisite capable.
+ */
+function sucuriscan_dir_filepath($path = '')
+{
+    $wp_dir_array = wp_upload_dir();
+    $wp_dir_array['basedir'] = untrailingslashit($wp_dir_array['basedir']);
+    return($wp_dir_array['basedir']."/sucuri/$path");
+}
 
 /* Starting Sucuri Scan side bar. */
 function sucuriscan_menu() 
 {
-    add_menu_page('Sucuri Scanner', 'Sucuri Scanner', 'manage_options', 
-                  'sucuriscan', 'sucuri_scan_page', SUCURI_IMG.'menu-icon.png');
+    add_menu_page('Sucuri Free', 'Sucuri Free', 'manage_options', 
+                  'sucuriscan', 'sucuri_scan_page', SUCURI_URL.'images/menu-icon.png');
     add_submenu_page('sucuriscan', 'Sucuri Scanner', 'Sucuri Scanner', 'manage_options',
                      'sucuriscan', 'sucuri_scan_page');
 
     add_submenu_page('sucuriscan', '1-click Hardening', '1-click Hardening', 'manage_options',
                      'sucuriscan_hardening', 'sucuriscan_hardening_page');
-
-    add_submenu_page('sucuriscan', 'Malware removal', 'Malware removal', 'manage_options',
-                     'sucuriscan_removal', 'sucuri_removal_page');
 }
-
-
-
-function sucuri_removal_page()
-{
-    if(!current_user_can('manage_options'))
-    {
-        wp_die(__('You do not have sufficient permissions to access this page.') );
-    }
-
-
-    /* Hardening page. */
-    echo '<div class="wrap">';
-    echo '<h2>Sucuri Malware Removal</h2>';
-
-    echo '<h3>Get your site 100% clean and malware/blacklist free.</h3>'; 
-
-    echo "<hr />";
-
-    echo "<p>If our scanner is identifying any security problems on your site, we can get that
-    cleaned for you. Just sign up with us here: <a href='http://sucuri.net/signup'>http://sucuri.net/signup</a> and our team will take care of it for you.</p>";
-    echo "<hr />";
-    echo "<h3>Get your site cleaned in under 4 hours (3 simple steps)</h3>";
-    echo "<ol>";
-    echo "<li>Sign up here: <a href='http://sucuri.net/signup'>http://sucuri.net/signup</a></li>";
-    echo "<li>Click on malware removal request (inside the support page)</li>";
-    echo "<li>Done! Go grab a coffee and wait for us to get it done</li>";
-    echo "</ol>";
-    ?>
-    <br /><br />
-    <b>If you have any questions about these checks or this plugin, contact us at support@sucuri.net or visit <a href="http://sucuri.net">http://sucuri.net</a></b>
-   <br />
-
-    </div>
-    <?php
-}
-
-
 
 /* Sucuri malware scan page. */
 function sucuri_scan_page()
@@ -94,29 +72,37 @@ function sucuri_scan_page()
         return(1);
     }
 
-
     /* Setting's header. */
     echo '<div class="wrap">';
-    echo '<h2>Sucuri SiteCheck Malware Scanner</h2>';
-  
+    echo '<div class="sucuriscan_header"><img src="'.SUCURI_URL.'/inc/images/logo.png">';
 
-    echo '<h3>Scan your site for malware using <a href="http://sitecheck.sucuri.net">Sucuri SiteCheck</a> right in your WordPress dashboard. The Sucuri SiteCheck scans will let you know if your site is compromised with malware, blackhat spam, website defacement, or if you are blacklisted.</h3>'; 
+    sucuriscan_pagestop("Sucuri SiteCheck Malware Scanner");
+
+    echo '</div>';
+
+    echo '<div class="postbox-container" style="min-width:400px; max-width:600px; padding: 0 20px 0 0;">';
+        
+    echo '<p>Scan your site for malware using <a href="http://sitecheck.sucuri.net">Sucuri SiteCheck</a> right in your WordPress dashboard. The Sucuri SiteCheck scans will let you know if your site is compromised with malware, blackhat spam, website defacement, or if you are blacklisted.</p>'; 
     ?>
 
-    <form action="" method="post">
-    <input type="hidden" name="wpsucuri-doscan" value="wpsucuri-doscan" />
-    <input class="button-primary" type="submit" name="wpsucuri_doscanrun" value="Scan this site now!" />
-    </form>
+                <form action="" method="post">
+                    <input type="hidden" name="wpsucuri-doscan" value="wpsucuri-doscan" />
+                    <input class="button-primary" type="submit" name="wpsucuri_doscanrun" value="Scan this site now!" />
+                </form>
+                
+                <br /><br />
+                <strong>If you have any questions about these checks or this plugin, contact us at support@sucuri.net or visit <a href="http://sucuri.net">sucuri.net</a></strong>
+                <br />
 
-    <br /><br />
-    <strong>If you have any questions about these checks or this plugin, contact us at support@sucuri.net or visit <a href="http://sucuri.net">sucuri.net</a></strong>
-   <br />
-    </div>
+
+        </div><!-- End postbox-container -->        
+    
+    <?php include_once("lib/sidebar.php");  ?>     
+
+    </div><!-- End Wrap -->
 
     <?php
 }
-
-
 
 function sucuriscan_print_scan()
 {
@@ -128,11 +114,17 @@ function sucuriscan_print_scan()
         return;
     }
 
-
     $res = unserialize($myresults['body']);
 
     echo '<div class="wrap">';
-    echo '<h2>Sucuri SiteCheck Malware Scanner</h2>';
+
+    echo '<div class="sucuriscan_header"><img src="'.SUCURI_URL.'/inc/images/logo.png">';
+    
+    sucuriscan_pagestop("Sucuri SiteCheck Malware Scanner");
+    
+    echo '</div>';
+
+    echo '<div class="postbox-container" style="min-width:400px; max-width:600px; padding: 0 20px 0 0;">';
 
     if(!isset($res['MALWARE']['WARN']))
     {
@@ -168,7 +160,6 @@ function sucuriscan_print_scan()
     }
     echo '<i>More details here <a href="http://sitecheck.sucuri.net/scanner/?&scan='.home_url().'">http://sitecheck.sucuri.net/scanner/?&scan='.home_url().'</a></i>';
 
-
     echo "<hr />\n";
     if(isset($res['BLACKLIST']['WARN']))
     {
@@ -195,7 +186,6 @@ function sucuriscan_print_scan()
         }
     }
 
-
     echo "<hr />\n";
     global $wp_version;
     if(strcmp($wp_version, "3.3") >= 0)
@@ -210,7 +200,6 @@ function sucuriscan_print_scan()
                  '.site_url().'/wp-content/plugins/sucuri-scanner/images/warn.png" /> &nbsp;
                  System info (WordPress outdated)</h3>';
     }
-
 
     echo "<b>Site:</b> ".$res['SCAN']['SITE'][0]." (".$res['SCAN']['IP'][0].")<br />\n";
     echo "<b>WordPress: </b> $wp_version<br />\n";
@@ -228,61 +217,66 @@ function sucuriscan_print_scan()
     }
 
     ?>
-    <br /><br />
-    <b>If you have any questions about these scan results, or this plugin, contact us at support@sucuri.net or visit <a href="http://sucuri.net">http://sucuri.net</a></b>
-    <br />
-    </div>
+    <p>If you have any questions about these checks or this plugin, contact us at support@sucuri.net or visit <a href="http://sucuri.net">http://sucuri.net</a></p>
+
+        </div><!-- End postbox-container -->        
+    
+    <?php include_once("lib/sidebar.php");  ?>     
+
+    </div><!-- End Wrap -->
+    
     <?php
 }
 
+/* Sucuri Header Function */
 
-/* Sucuri one-click hardening page. */
-function sucuriscan_hardening_page()
+function sucuriscan_pagestop($sucuri_title = 'Sucuri Plugin')
 {
     if(!current_user_can('manage_options'))
     {
         wp_die(__('You do not have sufficient permissions to access this page.') );
     }
-    include_once("sucuriscan_hardening.php");
-
-
-
-    /* Hardening page. */
-    echo '<div class="wrap">';
-    echo '<h2>Sucuri 1-Click WordPress Hardening</h2>';
-
-    echo '<h3>Secure your WordPress with a one-click hardening.</h3>'; 
-
-    echo "<hr />";
-    sucuriscan_harden_version();
-    echo "<hr />";
-    sucuriscan_harden_removegenerator();
-    echo "<hr />";
-    sucuriscan_harden_upload();
-    echo "<hr />";
-    sucuriscan_harden_dbtables();
-    echo "<hr />";
-    sucuriscan_harden_adminuser();
-    echo "<hr />";
-    sucuriscan_harden_readme();
-    echo "<hr />";
-    sucuriscan_harden_phpversion();
-    echo "<hr />";
     ?>
-    <br /><br />
-    <b>If you have any question about these checks or this plugin, contact us at support@sucuri.net or visit <a href="http://sucuri.net">http://sucuri.net</a></b>
-   <br />
-
-    </div>
+    <h2><?php echo htmlspecialchars($sucuri_title); ?></h2>
+    <br class="clear"/>
     <?php
 }
 
+/* Sucuri one-click hardening page. */
 
+function sucuriscan_hardening_page()
 
+{
+
+    /* Hardening page. */
+
+    echo '<div class="wrap">';
+    
+    echo '<div class="sucuriscan_header"><img src="'.SUCURI_URL.'/inc/images/logo.png">';
+    
+    if(!current_user_can('manage_options'))   
+    {
+        wp_die(__('You do not have sufficient permissions to access this page.') );
+    }
+    
+    include_once("sucuriscan_hardening.php");
+
+    sucuriscan_hardening_lib()
+
+    ?>
+
+        </div><!-- End postbox-container -->        
+    
+    <?php include_once("lib/sidebar.php");  ?>     
+
+    </div><!-- End Wrap -->
+
+    <?php
+}
 
 /* Sucuri's admin menu. */
+
 add_action('admin_menu', 'sucuriscan_menu');
 remove_action('wp_head', 'wp_generator');
-
 
 ?>

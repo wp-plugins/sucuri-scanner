@@ -1,0 +1,12 @@
+<div class="postbox-container" style="width:25%;min-width:200px;max-width:350px;">		
+    <div id="sidebar">
+        <div id="sitecleanup" class="sucuriscan-sidebar">
+            <h2><span class="promo">Is your website infected with malware? Blacklisted by Google?</span></h2>
+            <p>Don't know where to start? Get cleared today by <a href="http://sucuri.net/signup">Sucuri Security</a>!
+            </p>
+            <p>
+            <a class="button-primary" href="http://sucuri.net/tour">Read more »</a>
+            </p>
+        </div>
+    </div>
+</div>    
