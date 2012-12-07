@@ -15,12 +15,15 @@ if(!defined('SUCURISCAN'))
 function sucuriscan_hardening_lib()
 {
     
-    sucuriscan_pagestop("Sucuri 1-Click Hardening Options");
-    
-    echo '</div>';
-    
-    echo '<div class="postbox-container" style="min-width:400px; max-width:600px; padding: 0 20px 0 0;">';
- 
+        echo '<div class="postbox-container" style="width:75%;">';
+            echo '<div class="sucuriscan-maincontent">';
+
+                echo '<div class="postbox">';
+                   echo '<div class="inside">';
+                       echo '<h2 align="center">Help secure your WordPress install with <a href="http://sucuri.net/signup">Sucuri</a> 1-Click Hardening Options.</h2>';
+                   echo '</div>';
+                echo '</div>';
+             
     include_once("lib/hardening.php");
 
     if(isset($_POST['wpsucuri-doharden']))
@@ -34,11 +37,6 @@ function sucuriscan_hardening_lib()
     ?>
 
         <div id="poststuff">
-            <div class="postbox">
-                <div class="inside">
-                    <h2 align="center">Help secure your WordPress install with <a href="http://sucuri.net/signup">Sucuri</a> 1-Click Hardening Options.</h2>
-                </div>
-            </div>
     
         <?php 
             

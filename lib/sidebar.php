@@ -8,5 +8,15 @@
             <a class="button-primary" href="http://sucuri.net/tour">Read more »</a>
             </p>
         </div>
+
+        <div id="sucuri-latest-posts" class="sucuriscan-sidebar">
+            <h2><span class="promo">Stay updated with WordPress security news. </span></h2>
+            <p>Check out the <a href="http://blog.sucuri.net/">Sucuri Blog</a>!
+            </p>
+            <p>
+            <a class="button-primary" href="http://blog/sucuri.net/">Read more »</a>
+            </p>
+        </div>
+
     </div>
 </div>    
