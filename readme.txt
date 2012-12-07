@@ -88,7 +88,6 @@ We augment the SiteCheck Malware Scanner with various. 1-click hardening options
 = 1.1.1 = 
  * First public release. 
 
-
 == Credits ==
 
  * <a href="http://sucuri.net">Sucuri Security</a>
