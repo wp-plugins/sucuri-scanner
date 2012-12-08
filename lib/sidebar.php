@@ -14,7 +14,7 @@
             <p>Check out the <a href="http://blog.sucuri.net/">Sucuri Blog</a>!
             </p>
             <p>
-            <a class="button-primary" href="http://blog/sucuri.net/">Read more »</a>
+            <a class="button-primary" href="http://blog.sucuri.net/">Read more »</a>
             </p>
         </div>
 
