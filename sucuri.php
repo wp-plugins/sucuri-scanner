@@ -186,7 +186,7 @@ function sucuriscan_print_scan()
 
     echo "<hr />\n";
     global $wp_version;
-    if(strcmp($wp_version, "3.4.2") >= 0)
+    if(strcmp($wp_version, "3.5") >= 0)
     {
         echo '<h3><img style="position:relative;top:5px" height="22" width="22" src="
                  '.site_url().'/wp-content/plugins/sucuri-scanner/images/ok.png" /> &nbsp;

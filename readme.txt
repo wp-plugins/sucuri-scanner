@@ -58,6 +58,9 @@ We augment the SiteCheck Malware Scanner with various. 1-click hardening options
 
 == Changelog ==
 
+= 1.2.2 =
+* Tested on WP 3.5.1
+
 = 1.2.1 =
 * Tested on WP 3.5-RC4
 * Style changes
