@@ -42,9 +42,9 @@ function sucuriscan_dir_filepath($path = '')
 }
 
 /* Starting Sucuri Scan side bar. */
-function sucuriscan_menu() 
+function sucuriscan_menu()
 {
-    add_menu_page('Sucuri Free', 'Sucuri Free', 'manage_options', 
+    add_menu_page('Sucuri Free', 'Sucuri Free', 'manage_options',
                   'sucuriscan', 'sucuri_scan_page', SUCURI_URL.'images/menu-icon.png');
     add_submenu_page('sucuriscan', 'Sucuri Scanner', 'Sucuri Scanner', 'manage_options',
                      'sucuriscan', 'sucuri_scan_page');
@@ -72,10 +72,10 @@ function sucuri_scan_page()
     /* Setting's header. */
     echo '<div class="wrap">';
 
-        echo '<div class="sucuriscan_header"><img src="'.SUCURI_URL.'/inc/images/logo.png">';    
+        echo '<div class="sucuriscan_header"><img src="'.SUCURI_URL.'/inc/images/logo.png">';
         sucuriscan_pagestop("SiteCheck Scanner");
         echo '</div>';
-    
+
         echo '<div class="postbox-container" style="width:75%;">';
             echo '<div class="sucuriscan-maincontent">';
 
@@ -83,20 +83,20 @@ function sucuri_scan_page()
                echo '<div class="inside">';
                    echo '<h2 align="center">Scan your site for malware using <a href="http://sitecheck.sucuri.net">Sucuri SiteCheck</a> right in your WordPress dashboard.</h2>';
                echo '</div>';
-            echo '</div>'; 
+            echo '</div>';
         ?>
 
                 <form action="" method="post">
                     <input type="hidden" name="wpsucuri-doscan" value="wpsucuri-doscan" />
                     <input class="button-primary" type="submit" name="wpsucuri_doscanrun" value="Scan this site now!" />
                 </form>
-                
+
                 <p><strong>If you have any questions about these checks or this plugin, contact us at support@sucuri.net or visit <a href="http://sucuri.net">sucuri.net</a></strong></p>
 
-            </div><!-- End sucuriscan-maincontent -->    
-        </div><!-- End postbox-container -->        
-    
-    <?php include_once("lib/sidebar.php");  ?>     
+            </div><!-- End sucuriscan-maincontent -->
+        </div><!-- End postbox-container -->
+
+    <?php include_once("lib/sidebar.php");  ?>
 
     </div><!-- End Wrap -->
 
@@ -117,13 +117,13 @@ function sucuriscan_print_scan()
 
     echo '<div class="wrap">';
 
-    echo '<div class="sucuriscan_header"><img src="'.SUCURI_URL.'/inc/images/logo.png">';    
+    echo '<div class="sucuriscan_header"><img src="'.SUCURI_URL.'/inc/images/logo.png">';
     sucuriscan_pagestop("Sucuri SiteCheck Malware Scanner");
     echo '</div>';
 
         echo '<div class="postbox-container" style="width:75%;">';
             echo '<div class="sucuriscan-maincontent">';
-            
+
     if(!isset($res['MALWARE']['WARN']))
     {
         echo '<h3><img style="position:relative;top:5px" height="22" width="22" src="
@@ -171,10 +171,12 @@ function sucuriscan_print_scan()
                  '.site_url().'/wp-content/plugins/sucuri-scanner/images/ok.png" /> &nbsp;
                  Site blacklist-free</h3>';
     }
-
-    foreach($res['BLACKLIST']['INFO'] as $blres)
+    if(isset($res['BLACKLIST']['INFO']))
     {
-        echo "<b>CLEAN: </b>".htmlspecialchars($blres[0])." <a href=''>".htmlspecialchars($blres[1])."</a><br />";
+        foreach($res['BLACKLIST']['INFO'] as $blres)
+        {
+            echo "<b>CLEAN: </b>".htmlspecialchars($blres[0])." <a href=''>".htmlspecialchars($blres[1])."</a><br />";
+        }
     }
     if(isset($res['BLACKLIST']['WARN']))
     {
@@ -203,28 +205,31 @@ function sucuriscan_print_scan()
     echo "<b>WordPress: </b> $wp_version<br />\n";
     echo "<b>PHP: </b> ".phpversion()."<br />\n";
 
-    foreach($res['SYSTEM']['NOTICE'] as $notres)
+    if(isset($res['SYSTEM']['NOTICE']))
     {
-        if(is_array($notres))
+        foreach($res['SYSTEM']['NOTICE'] as $notres)
         {
-            echo htmlspecialchars($notres[0]). " ".htmlspecialchars($notres[1]);
-        }
-        else
-        {
-            echo htmlspecialchars($notres)."<br />\n";
+            if(is_array($notres))
+            {
+                echo htmlspecialchars($notres[0]). " ".htmlspecialchars($notres[1]);
+            }
+            else
+            {
+                echo htmlspecialchars($notres)."<br />\n";
+            }
         }
     }
 
     ?>
                 <p>If you have any questions about these checks or this plugin, contact us at support@sucuri.net or visit <a href="http://sucuri.net">http://sucuri.net</a></p>
 
-            </div><!-- End sucuriscan-maincontent -->    
-        </div><!-- End postbox-container -->       
-    
-    <?php include_once("lib/sidebar.php");  ?>     
+            </div><!-- End sucuriscan-maincontent -->
+        </div><!-- End postbox-container -->
+
+    <?php include_once("lib/sidebar.php");  ?>
 
     </div><!-- End Wrap -->
-    
+
     <?php
 }
 
@@ -251,26 +256,26 @@ function sucuriscan_hardening_page()
     /* Hardening page. */
 
     echo '<div class="wrap">';
-    
-    echo '<div class="sucuriscan_header"><img src="'.SUCURI_URL.'/inc/images/logo.png">';    
-    sucuriscan_pagestop("Sucuri 1-Click Hardening Options");    
+
+    echo '<div class="sucuriscan_header"><img src="'.SUCURI_URL.'/inc/images/logo.png">';
+    sucuriscan_pagestop("Sucuri 1-Click Hardening Options");
     echo '</div>';
-         
-    if(!current_user_can('manage_options'))   
+
+    if(!current_user_can('manage_options'))
     {
         wp_die(__('You do not have sufficient permissions to access this page.') );
     }
-    
+
     include_once("sucuriscan_hardening.php");
 
     sucuriscan_hardening_lib()
 
     ?>
 
-            </div><!-- End sucuriscan-maincontent -->    
-        </div><!-- End postbox-container -->       
-    
-    <?php include_once("lib/sidebar.php");  ?>     
+            </div><!-- End sucuriscan-maincontent -->
+        </div><!-- End postbox-container -->
+
+    <?php include_once("lib/sidebar.php");  ?>
 
     </div><!-- End Wrap -->
 
