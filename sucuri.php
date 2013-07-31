@@ -71,7 +71,7 @@ function sucuri_scan_page()
 
     /* Setting's header. */
     echo '<div class="wrap">';
-
+        echo '<h2 id="warnings_hook"></h2>';
         echo '<div class="sucuriscan_header"><img src="'.SUCURI_URL.'/inc/images/logo.png">';
         sucuriscan_pagestop("SiteCheck Scanner");
         echo '</div>';
@@ -116,7 +116,7 @@ function sucuriscan_print_scan()
     $res = unserialize($myresults['body']);
 
     echo '<div class="wrap">';
-
+    echo '<h2 id="warnings_hook"></h2>';
     echo '<div class="sucuriscan_header"><img src="'.SUCURI_URL.'/inc/images/logo.png">';
     sucuriscan_pagestop("Sucuri SiteCheck Malware Scanner");
     echo '</div>';
@@ -256,7 +256,7 @@ function sucuriscan_hardening_page()
     /* Hardening page. */
 
     echo '<div class="wrap">';
-
+    echo '<h2 id="warnings_hook"></h2>';
     echo '<div class="sucuriscan_header"><img src="'.SUCURI_URL.'/inc/images/logo.png">';
     sucuriscan_pagestop("Sucuri 1-Click Hardening Options");
     echo '</div>';

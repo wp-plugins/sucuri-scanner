@@ -14,7 +14,7 @@ if(!defined('SUCURISCAN'))
 
 function sucuriscan_hardening_lib()
 {
-    
+        echo '<h2 id="warnings_hook"></h2>';
         echo '<div class="postbox-container" style="width:75%;">';
             echo '<div class="sucuriscan-maincontent">';
 
@@ -23,7 +23,7 @@ function sucuriscan_hardening_lib()
                        echo '<h2 align="center">Help secure your WordPress install with <a href="http://sucuri.net/signup">Sucuri</a> 1-Click Hardening Options.</h2>';
                    echo '</div>';
                 echo '</div>';
-             
+
     include_once("lib/hardening.php");
 
     if(isset($_POST['wpsucuri-doharden']))
@@ -37,25 +37,25 @@ function sucuriscan_hardening_lib()
     ?>
 
         <div id="poststuff">
-    
-        <?php 
-            
+
+        <?php
+
             echo '<form action="" method="post">'.
                      '<input type="hidden" name="sucuriscan_wphardeningnonce" value="'.wp_create_nonce('sucuriscan_wphardeningnonce').'" />'.
                      '<input type="hidden" name="wpsucuri-doharden" value="wpsucuri-doharden" />'.
-    
+
                         sucuriscan_harden_version();
                         sucuri_harden_removegenerator();
                         sucuriscan_harden_upload();
                         sucuriscan_harden_wpcontent();
                         sucuriscan_harden_wpincludes();
                         sucuriscan_harden_phpversion();
-                
+
             ?>
 
             <p align="center"><strong>If you have any questions about these checks or this plugin, contact us at support@sucuri.net or visit <a href="http://sucuri.net">Sucuri Security</a></strong></p>
-    
-        </div>       
+
+        </div>
 
     <?php
 }
