@@ -3,8 +3,8 @@ Contributors: dd@sucuri.net, dremeda
 Donate Link: http://sitecheck.sucuri.net
 Tags: malware, security, scan, spam, virus, sucuri, WordPress,  
 Requires at least:3.2
-Stable tag:1.2.1
-Tested up to: 3.5-RC3
+Stable tag:1.3
+Tested up to: 3.6
 
 The Sucuri Security - SiteCheck Malware Scanner plugin enables you to scan your WordPress site using Sucuri SiteCheck right in your dashboard. 
 
@@ -57,6 +57,11 @@ We augment the SiteCheck Malware Scanner with various. 1-click hardening options
 
 
 == Changelog ==
+
+= 1.3 =
+* Removed some PHP warnings and code clean up.
+* Added WordPress integrity checks.
+* Added plugin/theme/user checks.
 
 = 1.2.2 =
 * Tested on WP 3.5.1
