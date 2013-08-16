@@ -50,7 +50,7 @@ function sucuriscan_hardening_lib()
                         sucuriscan_harden_wpcontent();
                         sucuriscan_harden_wpincludes();
                         sucuriscan_harden_phpversion();
-
+            echo '</form>'
             ?>
 
             <p align="center"><strong>If you have any questions about these checks or this plugin, contact us at support@sucuri.net or visit <a href="http://sucuri.net">Sucuri Security</a></strong></p>

@@ -51,6 +51,9 @@ function sucuriscan_menu()
 
     add_submenu_page('sucuriscan', '1-click Hardening', '1-click Hardening', 'manage_options',
                      'sucuriscan_hardening', 'sucuriscan_hardening_page');
+
+    add_submenu_page('sucuriscan', 'WordPress Integrity', 'WordPress Integrity', 'manage_options',
+                     'sucuriscan_core_integrity', 'sucuriscan_core_integrity_page');
 }
 
 /* Sucuri malware scan page. */
@@ -269,6 +272,41 @@ function sucuriscan_hardening_page()
     include_once("sucuriscan_hardening.php");
 
     sucuriscan_hardening_lib()
+
+    ?>
+
+            </div><!-- End sucuriscan-maincontent -->
+        </div><!-- End postbox-container -->
+
+    <?php include_once("lib/sidebar.php");  ?>
+
+    </div><!-- End Wrap -->
+
+    <?php
+}
+
+/* Sucuri WordPress Integrity page. */
+
+function sucuriscan_core_integrity_page()
+
+{
+
+    /* WordPress Integrity page. */
+
+    echo '<div class="wrap">';
+    echo '<h2 id="warnings_hook"></h2>';
+    echo '<div class="sucuriscan_header"><img src="'.SUCURI_URL.'/inc/images/logo.png">';
+    sucuriscan_pagestop("Sucuri WordPress Integrity");
+    echo '</div>';
+
+    if(!current_user_can('manage_options'))
+    {
+        wp_die(__('You do not have sufficient permissions to access this page.') );
+    }
+
+    include_once("sucuriscan_core_integrity.php");
+
+    sucuriscan_core_integrity_lib()
 
     ?>
 
