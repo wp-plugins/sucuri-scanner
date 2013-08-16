@@ -91,10 +91,10 @@ function sucuri_scan_page()
 
                 <form action="" method="post">
                     <input type="hidden" name="wpsucuri-doscan" value="wpsucuri-doscan" />
-                    <input class="button-primary" type="submit" name="wpsucuri_doscanrun" value="Scan this site now!" />
+                    <input class="button button-primary button-hero load-customize" type="submit" name="wpsucuri_doscanrun" value="Scan this site now!" />
                 </form>
 
-                <p><strong>If you have any questions about these checks or this plugin, contact us at support@sucuri.net or visit <a href="http://sucuri.net">sucuri.net</a></strong></p>
+                <p><strong>If you have any questions about these checks or this plugin, contact us at <a href="mailto:info@sucuri.net">info@sucuri.net</a> or visit <a href="http://sucuri.net">sucuri.net</a></strong></p>
 
             </div><!-- End sucuriscan-maincontent -->
         </div><!-- End postbox-container -->
