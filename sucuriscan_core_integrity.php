@@ -61,29 +61,29 @@ function sucuriscan_core_integrity_lib()
 
                 sucuriscan_core_integrity_function_wrapper(
                     'sucuriwp_core_integrity_check', 
-                    'Check wp-include, wp-admin, and top directory files against the latest WordPress version.'
+                    'This test will check wp-includes, wp-admin, and the top directory files against the latest WordPress hashing database. If any of those files were modified, it is a big sign of a possible compromise.'
                     );
                 sucuriscan_core_integrity_function_wrapper(
                     'sucuriwp_list_admins', 
-                    'Check Administrator Users.'
+                    'List all administrator users and their latest login time.'
                     );
                 sucuriscan_core_integrity_function_wrapper(
                     'sucuriwp_content_check', 
-                    'Check wp-content files modified in the past 3 days.'
+                    'This test will list all files inside wp-content that have been modified in the past 3 days.'
                     );
                 sucuriscan_core_integrity_function_wrapper(
                     'sucuriwp_check_plugins', 
-                    'Check outdated active plugins in there.'
+                    'This test will list any outdated (active) plugins.'
                     );
                 sucuriscan_core_integrity_function_wrapper(
                     'sucuriwp_check_themes', 
-                    'Check outdated themes in there.'
+                    'This test will list any outdated theme.'
                     );
             ?>
 
         </div>
 
-        <p align="center"><strong>If you have any questions about these checks or this plugin, contact us at support@sucuri.net or visit <a href="http://sucuri.net">Sucuri Security</a></strong></p>
+        <p align="center"><strong>If you have any questions about these tests or this plugin, contact us at info@sucuri.net or visit <a href="http://sucuri.net">Sucuri Security</a></strong></p>
 
     <?php
 }

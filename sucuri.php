@@ -159,8 +159,10 @@ function sucuriscan_print_scan()
         }
         echo "<br />";
     }
-    echo '<i>More details here <a href="http://sitecheck.sucuri.net/scanner/?&scan='.home_url().'">http://sitecheck.sucuri.net/scanner/?&scan='.home_url().'</a></i>';
+    echo '<i>More details here: <a href="http://sitecheck.sucuri.net/scanner/?&scan='.home_url().'">http://sitecheck.sucuri.net/scanner/?&scan='.home_url().'</a></i>';
 
+    echo "<hr />\n";
+    echo '<i>If our free scanner did not detect any issue, you may have a more complicated and hidden problem. You can try our <a href="admin.php?page=sucuriscan_core_integrity">WordPress integrity checks</a> or sign up with Sucuri <a target="_blank" href="http://sucuri.net/signup">here</a> for a complete and in depth scan+cleanup (not included in the free checks).</i>';
     echo "<hr />\n";
     if(isset($res['BLACKLIST']['WARN']))
     {
