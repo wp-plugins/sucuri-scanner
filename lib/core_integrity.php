@@ -1,0 +1,242 @@
+<?php
+/* Sucuri Security - WordPress Core Intherity check against the latest version
+ * Copyright (C) 2010-2012 Sucuri Security - http://sucuri.net
+ * Released under the GPL - see LICENSE file for details.
+ */
+if(!defined('SUCURISCAN'))
+{
+    return(0);
+}
+
+function sucuriscan_core_integrity_wrapper($content, $msg)
+{
+    echo '<div class="postbox">';
+        echo '<h3>'.$msg.'</h3>';
+        echo '<div class="inside">';
+                foreach ($content as $key => $value) {
+                    echo "<p>$key</p>";
+                }
+        echo '</div>';
+    echo '</div>';
+}
+
+function read_dir_r($dir = "./", $recursiv = false)
+{
+    $skipname  = basename(__FILE__);
+    $skipname .= ",_sucuribackup,wp-config.php";
+
+    $files_info = array();
+
+    $dir_handler = opendir($dir);
+
+    while(($entry = readdir($dir_handler)) !== false) {
+      if ($entry != "." && $entry != "..") {
+          $dir = preg_replace("/^(.*)(\/)+$/", "$1", $dir);
+          $item = $dir . "/" . $entry;
+          if (is_file($item)) {
+
+              $skip_parts = explode(",", $skipname);
+              foreach ($skip_parts as $skip) {
+                if (strpos($item,$skip) !== false) {
+                  continue 2;
+                }
+              }
+
+             $md5 = @md5_file($item);
+             $time_stamp = @filectime($item);
+             $item_name = str_replace(ABSPATH, "./", $item);
+             $files_info[$item_name] = array(
+               'md5'   => $md5,
+               'time' => $time_stamp
+             );
+
+          }
+          elseif (is_dir($item) && $recursiv) {
+              $files_info = array_merge( $files_info , read_dir_r($item) );
+          }
+      }
+    }
+
+    closedir($dir_handler);
+    return $files_info;
+}
+
+function sucuriwp_core_integrity_check()
+{
+
+    global $wp_version;
+    $cp = 0;
+    $updates = get_core_updates();
+    if (!is_array($updates))
+    {
+        $cp = 1;
+    }
+    else if(empty($updates))
+    {
+        $cp = 1;
+    }
+    else if($updates[0]->response == 'latest')
+    {
+        $cp = 1;
+    }
+    if(strcmp($wp_version, "3.4.2") < 0)
+    {
+        $cp = 0;
+    }
+    $wp_version = htmlspecialchars($wp_version);
+
+    if($cp == 0)
+    {   
+        echo '<p><img style="position:relative;top:5px" height="22" width="22"'. 
+             'src="'.SUCURI_URL.'images/warn.png" /> &nbsp; Your current version ('.$wp_version.') is not the latest. <a class="button-primary" href="update-core.php">Update now!</a> to be able to run the integrity check.</p>';
+    }
+    else
+    {
+
+        $wp_core_latest_hashes = json_decode(file_get_contents("http://wordpress.sucuri.net/wp_core_latest_hashes.json"), true);
+
+        $wp_includes_hashes = read_dir_r( ABSPATH . "wp-includes", true);
+        $wp_admin_hashes = read_dir_r( ABSPATH . "wp-admin", true);
+        $wp_top_hashes = read_dir_r( ABSPATH , false);
+
+        $wp_core_hashes = array_merge( $wp_includes_hashes , $wp_admin_hashes );
+        $wp_core_hashes = array_merge( $wp_core_hashes , $wp_top_hashes );
+
+        $added = @array_diff_assoc( $wp_core_hashes, $wp_core_latest_hashes ); //files added
+        $removed = @array_diff_assoc( $wp_core_latest_hashes, $wp_core_hashes ); //files deleted
+        $compcurrent = @array_diff_key( $wp_core_hashes, $added ); //remove all added files from current filelist
+        $complog = @array_diff_key( $wp_core_latest_hashes, $removed );  //remove all deleted files from old file list
+        $changed = array(); //array of changed files
+
+        //compare file hashes and mod dates
+        foreach ( $compcurrent as $currfile => $currattr) {
+
+            if ( array_key_exists( $currfile, $complog ) ) {
+            
+                //if attributes differ added to changed files array
+                if ( strcmp( $currattr['md5'], $complog[$currfile]['md5'] ) != 0 ) {
+                    $changed[$currfile]['md5'] = $currattr['md5'];
+                }
+            
+            }
+
+        }
+
+        //get count of changes
+        $addcount = sizeof( $added );
+        $removecount = sizeof( $removed );
+        $changecount = sizeof( $changed );
+
+        sucuriscan_core_integrity_wrapper($added, "Core File Added: $addcount");
+        sucuriscan_core_integrity_wrapper($removed, "Core File Removed: $removecount");
+        sucuriscan_core_integrity_wrapper($changed, "Core File Modified: $changecount");
+    }
+}
+
+function sucuriwp_list_admins($userlevel = '10') {
+
+    global $wpdb;
+    /*
+     1 = subscriber
+     2 = editor
+     3 = author
+     7 = publisher
+    10 = administrator
+    */  
+    echo '<div class="postbox">';
+        echo "<h3>Administrator Users</h3>";
+        echo '<div class="inside">';
+
+            $admins = $wpdb->get_results("SELECT * from $wpdb->usermeta WHERE meta_key = 'wp_user_level' AND meta_value = '$userlevel'");
+            foreach ( (array) $admins as $admin ) {
+                $admin    = get_userdata( $admin->user_id );
+                $userlevel = $admin->wp2_user_level;
+                $name      = $admin->nickname;
+                if ( $show_fullname && ($admin->first_name != '' && $admin->last_name != '') ) {
+                    $name = "$admin->first_name $admin->last_name";
+                }
+                echo "<p>User: $admin->nickname - Full Name : $name</p>";
+            }
+        echo '</div>';
+    echo '</div>';
+
+}
+
+function sucuriwp_content_check()
+{
+    $wp_content_hashes = read_dir_r( ABSPATH . "wp-content", true);
+    $back_3_days = current_time( 'timestamp' ) - (3 * 24 * 3600);
+
+    echo '<div class="postbox">';
+        echo "<h3>wp_content latest modified files</h3>";
+        echo '<div class="inside">';
+                foreach ( $wp_content_hashes as $key => $value) {
+                    if ($value['time'] >= $back_3_days ){
+                        $date =  date('d-m-Y H:i:s', $value['time']);
+                        echo "<p>$key : $date </p>";
+                    }
+                }
+        echo '</div>';
+    echo '</div>';
+}
+
+function sucuriwp_check_plugins()
+{
+    do_action("wp_update_plugins"); // force WP to check plugins for updates
+    wp_update_plugins();
+    $update_plugins = get_site_transient('update_plugins'); // get information of updates
+    $plugins_need_update = $update_plugins->response; // plugins that need updating
+
+     echo '<div class="postbox">';
+        echo "<h3>Outdated Plugins</h3>";
+        echo '<div class="inside">';
+        if (!empty($update_plugins->response)) { // any plugin updates available?
+            $plugins_need_update = $update_plugins->response; // plugins that need updating
+            $active_plugins = array_flip(get_option('active_plugins')); // find which plugins are active
+            $plugins_need_update = array_intersect_key($plugins_need_update, $active_plugins); // only keep plugins that are active
+            if(count($plugins_need_update) >= 1) { // any plugins need updating after all the filtering gone on above?
+                require_once(ABSPATH . 'wp-admin/includes/plugin-install.php'); // Required for plugin API
+                require_once(ABSPATH . WPINC . '/version.php' ); // Required for WP core version
+                foreach($plugins_need_update as $key => $data) { // loop through the plugins that need updating
+                    $plugin_info = get_plugin_data(WP_PLUGIN_DIR . "/" . $key); // get local plugin info
+                    $info = plugins_api('plugin_information', array('slug' => $data->slug )); // get repository plugin info
+                    $message = "\n".sprintf(__("Plugin: %s is out of date. Please update from version %s to %s", "wp-updates-notifier"), $plugin_info['Name'], $plugin_info['Version'], $data->new_version)."\n";
+                    echo "<p>$message</p>";
+                }
+            }
+            else
+            {
+                echo "<p>All plugins are up-to-date!</p>";
+            }
+        }
+        echo '</div>';
+    echo '</div>';
+}
+
+function sucuriwp_check_themes()
+{
+    do_action("wp_update_themes"); // force WP to check for theme updates
+    wp_update_themes();
+    $update_themes = get_site_transient('update_themes'); // get information of updates
+    
+    echo '<div class="postbox">';
+        echo "<h3>Outdated Themes</h3>";
+        echo '<div class="inside">';
+            if (!empty($update_themes->response)) { // any theme updates available?
+                $themes_need_update = $update_themes->response; // themes that need updating
+                
+                if(count($themes_need_update) >= 1) { // any themes need updating after all the filtering gone on above?
+                    foreach($themes_need_update as $key => $data) { // loop through the themes that need updating
+                        $theme_info = get_theme_data(WP_CONTENT_DIR . "/themes/" . $key . "/style.css"); // get theme info
+                        $message = sprintf(__("Theme: %s is out of date. Please update from version %s to %s", "wp-updates-notifier"), $theme_info['Name'], $theme_info['Version'], $data['new_version'])."\n";
+                       echo "<p>$message</p>";
+                    }
+                }
+            }
+            else
+            {
+                echo "<p>All themes are up-to-date!</p>";
+            }
+        echo '</div>';
+    echo '</div>';
+}
