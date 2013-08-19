@@ -89,8 +89,8 @@ function sucuriwp_core_integrity_check()
     $wp_version = htmlspecialchars($wp_version);
 
     if($cp == 0)
-    {   
-        echo '<p><img style="position:relative;top:5px" height="22" width="22"'. 
+    {
+        echo '<p><img style="position:relative;top:5px" height="22" width="22"'.
              'src="'.SUCURI_URL.'images/warn.png" /> &nbsp; Your current version ('.$wp_version.') is not the latest. <a class="button-primary" href="update-core.php">Update now!</a> to be able to run the integrity check.</p>';
     }
     else
@@ -116,12 +116,12 @@ function sucuriwp_core_integrity_check()
         foreach ( $compcurrent as $currfile => $currattr) {
 
             if ( array_key_exists( $currfile, $complog ) ) {
-            
+
                 //if attributes differ added to modified files array
                 if ( strcmp( $currattr['md5'], $complog[$currfile]['md5'] ) != 0 ) {
                     $modified[$currfile]['md5'] = $currattr['md5'];
                 }
-            
+
             }
 
         }
@@ -162,24 +162,42 @@ function sucuriwp_list_admins($userlevel = '10') {
      3 = author
      7 = publisher
     10 = administrator
-    */  
-    echo '<div class="postbox">';
-        echo "<h3>Administrator Users</h3>";
-        echo '<div class="inside">';
+    */
 
-            $admins = $wpdb->get_results("SELECT * from $wpdb->usermeta WHERE meta_key = 'wp_user_level' AND meta_value = '$userlevel'");
-            foreach ( (array) $admins as $admin ) {
-                $admin    = get_userdata( $admin->user_id );
-                $userlevel = $admin->wp2_user_level;
-                $name      = $admin->nickname;
-                if ( $show_fullname && ($admin->first_name != '' && $admin->last_name != '') ) {
-                    $name = "$admin->first_name $admin->last_name";
-                }
-                echo "<p>User: $admin->nickname - Full Name : $name</p>";
-            }
-        echo '</div>';
-    echo '</div>';
+    // Page pseudo-variables initialization.
+    $template_variables = array(
+        'SucuriURL'=>SUCURI_URL,
+        'AdminUsers.UserList'=>''
+    );
 
+    $wp_user_level = "{$wpdb->prefix}user_level"; // This value is generated through $table_prefix.
+    $admins = $wpdb->get_results("SELECT * FROM $wpdb->usermeta WHERE meta_key = '{$wp_user_level}' AND meta_value = '$userlevel'");
+    foreach ( (array) $admins as $user ) {
+        $admin    = get_userdata( $user->user_id );
+        $admin->lastlogins = sucuriscan_get_logins(4, $admin->ID);
+        $userlevel = $admin->wp2_user_level;
+        $name      = $admin->nickname;
+
+        if ( $show_fullname && ($admin->first_name != '' && $admin->last_name != '') ) {
+            $name = "$admin->first_name $admin->last_name";
+        }
+
+        $user_snippet = array(
+            'AdminUsers.Username'=>$admin->user_login,
+            'AdminUsers.Email'=>$admin->user_email,
+            'AdminUsers.LastLogins'=>''
+        );
+        foreach($admin->lastlogins as $lastlogin){
+            $user_snippet['AdminUsers.LastLogins'] .= sucuriscan_get_template('sucuri-wp-integrity-admins-lastlogin.snippet.tpl', array(
+                'AdminUsers.RemoteAddr'=>$lastlogin->user_remoteaddr,
+                'AdminUsers.Datetime'=>$lastlogin->user_lastlogin
+            ));
+        }
+
+        $template_variables['AdminUsers.UserList'] .= sucuriscan_get_template('sucuri-wp-integrity-admins.snippet.tpl', $user_snippet);
+    }
+
+    echo sucuriscan_get_template('sucuri-wp-integrity-admins.html.tpl', $template_variables);
 }
 
 function sucuriwp_content_check()
@@ -238,13 +256,13 @@ function sucuriwp_check_themes()
     do_action("wp_update_themes"); // force WP to check for theme updates
     wp_update_themes();
     $update_themes = get_site_transient('update_themes'); // get information of updates
-    
+
     echo '<div class="postbox">';
         echo "<h3>Outdated Themes</h3>";
         echo '<div class="inside">';
             if (!empty($update_themes->response)) { // any theme updates available?
                 $themes_need_update = $update_themes->response; // themes that need updating
-                
+
                 if(count($themes_need_update) >= 1) { // any themes need updating after all the filtering gone on above?
                     foreach($themes_need_update as $key => $data) { // loop through the themes that need updating
                         $theme_info = get_theme_data(WP_CONTENT_DIR . "/themes/" . $key . "/style.css"); // get theme info

@@ -61,3 +61,11 @@
 .sucuriscan-maincontent a.lastlogins-showall{
     margin: 10px auto 0 auto;
 }
+
+.sucuriscan-maincontent .adminusers-lastlogin{
+    padding: 0
+}
+
+.sucuriscan-maincontent .adminusers-lastlogin>table{
+    width: 100%
+}

@@ -670,7 +670,7 @@ function sucuriscan_set_lastlogin($user_login='')
 }
 add_action('wp_login', 'sucuriscan_set_lastlogin', 50);
 
-function sucuriscan_get_logins($limit=10)
+function sucuriscan_get_logins($limit=10, $user_id=0)
 {
     global $wpdb;
     if( defined('SUCURISCAN_LASTLOGINS_TABLENAME') ){
@@ -681,11 +681,14 @@ function sucuriscan_get_logins($limit=10)
             $current_user = wp_get_current_user();
             $sql .= chr(32)."WHERE {$wpdb->prefix}users.user_login = '{$current_user->user_login}'";
         }
+        if( $user_id>0 ){
+            $where_append = strpos('WHERE ', $sql)===FALSE ? 'WHERE' : 'AND';
+            $sql .= chr(32)."{$where_append} {$table_name}.user_id = '{$user_id}'";
+        }
         $sql .= chr(32)."ORDER BY {$table_name}.id DESC";
         if( preg_match('/^([0-9]+)$/', $limit) && $limit>0 ){
             $sql .= chr(32)."LIMIT {$limit}";
         }
-
         return $wpdb->get_results($sql);
     }
 
