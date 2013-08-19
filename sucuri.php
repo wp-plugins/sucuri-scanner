@@ -538,7 +538,7 @@ function sucuriscan_posthack_page()
 
                     foreach($user_identifiers as $user_id){
                         if( sucuriscan_new_password($user_id) ){
-                            $passwords_changed[] = $user_id;
+                            $pwd_changed[] = $user_id;
                         }else{
                             $pwd_not_changed[] = $user_id;
                         }
