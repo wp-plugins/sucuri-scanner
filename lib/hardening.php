@@ -34,7 +34,7 @@ function sucuriscan_harden_ok($message)
     return( '<div id="message" class="updated"><p>'.$message.'</p></div>');
 }
 
-function sucuriscan_harden_status($status, $type, $messageok, $messagewarn, 
+function sucuriscan_harden_status($status, $type, $messageok, $messagewarn,
                               $desc = NULL, $updatemsg = NULL)
 {
     if($desc != NULL)
@@ -45,16 +45,22 @@ function sucuriscan_harden_status($status, $type, $messageok, $messagewarn,
     if($status == 1)
     {
         echo '<h4>'.
-             '<img style="position:relative;top:5px" height="22" width="22"'. 
+             '<img style="position:relative;top:5px" height="22" width="22"'.
              'src="'.SUCURI_URL.'images/ok.png" /> &nbsp; '.
              $messageok.'.</h4>';
 
         if($updatemsg != NULL){ echo $updatemsg; }
+
+        if($type != NULL)
+        {
+            echo "<input type='submit' name='{$type}_unharden' value='Revert hardening' class='button-secondary' />";
+            echo '<br /><br />';
+        }
     }
     else
     {
         echo '<h4>'.
-             '<img style="position:relative;top:5px" height="22" width="22"'. 
+             '<img style="position:relative;top:5px" height="22" width="22"'.
              'src="'.SUCURI_URL.'images/warn.png" /> &nbsp; '.
              $messagewarn. '.</h4>';
 
@@ -62,7 +68,7 @@ function sucuriscan_harden_status($status, $type, $messageok, $messagewarn,
 
         if($type != NULL)
         {
-            echo '<input class="button-primary" type="submit" name="'.$type.'" 
+            echo '<input class="button-primary" type="submit" name="'.$type.'"
                          value="Harden it!" />';
         }
     }
@@ -97,7 +103,7 @@ function sucuriscan_harden_version()
     sucuriscan_wrapper_open("Verify WordPress Version");
 
 
-    sucuriscan_harden_status($cp, NULL, 
+    sucuriscan_harden_status($cp, NULL,
                          "WordPress is updated", "WordPress is not updated",
                          NULL);
 
@@ -116,10 +122,10 @@ function sucuri_harden_removegenerator()
 {
     /* Enabled by default with this plugin. */
     $cp = 1;
-    
+
     sucuriscan_wrapper_open("Remove WordPress Version");
 
-    sucuriscan_harden_status($cp, "sucuri_harden_removegenerator", 
+    sucuriscan_harden_status($cp, NULL,
                          "WordPress version properly hidden", NULL,
                          "It checks if your WordPress version is being hidden".
                          " from being displayed in the generator tag ".
@@ -152,45 +158,64 @@ function sucuriscan_harden_upload()
         }
     }
 
-    if(isset($_POST['sucuriscan_harden_upload']) &&
-       isset($_POST['wpsucuri-doharden']) &&
-       $cp == 0)
-    {
-        if(file_put_contents("$htaccess_upload",
-                             "\n<Files *.php>\ndeny from all\n</Files>")===FALSE)
+    if( isset($_POST['wpsucuri-doharden']) ){
+        if( isset($_POST['sucuriscan_harden_upload']) && $cp == 0 )
         {
-            $upmsg = sucuriscan_harden_error("ERROR: Unable to create .htaccess file.");
+            if(file_put_contents($htaccess_upload,
+                                 "\n<Files *.php>\ndeny from all\n</Files>")===FALSE)
+            {
+                $upmsg = sucuriscan_harden_error("ERROR: Unable to create .htaccess file.");
+            }
+            else
+            {
+                $upmsg = sucuriscan_harden_ok("COMPLETE: Upload directory successfully hardened");
+                $cp = 1;
+            }
         }
-        else
-        {
-            $upmsg = sucuriscan_harden_ok("COMPLETE: Upload directory successfully hardened");
-            $cp = 1;
+
+        elseif( isset($_POST['sucuriscan_harden_upload_unharden']) ){
+            $htaccess_upload_writable = ( file_exists($htaccess_upload) && is_writable($htaccess_upload) ) ? TRUE : FALSE;
+            $htaccess_content = $htaccess_upload_writable ? file_get_contents($htaccess_upload) : '';
+
+            if( $htaccess_upload_writable ){
+                $cp = 0;
+                if( preg_match('/<Files \*\.php>\ndeny from all\n<\/Files>/', $htaccess_content, $match) ){
+                    $htaccess_content = str_replace("<Files *.php>\ndeny from all\n</Files>", '', $htaccess_content);
+                    file_put_contents($htaccess_upload, $htaccess_content, LOCK_EX);
+                }
+                sucuri_admin_notice('updated', '<strong>OK.</strong> WP-Content Uploads directory protection reverted.');
+            }else{
+                $harden_process = '<strong>Error.</strong> The <code>wp-content/uploads/.htaccess</code> does
+                    not exists or is not writable, you will need to remove the following code manually there:
+                    <code>&lt;Files *.php&gt;deny from all&lt;/Files&gt;</code>';
+                sucuri_admin_notice('error', $harden_process);
+            }
         }
     }
 
     sucuriscan_wrapper_open("Protect Uploads Directory");
-    sucuriscan_harden_status($cp, "sucuriscan_harden_upload", 
+    sucuriscan_harden_status($cp, "sucuriscan_harden_upload",
                          "Upload directory properly hardened",
                          "Upload directory not hardened",
                          "It checks if your upload directory allows PHP ".
                          "execution or if it is browsable.", $upmsg);
     sucuriscan_wrapper_close();
-}   
+}
 
 function sucuriscan_harden_wpcontent()
 {
     $cp = 1;
     $upmsg = NULL;
-    $htaccess_content = ABSPATH."/wp-content/.htaccess";
+    $htaccess_upload = ABSPATH."/wp-content/.htaccess";
 
-    if(!is_readable($htaccess_content))
+    if(!is_readable($htaccess_upload))
     {
         $cp = 0;
     }
     else
     {
         $cp = 0;
-        $fcontent = file($htaccess_content);
+        $fcontent = file($htaccess_upload);
         foreach($fcontent as $fline)
         {
             if(strpos($fline, "deny from all") !== FALSE)
@@ -201,45 +226,64 @@ function sucuriscan_harden_wpcontent()
         }
     }
 
-    if(isset($_POST['sucuriscan_harden_wpcontent']) &&
-       isset($_POST['wpsucuri-doharden']) &&
-       $cp == 0)
-    {
-        if(file_put_contents("$htaccess_content",
-                             "\n<Files *.php>\ndeny from all\n</Files>")===FALSE)
+    if( isset($_POST['wpsucuri-doharden']) ){
+        if( isset($_POST['sucuriscan_harden_wpcontent']) && $cp == 0 )
         {
-            $upmsg = sucuriscan_harden_error("ERROR: Unable to create .htaccess file.");
+            if(file_put_contents($htaccess_upload,
+                                 "\n<Files *.php>\ndeny from all\n</Files>")===FALSE)
+            {
+                $upmsg = sucuriscan_harden_error("ERROR: Unable to create .htaccess file.");
+            }
+            else
+            {
+                $upmsg = sucuriscan_harden_ok("COMPLETE: wp-content directory successfully hardened");
+                $cp = 1;
+            }
         }
-        else
-        {
-            $upmsg = sucuriscan_harden_ok("COMPLETE: wp-content directory successfully hardened");
-            $cp = 1;
+
+        elseif( isset($_POST['sucuriscan_harden_wpcontent_unharden']) ){
+            $htaccess_upload_writable = ( file_exists($htaccess_upload) && is_writable($htaccess_upload) ) ? TRUE : FALSE;
+            $htaccess_content = $htaccess_upload_writable ? file_get_contents($htaccess_upload) : '';
+
+            if( $htaccess_upload_writable ){
+                $cp = 0;
+                if( preg_match('/<Files \*\.php>\ndeny from all\n<\/Files>/', $htaccess_content, $match) ){
+                    $htaccess_content = str_replace("<Files *.php>\ndeny from all\n</Files>", '', $htaccess_content);
+                    file_put_contents($htaccess_upload, $htaccess_content, LOCK_EX);
+                }
+                sucuri_admin_notice('updated', '<strong>OK.</strong> WP-Content directory protection reverted.');
+            }else{
+                $harden_process = '<strong>Error.</strong> The <code>wp-content/.htaccess</code> does
+                    not exists or is not writable, you will need to remove the following code manually there:
+                    <code>&lt;Files *.php&gt;deny from all&lt;/Files&gt;</code>';
+                sucuri_admin_notice('error', $harden_process);
+            }
         }
     }
 
     sucuriscan_wrapper_open("Restrict wp-content Access");
-    sucuriscan_harden_status($cp, "sucuriscan_harden_wpcontent", 
+    sucuriscan_harden_status($cp, "sucuriscan_harden_wpcontent",
                          "WP-content directory properly hardened",
                          "WP-content directory not hardened",
                          "This option blocks direct PHP access to any file inside wp-content. <p><strong>WARN: <span class='error-message'>Do not enable this option if ".
                          "your site uses TimThumb or similar scripts.</span> If you enable and you need to disable, please remove the .htaccess from wp-content.</strong></p>", $upmsg);
     sucuriscan_wrapper_close();
-}   
+}
 
 function sucuriscan_harden_wpincludes()
 {
     $cp = 1;
     $upmsg = NULL;
-    $htaccess_content = ABSPATH."/wp-includes/.htaccess";
+    $htaccess_upload = ABSPATH."/wp-includes/.htaccess";
 
-    if(!is_readable($htaccess_content))
+    if(!is_readable($htaccess_upload))
     {
         $cp = 0;
     }
     else
     {
         $cp = 0;
-        $fcontent = file($htaccess_content);
+        $fcontent = file($htaccess_upload);
         foreach($fcontent as $fline)
         {
             if(strpos($fline, "deny from all") !== FALSE)
@@ -250,29 +294,50 @@ function sucuriscan_harden_wpincludes()
         }
     }
 
-    if(isset($_POST['sucuriscan_harden_wpincludes']) &&
-       isset($_POST['wpsucuri-doharden']) &&
-       $cp == 0)
-    {
-        if(file_put_contents("$htaccess_content",
-                             "\n<Files *.php>\ndeny from all\n</Files>\n<Files wp-tinymce.php>\nallow from all\n</Files>\n")===FALSE)
+    if( isset($_POST['wpsucuri-doharden']) ){
+        if( isset($_POST['sucuriscan_harden_wpincludes']) && $cp == 0 )
         {
-            $upmsg = sucuriscan_harden_error("ERROR: Unable to create .htaccess file.");
+            if(file_put_contents($htaccess_upload,
+                                 "\n<Files *.php>\ndeny from all\n</Files>\n<Files wp-tinymce.php>\nallow from all\n</Files>\n")===FALSE)
+            {
+                $upmsg = sucuriscan_harden_error("ERROR: Unable to create .htaccess file.");
+            }
+            else
+            {
+                $upmsg = sucuriscan_harden_ok("COMPLETE: wp-includes directory successfully hardened.");
+                $cp = 1;
+            }
         }
-        else
-        {
-            $upmsg = sucuriscan_harden_ok("COMPLETE: wp-includes directory successfully hardened.");
-            $cp = 1;
+
+        elseif( isset($_POST['sucuriscan_harden_wpincludes_unharden']) ){
+            $htaccess_upload_writable = ( file_exists($htaccess_upload) && is_writable($htaccess_upload) ) ? TRUE : FALSE;
+            $htaccess_content = $htaccess_upload_writable ? file_get_contents($htaccess_upload) : '';
+
+            if( $htaccess_upload_writable ){
+                $cp = 0;
+                if( preg_match_all('/<Files (\*|wp-tinymce|ms-files)\.php>\n(deny|allow) from all\n<\/Files>/', $htaccess_content, $match) ){
+                    foreach($match[0] as $restriction){
+                        $htaccess_content = str_replace($restriction, '', $htaccess_content);
+                    }
+                    file_put_contents($htaccess_upload, $htaccess_content, LOCK_EX);
+                }
+                sucuri_admin_notice('updated', '<strong>OK.</strong> WP-Includes directory protection reverted.');
+            }else{
+                $harden_process = '<strong>Error.</strong> The <code>wp-includes/.htaccess</code> does
+                    not exists or is not writable, you will need to remove the following code manually there:
+                    <code>&lt;Files *.php&gt;deny from all&lt;/Files&gt;</code>';
+                sucuri_admin_notice('error', $harden_process);
+            }
         }
     }
 
     sucuriscan_wrapper_open("Restrict wp-includes Access");
-    sucuriscan_harden_status($cp, "sucuriscan_harden_wpincludes", 
+    sucuriscan_harden_status($cp, "sucuriscan_harden_wpincludes",
                          "wp-includes directory properly hardened",
                          "wp-includes directory not hardened",
                          "This option blocks direct PHP access to any file inside wp-includes. ", $upmsg);
     sucuriscan_wrapper_close();
-}   
+}
 
 function sucuriscan_harden_phpversion()
 {
@@ -288,7 +353,7 @@ function sucuriscan_harden_phpversion()
     }
 
     sucuriscan_wrapper_open("Verify PHP Version");
-    sucuriscan_harden_status($cp, NULL, 
+    sucuriscan_harden_status($cp, NULL,
                          "Using an updated version of PHP (v $phpv)",
                          "The version of PHP you are using ($phpv) is not current, not recommended, and/or not supported",
                          "This checks if you have the latest version of PHP installed.", NULL);

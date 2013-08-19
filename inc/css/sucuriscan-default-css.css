@@ -2,14 +2,14 @@
  * Copyright (C) 2010-2012 Sucuri Security - http://sucuri.net
  * Released under the GPL - see LICENSE file for details.
  */
- 
+
  .sucuriscan_header {
     background: #333;
     border-bottom-left-radius:5px;
     border-bottom-right-radius:5px;
     border-top-left-radius:5px;
     border-top-right-radius:5px;
-    height: 38px;  
+    height: 38px;
     margin: 16px 0 8px;
     min-width: 255px;
     padding: 10px;
@@ -27,7 +27,7 @@
     float: left;
     margin-left: 10px;
     padding: 3px 0 0;
-    text-shadow:#000 0 1px 0;    
+    text-shadow:#000 0 1px 0;
 }
 
 .sucuriscan-maincontent {
@@ -56,4 +56,8 @@
 #sucuri-latest-posts.sucuriscan-sidebar {
     background-color:#ececec;
     border-color:#999;
+}
+
+.sucuriscan-maincontent a.lastlogins-showall{
+    margin: 10px auto 0 auto;
 }

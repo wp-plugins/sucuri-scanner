@@ -20,6 +20,9 @@ if(!function_exists('add_action'))
 define('SUCURISCAN','sucuriscan');
 define('SUCURISCAN_VERSION','1.3');
 define( 'SUCURI_URL',plugin_dir_url( __FILE__ ));
+define('SUCURISCAN_PLUGIN_FOLDER', 'sucuri-scanner');
+/* Sucuri Free/Paid Plugin will use the same tablename, check: sucuriscan_lastlogins_table_exists() */
+define('SUCURISCAN_LASTLOGINS_TABLENAME', "{$table_prefix}sucuri_lastlogins");
 
 /* Requires files. */
 //require_once(dirname(__FILE__ ) . '/inc/scripts.php');
@@ -54,6 +57,12 @@ function sucuriscan_menu()
 
     add_submenu_page('sucuriscan', 'WordPress Integrity', 'WordPress Integrity', 'manage_options',
                      'sucuriscan_core_integrity', 'sucuriscan_core_integrity_page');
+
+    add_submenu_page('sucuriscan', 'Post-Hack', 'Post-Hack', 'manage_options',
+                     'sucuriscan_posthack', 'sucuriscan_posthack_page');
+
+    add_submenu_page('sucuriscan', 'Last Logins', 'Last Logins', 'manage_options',
+                     'sucuriscan_lastlogins', 'sucuriscan_lastlogins_page');
 }
 
 /* Sucuri malware scan page. */
@@ -99,7 +108,7 @@ function sucuri_scan_page()
             </div><!-- End sucuriscan-maincontent -->
         </div><!-- End postbox-container -->
 
-    <?php include_once("lib/sidebar.php");  ?>
+        <?php echo sucuriscan_get_template('sucuri-wp-sidebar.html.tpl') ?>
 
     </div><!-- End Wrap -->
 
@@ -231,7 +240,7 @@ function sucuriscan_print_scan()
             </div><!-- End sucuriscan-maincontent -->
         </div><!-- End postbox-container -->
 
-    <?php include_once("lib/sidebar.php");  ?>
+        <?php echo sucuriscan_get_template('sucuri-wp-sidebar.html.tpl') ?>
 
     </div><!-- End Wrap -->
 
@@ -280,7 +289,7 @@ function sucuriscan_hardening_page()
             </div><!-- End sucuriscan-maincontent -->
         </div><!-- End postbox-container -->
 
-    <?php include_once("lib/sidebar.php");  ?>
+        <?php echo sucuriscan_get_template('sucuri-wp-sidebar.html.tpl') ?>
 
     </div><!-- End Wrap -->
 
@@ -315,7 +324,7 @@ function sucuriscan_core_integrity_page()
             </div><!-- End sucuriscan-maincontent -->
         </div><!-- End postbox-container -->
 
-    <?php include_once("lib/sidebar.php");  ?>
+        <?php echo sucuriscan_get_template('sucuri-wp-sidebar.html.tpl') ?>
 
     </div><!-- End Wrap -->
 
@@ -326,5 +335,361 @@ function sucuriscan_core_integrity_page()
 
 add_action('admin_menu', 'sucuriscan_menu');
 remove_action('wp_head', 'wp_generator');
+
+function sucuriscan_send_mail($to='', $subject='', $message='', $data_set=array(), $debug=FALSE)
+{
+    $headers = array();
+    $subject = ucwords(strtolower($subject));
+    $wp_domain = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : get_option('siteurl');
+    if( get_option('sucuri_wp_prettify_mails')!='disabled' ){
+        $headers = array( 'Content-type: text/html' );
+        $data_set['PrettifyType'] = 'html';
+    }
+    $message = sucuriscan_prettify_mail($subject, $message, $data_set);
+
+    if($debug){
+        die($message);
+    }else{
+        wp_mail($to, "Sucuri WP Notification: {$wp_domain}: {$subject}" , $message, $headers);
+    }
+}
+
+function sucuriscan_admin_notice($type='updated', $message='')
+{
+    if( !empty($message) ): ?>
+        <div class="<?php echo $type; ?>"><p><?php _e($message); ?></p></div>
+    <?php endif;
+}
+
+function sucuriscan_prettify_mail($subject='', $message='', $data_set=array())
+{
+    $current_user = wp_get_current_user();
+
+    $prettify_type = isset($data_set['PrettifyType']) ? $data_set['PrettifyType'] : 'txt';
+    $real_ip = isset($_SERVER['SUCURI_RIP']) ? $_SERVER['SUCURI_RIP'] : $_SERVER['REMOTE_ADDR'];
+
+    $mail_variables = array(
+        'TemplateTitle'=>'Sucuri WP Notification',
+        'Subject'=>$subject,
+        'Website'=>get_option('siteurl'),
+        'RemoteAddress'=>$real_ip,
+        'Message'=>$message,
+        'User'=>$current_user->display_name,
+        'Time'=>current_time('mysql')
+    );
+    foreach($data_set as $var_key=>$var_value){
+        $mail_variables[$var_key] = $var_value;
+    }
+
+    return sucuriscan_get_template("sucuri-wp-notification.{$prettify_type}.tpl", $mail_variables);
+}
+
+function sucuriscan_get_template($template='', $template_variables=array()){
+    $template_content = '';
+    $template_path =  WP_PLUGIN_DIR.'/'.SUCURISCAN_PLUGIN_FOLDER."/inc/tpl/{$template}";
+
+    if( file_exists($template_path) && is_readable($template_path) ){
+        $template_content = file_get_contents($template_path);
+        foreach($template_variables as $tpl_key=>$tpl_value){
+            $template_content = str_replace("%%SUCURI.{$tpl_key}%%", $tpl_value, $template_content);
+        }
+    }
+    return $template_content;
+}
+
+function sucuriscan_wp_sidebar_gen()
+{
+    return sucuriscan_get_template('sucuri-wp-sidebar.html.tpl');
+}
+
+function sucuriscan_get_new_config_keys()
+{
+    $request = wp_remote_get('https://api.wordpress.org/secret-key/1.1/salt/');
+    if( !is_wp_error($request) || wp_remote_retrieve_response_code($request) === 200 ){
+        if( preg_match_all("/define\('([A-Z_]+)',[ ]+'(.*)'\);/", $request['body'], $match) ){
+            $new_keys = array();
+            foreach($match[1] as $i=>$value){
+                $new_keys[$value] = $match[2][$i];
+            }
+            return $new_keys;
+        }
+    }
+    return FALSE;
+}
+
+function sucuriscan_set_new_config_keys()
+{
+    $new_wpconfig = '';
+    $wp_config_path = ABSPATH.'wp-config.php';
+    $wp_config_lines = file($wp_config_path);
+    $new_keys = sucuriscan_get_new_config_keys();
+    $old_keys = array();
+    $old_keys_string = $new_keys_string = '';
+
+    foreach($wp_config_lines as $wp_config_line){
+        $wp_config_line = str_replace("\n", '', $wp_config_line);
+
+        if( preg_match("/define\('([A-Z_]+)',([ ]+)'(.*)'\);/", $wp_config_line, $match) ){
+            $key_name = $match[1];
+            if( array_key_exists($key_name, $new_keys) ){
+                $white_spaces = $match[2];
+                $old_keys[$key_name] = $match[3];
+                $wp_config_line = "define('{$key_name}',{$white_spaces}'{$new_keys[$key_name]}');";
+
+                $old_keys_string .= "define('{$key_name}',{$white_spaces}'{$old_keys[$key_name]}');\n";
+                $new_keys_string .= "{$wp_config_line}\n";
+            }
+        }
+
+        $new_wpconfig .= "{$wp_config_line}\n";
+    }
+
+    $response = array(
+        'updated'=>is_writable($wp_config_path),
+        'old_keys'=>$old_keys,
+        'old_keys_string'=>$old_keys_string,
+        'new_keys'=>$new_keys,
+        'new_keys_string'=>$new_keys_string,
+        'new_wpconfig'=>$new_wpconfig
+    );
+    if( $response['updated'] ){
+        file_put_contents($wp_config_path, $new_wpconfig, LOCK_EX);
+    }
+    return $response;
+}
+
+function sucuriscan_new_password($user_id=0)
+{
+    $user_id = intval($user_id);
+    $current_user = wp_get_current_user();
+
+    if( $user_id>0 && $user_id!=$current_user->ID ){
+        $user = get_userdata($user_id);
+        $new_password = wp_generate_password(15, TRUE, FALSE);
+
+        $data_set = array( 'User'=>$user->display_name );
+        $message = "The password for your user account in the website mentioned has been changed by an administrator,
+            this is the new password automatically generated by the system, please update ASAP.<br>
+            <div style='display:inline-block;background:#ddd;font-family:monaco,monospace,courier;
+            font-size:30px;margin:0;padding:15px;border:1px solid #999'>{$new_password}</div>";
+        sucuriscan_send_mail($user->user_email, 'Changed password', $message, $data_set);
+
+        wp_set_password($new_password, $user_id);
+
+        return TRUE;
+    }
+    return FALSE;
+}
+
+function sucuriscan_posthack_page()
+{
+    if( !current_user_can('manage_options') )
+    {
+        wp_die(__('You do not have sufficient permissions to access this page.') );
+    }
+
+    // Page pseudo-variables initialization.
+    $template_variables = array(
+        'SucuriURL'=>SUCURI_URL,
+        'PosthackNonce'=>wp_create_nonce('sucuri_posthack_nonce'),
+        'SucuriWPSidebar'=>sucuriscan_wp_sidebar_gen(),
+        'WPConfigUpdate.Display'=>'display:none',
+        'WPConfigUpdate.NewConfig'=>'',
+        'ResetPassword.UserList'=>''
+    );
+
+    // Process form submission
+    if( isset($_POST['sucuri_posthack_action']) ){
+        if( !wp_verify_nonce($_POST['sucuri_posthack_nonce'], 'sucuri_posthack_nonce') )
+        {
+            wp_die(__('Wordpress Nonce verification failed, try again going back and checking the form.') );
+        }
+
+        switch($_POST['sucuri_posthack_action']){
+            case 'update_wpconfig':
+                $update_wpconfig = ( isset($_POST['sucuri_update_wpconfig']) && $_POST['sucuri_update_wpconfig']==1 ) ? TRUE : FALSE;
+
+                if( $update_wpconfig ){
+                    $wpconfig_process = sucuriscan_set_new_config_keys();
+                    $template_variables['WPConfigUpdate.Display'] = 'display:block';
+
+                    if( $wpconfig_process['updated']===TRUE ){
+                        sucuriscan_admin_notice('updated', '<strong>OK.</strong> WP-Config keys updated successfully. In the textarea bellow you will see the old-keys and the new-keys updated.');
+                        $template_variables['WPConfigUpdate.NewConfig'] .= "// Old Keys\n";
+                        $template_variables['WPConfigUpdate.NewConfig'] .= $wpconfig_process['old_keys_string'];
+                        $template_variables['WPConfigUpdate.NewConfig'] .= "//\n";
+                        $template_variables['WPConfigUpdate.NewConfig'] .= "// New Keys\n";
+                        $template_variables['WPConfigUpdate.NewConfig'] .= $wpconfig_process['new_keys_string'];
+                    }else{
+                        sucuriscan_admin_notice('error', '<strong>Error.</strong> The wp-config.php file is not writable, please copy and paste the code shown bellow in the textarea into that file manually.');
+                        $template_variables['WPConfigUpdate.NewConfig'] = $wpconfig_process['new_wpconfig'];
+                    }
+                }else{
+                    sucuriscan_admin_notice('error', '<strong>Error.</strong> You need to confirm that you understand the risk of this operation');
+                }
+                break;
+            case 'reset_password':
+                $reset_password = ( isset($_POST['sucuri_reset_password']) && $_POST['sucuri_reset_password']==1 ) ? TRUE : FALSE;
+
+                if( $reset_password ){
+                    $user_identifiers = $_POST['user_ids'];
+                    $pwd_changed = $pwd_not_changed = array();
+                    arsort($user_identifiers);
+
+                    foreach($user_identifiers as $user_id){
+                        if( sucuriscan_new_password($user_id) ){
+                            $passwords_changed[] = $user_id;
+                        }else{
+                            $pwd_not_changed[] = $user_id;
+                        }
+                    }
+                    if( !empty($pwd_changed) ){
+                        sucuriscan_admin_notice('updated', '<strong>OK.</strong> Password changed successfully for users: '.implode(', ',$pwd_changed));
+                    }
+                    if( !empty($pwd_not_changed) ){
+                        sucuriscan_admin_notice('error', '<strong>Error.</strong> Password change failed for users: '.implode(', ',$pwd_not_changed));
+                    }
+                }else{
+                    sucuriscan_admin_notice('error', '<strong>Error.</strong> You need to confirm that you understand the risk of this operation');
+                }
+                break;
+            default:
+                wp_die(__('Sucuri WP Plugin, invalid form action, go back and try again.'));
+                break;
+        }
+    }
+
+    // Fill the user list for ResetPassword action.
+    $user_list = get_users();
+    foreach($user_list as $user){
+        $user_snippet = sucuriscan_get_template('sucuri-wp-resetpassword.snippet.tpl', array(
+            'ResetPassword.UserId'=>$user->ID,
+            'ResetPassword.Username'=>$user->user_login,
+            'ResetPassword.Displayname'=>$user->display_name,
+            'ResetPassword.Email'=>$user->user_email
+        ));
+        $template_variables['ResetPassword.UserList'] .= $user_snippet;
+    }
+
+    echo sucuriscan_get_template('sucuri-wp-posthack.html.tpl', $template_variables);
+}
+
+function sucuriscan_lastlogins_page()
+{
+    if( !current_user_can('manage_options') )
+    {
+        wp_die(__('You do not have sufficient permissions to access this page.') );
+    }
+
+    // Page pseudo-variables initialization.
+    $template_variables = array(
+        'SucuriURL'=>SUCURI_URL,
+        'PosthackNonce'=>wp_create_nonce('sucuri_posthack_nonce'),
+        'SucuriWPSidebar'=>sucuriscan_wp_sidebar_gen(),
+        'UserList'=>'',
+        'CurrentURL'=>site_url().'/wp-admin/admin.php?page='.$_GET['page']
+    );
+
+    $limit = isset($_GET['limit']) ? intval($_GET['limit']) : 10;
+    $template_variables['UserList.ShowAll'] = $limit>0 ? 'display:table' : 'display:none';
+
+    $user_list = sucuriscan_get_logins($limit);
+    foreach($user_list as $user){
+        $user_snippet = sucuriscan_get_template('sucuri-wp-lastlogins.snippet.tpl', array(
+            'UserList.UserId'=>$user->ID,
+            'UserList.Username'=>$user->user_login,
+            'UserList.Email'=>$user->user_email,
+            'UserList.RemoteAddr'=>$user->user_remoteaddr,
+            'UserList.Datetime'=>$user->user_lastlogin
+        ));
+        $template_variables['UserList'] .= $user_snippet;
+    }
+
+    echo sucuriscan_get_template('sucuri-wp-lastlogins.html.tpl', $template_variables);
+}
+
+function sucuriscan_set_flashdata($key='', $value='')
+{
+    /* Use wp-sucuri_ to give compatibility between Sucuri Free/Paid Plugin */
+    $session_name = "wp-sucuri_{$key}";
+    $expire = time() + 60*5;
+    setcookie($session_name, $value, $expire, SITECOOKIEPATH.'wp-admin');
+}
+
+function sucuriscan_get_flashdata()
+{
+    /* Use wp-sucuri_ to give compatibility between Sucuri Free/Paid Plugin */
+    foreach($_COOKIE as $key=>$value){
+        if( preg_match('/^(wp\-sucuri_.*)$/', $key) ){
+            sucuriscan_admin_notice('updated', $value);
+            setcookie($key, NULL, time()-3600);
+        }
+    }
+}
+add_action('admin_init', 'sucuriscan_get_flashdata');
+
+function sucuriscan_lastlogins_table_exists()
+{
+    global $wpdb;
+    if( defined('SUCURISCAN_LASTLOGINS_TABLENAME') ){
+        $table_name = SUCURISCAN_LASTLOGINS_TABLENAME;
+
+        if( $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'")!=$table_name ){
+            $sql = 'CREATE TABLE '.$table_name.' (
+                id int(11) NOT NULL AUTO_INCREMENT,
+                user_id bigint(20) NOT NULL,
+                user_login varchar(60),
+                user_remoteaddr varchar(255),
+                user_lastlogin DATETIME DEFAULT "0000-00-00 00:00:00" NOT NULL,
+                UNIQUE KEY id(id)
+            )';
+
+            require_once(ABSPATH.'wp-admin/includes/upgrade.php');
+            dbDelta($sql);
+        }
+    }
+}
+add_action('plugins_loaded', 'sucuriscan_lastlogins_table_exists');
+
+function sucuriscan_set_lastlogin($user_login='')
+{
+    global $wpdb;
+    if( defined('SUCURISCAN_LASTLOGINS_TABLENAME') ){
+        $table_name = SUCURISCAN_LASTLOGINS_TABLENAME;
+        $current_user = get_user_by('login', $user_login);
+
+        sucuriscan_set_flashdata('lastlogin', 'Last user login at '.date('Y/M/d H:i:s').' from '.$_SERVER['REMOTE_ADDR']);
+
+        $wpdb->insert($table_name, array(
+            'user_id'=>$current_user->ID,
+            'user_login'=>$current_user->user_login,
+            'user_remoteaddr'=>isset($_SERVER['REMOTE_ADDR'])?$_SERVER['REMOTE_ADDR']:'127.0.0.1',
+            'user_lastlogin'=>current_time('mysql')
+        ));
+    }
+}
+add_action('wp_login', 'sucuriscan_set_lastlogin', 50);
+
+function sucuriscan_get_logins($limit=10)
+{
+    global $wpdb;
+    if( defined('SUCURISCAN_LASTLOGINS_TABLENAME') ){
+        $table_name = SUCURISCAN_LASTLOGINS_TABLENAME;
+
+        $sql = "SELECT * FROM {$table_name} RIGHT JOIN {$wpdb->prefix}users ON {$table_name}.user_id = {$wpdb->prefix}users.ID";
+        if( !is_admin() ){
+            $current_user = wp_get_current_user();
+            $sql .= chr(32)."WHERE {$wpdb->prefix}users.user_login = '{$current_user->user_login}'";
+        }
+        $sql .= chr(32)."ORDER BY {$table_name}.id DESC";
+        if( preg_match('/^([0-9]+)$/', $limit) && $limit>0 ){
+            $sql .= chr(32)."LIMIT {$limit}";
+        }
+
+        return $wpdb->get_results($sql);
+    }
+
+    return FALSE;
+}
 
 ?>
