@@ -65,6 +65,9 @@ function sucuriwp_core_integrity_check()
 {
 
     global $wp_version;
+
+    $curlang = get_bloginfo("language");
+
     $cp = 0;
     $updates = get_core_updates();
     if (!is_array($updates))
@@ -104,32 +107,49 @@ function sucuriwp_core_integrity_check()
 
         $added = @array_diff_assoc( $wp_core_hashes, $wp_core_latest_hashes ); //files added
         $removed = @array_diff_assoc( $wp_core_latest_hashes, $wp_core_hashes ); //files deleted
+        unset($removed['wp_version']); //ignore wp_version key
         $compcurrent = @array_diff_key( $wp_core_hashes, $added ); //remove all added files from current filelist
         $complog = @array_diff_key( $wp_core_latest_hashes, $removed );  //remove all deleted files from old file list
-        $changed = array(); //array of changed files
+        $modified = array(); //array of modified files
 
         //compare file hashes and mod dates
         foreach ( $compcurrent as $currfile => $currattr) {
 
             if ( array_key_exists( $currfile, $complog ) ) {
             
-                //if attributes differ added to changed files array
+                //if attributes differ added to modified files array
                 if ( strcmp( $currattr['md5'], $complog[$currfile]['md5'] ) != 0 ) {
-                    $changed[$currfile]['md5'] = $currattr['md5'];
+                    $modified[$currfile]['md5'] = $currattr['md5'];
                 }
             
             }
 
         }
 
+        //ignore some junk files
+        if($curlang != "en_US")
+        {
+            //ignore added files
+            unset($added['./licencia.txt']);
+
+            //ignore removed files
+            unset($removed['./license.txt']);
+
+            //ignore modified files
+            unset($modified['./wp-includes/version.php']);
+            unset($modified['./wp-admin/setup-config.php']);
+            unset($modified['./readme.html']);
+            unset($modified['./wp-config-sample.php']);
+        }
+
         //get count of changes
         $addcount = sizeof( $added );
         $removecount = sizeof( $removed );
-        $changecount = sizeof( $changed );
+        $changecount = sizeof( $modified );
 
         sucuriscan_core_integrity_wrapper($added, "Core File Added: $addcount");
         sucuriscan_core_integrity_wrapper($removed, "Core File Removed: $removecount");
-        sucuriscan_core_integrity_wrapper($changed, "Core File Modified: $changecount");
+        sucuriscan_core_integrity_wrapper($modified, "Core File Modified: $changecount");
     }
 }
 
