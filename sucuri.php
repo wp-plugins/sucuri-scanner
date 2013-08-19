@@ -622,7 +622,7 @@ function sucuriscan_get_flashdata()
     foreach($_COOKIE as $key=>$value){
         if( preg_match('/^(wp\-sucuri_.*)$/', $key) ){
             sucuriscan_admin_notice('updated', $value);
-            setcookie($key, NULL, time()-3600);
+            @setcookie($key, NULL, time()-3600); // Take care with "Cannot modify header" error.
         }
     }
 }
