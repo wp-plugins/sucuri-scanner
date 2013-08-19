@@ -6,13 +6,13 @@ Requires at least:3.2
 Stable tag:1.3
 Tested up to: 3.6
 
-The Sucuri Security - SiteCheck Malware Scanner plugin enables you to scan your WordPress site using Sucuri SiteCheck right in your dashboard. 
+The Sucuri Security - SiteCheck Malware Scanner plugin enables you to scan your WordPress site using Sucuri SiteCheck and verify the integrity of your core files right in your dashboard. 
 
 == Description ==
 
-Sucuri SiteCheck will check for malware, spam, blacklisting and other security issues like .htaccess redirects, hidden eval code, etc. The best thing about it is it's completely free.
+Sucuri SiteCheck will check your site for malware, spam, blacklisting and other security issues like .htaccess redirects, hidden eval code, etc. The best thing about it is it's completely free.
 
-You can also scan your site at <a href="http://sitecheck.sucuri.net">SiteCheck.Sucuri.net</a>.
+You can also scan your site online at <a href="http://sitecheck.sucuri.net">SiteCheck.Sucuri.net</a>.
 
 Sucuri SiteCheck detects various types of malware, SPAM injections, website errors, disabled sites, database connection issues and code anomalies that require special attention to include:
 
@@ -37,6 +37,7 @@ There are a number of blacklisting authorities that monitor for malware, SPAM, a
 * Norton
 * AVG
 * Phish Tank (Phishing Specifically)
+* ESET
 * McAfee SiteAdvisor
 * Yandex
 
@@ -47,6 +48,14 @@ We augment the SiteCheck Malware Scanner with various. 1-click hardening options
 * Restrict wp-content Access
 * Restrict wp-includes Access
 * Verify PHP Version
+* Disable the theme and plugin editors
+
+On the newest versions of the plugin we also added an option to verify all WordPress core files for changes,
+which can be useful to detect hidden backdoors.
+
+Note that if your site is compromised and you need urgent help, you can leverage the 
+Sucuri plans here: http://sucuri.net (even if our free options are not finding
+the compromise on your site).
 
 
 == Installation  ==
