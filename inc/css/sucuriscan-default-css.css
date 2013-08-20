@@ -58,6 +58,10 @@
     border-color:#999;
 }
 
+.sucuriscan-maincontent .widefat tbody th.check-column{
+  padding: 6px 0 3px 0
+}
+
 .sucuriscan-maincontent a.lastlogins-showall{
     margin: 10px auto 0 auto;
 }

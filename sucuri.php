@@ -364,7 +364,7 @@ function sucuriscan_admin_notice($type='updated', $message='')
     if( !empty($message) ): ?>
         <div id="sucuri-alert-<?php echo $alert_id; ?>" class="<?php echo $type; ?> sucuri-alert">
             <a href="javascript:void(0)" class="close" onclick="sucuri_alert_close('<?php echo $alert_id; ?>')">&times;</a>
-            <p><?php echo $message; ?></p>
+            <p><?php _e($message); ?></p>
         </div>
     <?php endif;
 }
@@ -621,6 +621,7 @@ function sucuriscan_set_flashdata($key='', $value='')
     /* Use wp-sucuri_ to give compatibility between Sucuri Free/Paid Plugin */
     $session_name = "wp-sucuri_{$key}";
     $expire = time() + 60*5;
+    $value = base64_encode($value);
     @setcookie($session_name, $value, $expire, SITECOOKIEPATH.'wp-admin');
 }
 
@@ -629,6 +630,7 @@ function sucuriscan_get_flashdata()
     /* Use wp-sucuri_ to give compatibility between Sucuri Free/Paid Plugin */
     foreach($_COOKIE as $key=>$value){
         if( preg_match('/^(wp\-sucuri_.*)$/', $key) ){
+            $value = base64_decode($value);
             sucuriscan_admin_notice('updated', $value);
             @setcookie($key, NULL, time()-3600); // Take care with "Cannot modify header" error.
         }
@@ -689,6 +691,10 @@ function sucuriscan_set_lastlogin($user_login='')
 
         $lastlogin_message  = 'Last user login at <strong>'.date('Y/M/d H:i:s').'</strong>';
         $lastlogin_message .= chr(32).'from <strong>'.$remote_addr.' - '.gethostbyaddr($remote_addr).'</strong>';
+        if( isset($_SERVER['GEOIP_REGION']) && isset($_SERVER['GEOIP_CITY']) ){
+            $lastlogin_message .= chr(32)."{$_SERVER['GEOIP_CITY']}/{$_SERVER['GEOIP_REGION']}";
+        }
+        $lastlogin_message .= chr(32).'(<a href="'.site_url('wp-admin/admin.php?page=sucuriscan_lastlogins').'">View Last-Logins</a>)';
 
         sucuriscan_set_flashdata('lastlogin', $lastlogin_message);
 
