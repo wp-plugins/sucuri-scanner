@@ -27,11 +27,15 @@ define('SUCURISCAN_LASTLOGINS_TABLENAME', "{$table_prefix}sucuri_lastlogins");
 /* Requires files. */
 //require_once(dirname(__FILE__ ) . '/inc/scripts.php');
 add_action( 'admin_enqueue_scripts', 'sucuriscan_admin_script_style_registration', 1 );
-function sucuriscan_admin_script_style_registration() {
-
-echo '<link rel="stylesheet" href="'.SUCURI_URL.'/inc/css/sucuriscan-default-css.css" type="text/css" media="all" />';
-
-}
+function sucuriscan_admin_script_style_registration() { ?>
+    <link rel="stylesheet" href="<?php echo SUCURI_URL; ?>/inc/css/sucuriscan-default-css.css" type="text/css" media="all" />
+    <script type="text/javascript">
+    function sucuri_alert_close(id){
+        var element = document.getElementById('sucuri-alert-'+id);
+        element.parentNode.removeChild(element);
+    }
+    </script>
+<?php }
 
 /* sucuri_dir_filepath:
  * Returns the system filepath to the relevant user uploads
@@ -356,8 +360,12 @@ function sucuriscan_send_mail($to='', $subject='', $message='', $data_set=array(
 
 function sucuriscan_admin_notice($type='updated', $message='')
 {
+    $alert_id = rand(100, 999);
     if( !empty($message) ): ?>
-        <div class="<?php echo $type; ?>"><p><?php _e($message); ?></p></div>
+        <div id="sucuri-alert-<?php echo $alert_id; ?>" class="<?php echo $type; ?> sucuri-alert">
+            <a href="javascript:void(0)" class="close" onclick="sucuri_alert_close('<?php echo $alert_id; ?>')">&times;</a>
+            <p><?php echo $message; ?></p>
+        </div>
     <?php endif;
 }
 
@@ -628,6 +636,26 @@ function sucuriscan_get_flashdata()
 }
 add_action('admin_init', 'sucuriscan_get_flashdata');
 
+function sucuriscan_get_remoteaddr()
+{
+    $alternatives = array(
+        'HTTP_CLIENT_IP',
+        'HTTP_X_FORWARDED_FOR',
+        'HTTP_X_FORWARDED',
+        'HTTP_FORWARDED_FOR',
+        'HTTP_FORWARDED',
+        'REMOTE_ADDR'
+    );
+    foreach($alternatives as $alternative){
+        if( !isset($_SERVER[$alternative]) ){ continue; }
+
+        $remote_addr = preg_replace('/[^0-9., ]/', '', $_SERVER[$alternative]);
+        if($remote_addr) break;
+    }
+
+    return $remote_addr;
+}
+
 function sucuriscan_lastlogins_table_exists()
 {
     global $wpdb;
@@ -657,13 +685,17 @@ function sucuriscan_set_lastlogin($user_login='')
     if( defined('SUCURISCAN_LASTLOGINS_TABLENAME') ){
         $table_name = SUCURISCAN_LASTLOGINS_TABLENAME;
         $current_user = get_user_by('login', $user_login);
+        $remote_addr = sucuriscan_get_remoteaddr();
 
-        sucuriscan_set_flashdata('lastlogin', 'Last user login at '.date('Y/M/d H:i:s').' from '.$_SERVER['REMOTE_ADDR']);
+        $lastlogin_message  = 'Last user login at <strong>'.date('Y/M/d H:i:s').'</strong>';
+        $lastlogin_message .= chr(32).'from <strong>'.$remote_addr.' - '.gethostbyaddr($remote_addr).'</strong>';
+
+        sucuriscan_set_flashdata('lastlogin', $lastlogin_message);
 
         $wpdb->insert($table_name, array(
             'user_id'=>$current_user->ID,
             'user_login'=>$current_user->user_login,
-            'user_remoteaddr'=>isset($_SERVER['REMOTE_ADDR'])?$_SERVER['REMOTE_ADDR']:'127.0.0.1',
+            'user_remoteaddr'=>$remote_addr,
             'user_lastlogin'=>current_time('mysql')
         ));
     }

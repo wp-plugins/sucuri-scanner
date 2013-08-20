@@ -69,3 +69,14 @@
 .sucuriscan-maincontent .adminusers-lastlogin>table{
     width: 100%
 }
+
+.sucuri-alert{
+    position: relative;
+}
+
+.sucuri-alert > a.close{
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    font-size: 18px
+}
