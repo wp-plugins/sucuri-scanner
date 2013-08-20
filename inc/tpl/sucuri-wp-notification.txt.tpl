@@ -1,12 +1,12 @@
 Subject: %%SUCURI.Subject%%
 
-Information:
-User: %%SUCURI.User%%
+Login Info:
+Username: %%SUCURI.User%%
 Time: %%SUCURI.Time%%
 
-Website Information:
+Website Info:
 Site: %%SUCURI.Website%%
 IP Address: %%SUCURI.RemoteAddress%%
 
-Notification Message:
+Notification:
 %%SUCURI.Message%%
