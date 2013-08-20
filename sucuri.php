@@ -613,7 +613,7 @@ function sucuriscan_set_flashdata($key='', $value='')
     /* Use wp-sucuri_ to give compatibility between Sucuri Free/Paid Plugin */
     $session_name = "wp-sucuri_{$key}";
     $expire = time() + 60*5;
-    setcookie($session_name, $value, $expire, SITECOOKIEPATH.'wp-admin');
+    @setcookie($session_name, $value, $expire, SITECOOKIEPATH.'wp-admin');
 }
 
 function sucuriscan_get_flashdata()
