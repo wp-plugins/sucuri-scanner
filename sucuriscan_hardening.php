@@ -53,7 +53,7 @@ function sucuriscan_hardening_lib()
             echo '</form>'
             ?>
 
-            <p align="center"><strong>If you have any questions about these checks or this plugin, contact us at support@sucuri.net or visit <a href="http://sucuri.net">Sucuri Security</a></strong></p>
+            <p align="center"><strong>If you have any questions about these checks or this plugin, contact us at <a href="mailto:info@sucuri.net">info@sucuri.net</a> or visit <a href="http://sucuri.net">Sucuri Security</a></strong></p>
 
         </div>
 

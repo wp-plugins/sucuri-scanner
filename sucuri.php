@@ -350,7 +350,7 @@ function sucuriscan_send_mail($to='', $subject='', $message='', $data_set=array(
     if($debug){
         die($message);
     }else{
-        wp_mail($to, "Sucuri WP Notification: {$wp_domain}: {$subject}" , $message, $headers);
+        wp_mail($to, "Sucuri WP Notification: {$wp_domain} - {$subject}" , $message, $headers);
     }
 }
 
