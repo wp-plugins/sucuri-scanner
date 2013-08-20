@@ -203,13 +203,14 @@ function sucuriwp_list_admins($userlevel = '10') {
 function sucuriwp_content_check()
 {
     $wp_content_hashes = read_dir_r( ABSPATH . "wp-content", true);
-    $back_3_days = current_time( 'timestamp' ) - (3 * 24 * 3600);
+    $days = htmlspecialchars(trim((int)$_POST['sucuriwp_content_check_back']));
+    $back_days = current_time( 'timestamp' ) - ( $days * 86400);
 
     echo '<div class="postbox">';
         echo "<h3>wp_content latest modified files</h3>";
         echo '<div class="inside">';
                 foreach ( $wp_content_hashes as $key => $value) {
-                    if ($value['time'] >= $back_3_days ){
+                    if ($value['time'] >= $back_days ){
                         $date =  date('d-m-Y H:i:s', $value['time']);
                         echo "<p>$key : $date </p>";
                     }
@@ -246,6 +247,10 @@ function sucuriwp_check_plugins()
             {
                 echo "<p>All plugins are up-to-date!</p>";
             }
+        }
+        else
+        {
+            echo "<p>All plugins are up-to-date!</p>";
         }
         echo '</div>';
     echo '</div>';

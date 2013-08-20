@@ -31,6 +31,33 @@ function sucuriscan_core_integrity_function_wrapper($function_name, $description
     }
 }
 
+function sucuriscan_core_integrity_wp_content_wrapper()
+{
+    echo '<div class="postbox">';
+        echo '<div class="inside">';
+        echo '<form action="" method="post">'.
+                '<input type="hidden" name="sucuriwp_content_checknonce" value="'.wp_create_nonce('sucuriwp_content_checknonce').'" />'.
+                '<input type="hidden" name="sucuriwp_content_check" value="sucuriwp_content_check" />'.
+
+                '<p>This test will list all files inside wp-content that have been modified in the past
+
+                <select name="sucuriwp_content_check_back">
+                  <option value="1">1</option>
+                  <option value="3">3</option>
+                  <option value="7">7</option>
+                  <option value="30">30</option>
+                </select> days. (select the number of days first)</p>'.
+
+                '<input class="button-primary" type="submit" name="sucuriwp_content_check" value="Check">'.
+            '</form>';
+        echo '</div>';
+    echo '</div>';
+
+    if (isset($_POST['sucuriwp_content_checknonce']) && isset($_POST['sucuriwp_content_check'])) {
+        sucuriwp_content_check();
+    }
+}
+
 function sucuriscan_core_integrity_lib()
 {
         echo '<h2 id="warnings_hook"></h2>';
@@ -63,13 +90,12 @@ function sucuriscan_core_integrity_lib()
                     'sucuriwp_core_integrity_check', 
                     'This test will check wp-includes, wp-admin, and the top directory files against the latest WordPress hashing database. If any of those files were modified, it is a big sign of a possible compromise.'
                     );
+
+                sucuriscan_core_integrity_wp_content_wrapper();
+
                 sucuriscan_core_integrity_function_wrapper(
                     'sucuriwp_list_admins', 
                     'List all administrator users and their latest login time.'
-                    );
-                sucuriscan_core_integrity_function_wrapper(
-                    'sucuriwp_content_check', 
-                    'This test will list all files inside wp-content that have been modified in the past 3 days.'
                     );
                 sucuriscan_core_integrity_function_wrapper(
                     'sucuriwp_check_plugins', 
