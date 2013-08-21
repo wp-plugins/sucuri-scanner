@@ -183,12 +183,12 @@ function sucuriscan_harden_upload()
                     $htaccess_content = str_replace("<Files *.php>\ndeny from all\n</Files>", '', $htaccess_content);
                     file_put_contents($htaccess_upload, $htaccess_content, LOCK_EX);
                 }
-                sucuri_admin_notice('updated', '<strong>OK.</strong> WP-Content Uploads directory protection reverted.');
+                sucuriscan_admin_notice('updated', '<strong>OK.</strong> WP-Content Uploads directory protection reverted.');
             }else{
                 $harden_process = '<strong>Error.</strong> The <code>wp-content/uploads/.htaccess</code> does
                     not exists or is not writable, you will need to remove the following code manually there:
                     <code>&lt;Files *.php&gt;deny from all&lt;/Files&gt;</code>';
-                sucuri_admin_notice('error', $harden_process);
+                sucuriscan_admin_notice('error', $harden_process);
             }
         }
     }
@@ -251,12 +251,12 @@ function sucuriscan_harden_wpcontent()
                     $htaccess_content = str_replace("<Files *.php>\ndeny from all\n</Files>", '', $htaccess_content);
                     file_put_contents($htaccess_upload, $htaccess_content, LOCK_EX);
                 }
-                sucuri_admin_notice('updated', '<strong>OK.</strong> WP-Content directory protection reverted.');
+                sucuriscan_admin_notice('updated', '<strong>OK.</strong> WP-Content directory protection reverted.');
             }else{
                 $harden_process = '<strong>Error.</strong> The <code>wp-content/.htaccess</code> does
                     not exists or is not writable, you will need to remove the following code manually there:
                     <code>&lt;Files *.php&gt;deny from all&lt;/Files&gt;</code>';
-                sucuri_admin_notice('error', $harden_process);
+                sucuriscan_admin_notice('error', $harden_process);
             }
         }
     }
@@ -321,12 +321,12 @@ function sucuriscan_harden_wpincludes()
                     }
                     file_put_contents($htaccess_upload, $htaccess_content, LOCK_EX);
                 }
-                sucuri_admin_notice('updated', '<strong>OK.</strong> WP-Includes directory protection reverted.');
+                sucuriscan_admin_notice('updated', '<strong>OK.</strong> WP-Includes directory protection reverted.');
             }else{
                 $harden_process = '<strong>Error.</strong> The <code>wp-includes/.htaccess</code> does
                     not exists or is not writable, you will need to remove the following code manually there:
                     <code>&lt;Files *.php&gt;deny from all&lt;/Files&gt;</code>';
-                sucuri_admin_notice('error', $harden_process);
+                sucuriscan_admin_notice('error', $harden_process);
             }
         }
     }
