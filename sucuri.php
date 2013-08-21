@@ -616,26 +616,23 @@ function sucuriscan_lastlogins_page()
     echo sucuriscan_get_template('sucuri-wp-lastlogins.html.tpl', $template_variables);
 }
 
-function sucuriscan_set_flashdata($key='', $value='')
-{
-    /* Use wp-sucuri_ to give compatibility between Sucuri Free/Paid Plugin */
-    if( !headers_sent() ){
-        $session_name = "wp-sucuri_{$key}";
-        $expire = time() + 60*5;
-        $value = base64_encode($value);
-        @setcookie($session_name, $value, $expire, SITECOOKIEPATH.'wp-admin');
-    }
+function sucuri_login_redirect($redirect_to, $request, $user){
+    return admin_url('?sucuri_lastlogin_message=1');
 }
+add_filter('login_redirect', 'sucuri_login_redirect');
 
 function sucuriscan_get_flashdata()
 {
-    /* Use wp-sucuri_ to give compatibility between Sucuri Free/Paid Plugin */
-    foreach($_COOKIE as $key=>$value){
-        if( preg_match('/^(wp\-sucuri_.*)$/', $key) ){
-            $value = base64_decode($value);
-            sucuriscan_admin_notice('updated', $value);
-            @setcookie($key, NULL, time()-3600); // Take care with "Cannot modify header" error.
+    if( isset($_GET['sucuri_lastlogin_message']) ){
+        $remote_addr = sucuriscan_get_remoteaddr();
+        $lastlogin_message  = 'Last user login at <strong>'.date('Y/M/d H:i:s').'</strong>';
+        $lastlogin_message .= chr(32).'from <strong>'.$remote_addr.' - '.gethostbyaddr($remote_addr).'</strong>';
+        if( isset($_SERVER['GEOIP_REGION']) && isset($_SERVER['GEOIP_CITY']) ){
+            $lastlogin_message .= chr(32)."{$_SERVER['GEOIP_CITY']}/{$_SERVER['GEOIP_REGION']}";
         }
+        $lastlogin_message .= chr(32).'(<a href="'.site_url('wp-admin/admin.php?page=sucuriscan_lastlogins').'">View Last-Logins</a>)';
+
+        sucuriscan_admin_notice('updated', $lastlogin_message);
     }
 }
 add_action('admin_init', 'sucuriscan_get_flashdata');
@@ -690,15 +687,6 @@ function sucuriscan_set_lastlogin($user_login='')
         $table_name = SUCURISCAN_LASTLOGINS_TABLENAME;
         $current_user = get_user_by('login', $user_login);
         $remote_addr = sucuriscan_get_remoteaddr();
-
-        $lastlogin_message  = 'Last user login at <strong>'.date('Y/M/d H:i:s').'</strong>';
-        $lastlogin_message .= chr(32).'from <strong>'.$remote_addr.' - '.gethostbyaddr($remote_addr).'</strong>';
-        if( isset($_SERVER['GEOIP_REGION']) && isset($_SERVER['GEOIP_CITY']) ){
-            $lastlogin_message .= chr(32)."{$_SERVER['GEOIP_CITY']}/{$_SERVER['GEOIP_REGION']}";
-        }
-        $lastlogin_message .= chr(32).'(<a href="'.site_url('wp-admin/admin.php?page=sucuriscan_lastlogins').'">View Last-Logins</a>)';
-
-        sucuriscan_set_flashdata('lastlogin', $lastlogin_message);
 
         $wpdb->insert($table_name, array(
             'user_id'=>$current_user->ID,
