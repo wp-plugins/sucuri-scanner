@@ -619,10 +619,12 @@ function sucuriscan_lastlogins_page()
 function sucuriscan_set_flashdata($key='', $value='')
 {
     /* Use wp-sucuri_ to give compatibility between Sucuri Free/Paid Plugin */
-    $session_name = "wp-sucuri_{$key}";
-    $expire = time() + 60*5;
-    $value = base64_encode($value);
-    @setcookie($session_name, $value, $expire, SITECOOKIEPATH.'wp-admin');
+    if( !headers_sent() ){
+        $session_name = "wp-sucuri_{$key}";
+        $expire = time() + 60*5;
+        $value = base64_encode($value);
+        @setcookie($session_name, $value, $expire, SITECOOKIEPATH.'wp-admin');
+    }
 }
 
 function sucuriscan_get_flashdata()
@@ -732,5 +734,3 @@ function sucuriscan_get_logins($limit=10, $user_id=0)
 
     return FALSE;
 }
-
-?>
