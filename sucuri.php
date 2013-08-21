@@ -537,7 +537,7 @@ function sucuriscan_posthack_page()
                             $template_variables['WPConfigUpdate.NewConfig'] = $wpconfig_process['new_wpconfig'];
                         }
                     }else{
-                        sucuri_admin_notice('error', '<strong>Error.</strong> The wp-config.php file was not found in the default location.');
+                        sucuriscan_admin_notice('error', '<strong>Error.</strong> The wp-config.php file was not found in the default location.');
                     }
                 }else{
                     sucuriscan_admin_notice('error', '<strong>Error.</strong> You need to confirm that you understand the risk of this operation');
