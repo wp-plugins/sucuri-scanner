@@ -429,41 +429,44 @@ function sucuriscan_set_new_config_keys()
 {
     $new_wpconfig = '';
     $wp_config_path = ABSPATH.'wp-config.php';
-    $wp_config_lines = file($wp_config_path);
-    $new_keys = sucuriscan_get_new_config_keys();
-    $old_keys = array();
-    $old_keys_string = $new_keys_string = '';
+    if( file_exists($wp_config_path) ){
+        $wp_config_lines = file($wp_config_path);
+        $new_keys = sucuriscan_get_new_config_keys();
+        $old_keys = array();
+        $old_keys_string = $new_keys_string = '';
 
-    foreach($wp_config_lines as $wp_config_line){
-        $wp_config_line = str_replace("\n", '', $wp_config_line);
+        foreach($wp_config_lines as $wp_config_line){
+            $wp_config_line = str_replace("\n", '', $wp_config_line);
 
-        if( preg_match("/define\('([A-Z_]+)',([ ]+)'(.*)'\);/", $wp_config_line, $match) ){
-            $key_name = $match[1];
-            if( array_key_exists($key_name, $new_keys) ){
-                $white_spaces = $match[2];
-                $old_keys[$key_name] = $match[3];
-                $wp_config_line = "define('{$key_name}',{$white_spaces}'{$new_keys[$key_name]}');";
+            if( preg_match("/define\('([A-Z_]+)',([ ]+)'(.*)'\);/", $wp_config_line, $match) ){
+                $key_name = $match[1];
+                if( array_key_exists($key_name, $new_keys) ){
+                    $white_spaces = $match[2];
+                    $old_keys[$key_name] = $match[3];
+                    $wp_config_line = "define('{$key_name}',{$white_spaces}'{$new_keys[$key_name]}');";
 
-                $old_keys_string .= "define('{$key_name}',{$white_spaces}'{$old_keys[$key_name]}');\n";
-                $new_keys_string .= "{$wp_config_line}\n";
+                    $old_keys_string .= "define('{$key_name}',{$white_spaces}'{$old_keys[$key_name]}');\n";
+                    $new_keys_string .= "{$wp_config_line}\n";
+                }
             }
+
+            $new_wpconfig .= "{$wp_config_line}\n";
         }
 
-        $new_wpconfig .= "{$wp_config_line}\n";
+        $response = array(
+            'updated'=>is_writable($wp_config_path),
+            'old_keys'=>$old_keys,
+            'old_keys_string'=>$old_keys_string,
+            'new_keys'=>$new_keys,
+            'new_keys_string'=>$new_keys_string,
+            'new_wpconfig'=>$new_wpconfig
+        );
+        if( $response['updated'] ){
+            file_put_contents($wp_config_path, $new_wpconfig, LOCK_EX);
+        }
+        return $response;
     }
-
-    $response = array(
-        'updated'=>is_writable($wp_config_path),
-        'old_keys'=>$old_keys,
-        'old_keys_string'=>$old_keys_string,
-        'new_keys'=>$new_keys,
-        'new_keys_string'=>$new_keys_string,
-        'new_wpconfig'=>$new_wpconfig
-    );
-    if( $response['updated'] ){
-        file_put_contents($wp_config_path, $new_wpconfig, LOCK_EX);
-    }
-    return $response;
+    return FALSE;
 }
 
 function sucuriscan_new_password($user_id=0)
@@ -521,16 +524,20 @@ function sucuriscan_posthack_page()
                     $wpconfig_process = sucuriscan_set_new_config_keys();
                     $template_variables['WPConfigUpdate.Display'] = 'display:block';
 
-                    if( $wpconfig_process['updated']===TRUE ){
-                        sucuriscan_admin_notice('updated', '<strong>OK.</strong> WP-Config keys updated successfully. In the textarea bellow you will see the old-keys and the new-keys updated.');
-                        $template_variables['WPConfigUpdate.NewConfig'] .= "// Old Keys\n";
-                        $template_variables['WPConfigUpdate.NewConfig'] .= $wpconfig_process['old_keys_string'];
-                        $template_variables['WPConfigUpdate.NewConfig'] .= "//\n";
-                        $template_variables['WPConfigUpdate.NewConfig'] .= "// New Keys\n";
-                        $template_variables['WPConfigUpdate.NewConfig'] .= $wpconfig_process['new_keys_string'];
+                    if($wpconfig_process){
+                        if( $wpconfig_process['updated']===TRUE ){
+                            sucuriscan_admin_notice('updated', '<strong>OK.</strong> WP-Config keys updated successfully. In the textarea bellow you will see the old-keys and the new-keys updated.');
+                            $template_variables['WPConfigUpdate.NewConfig'] .= "// Old Keys\n";
+                            $template_variables['WPConfigUpdate.NewConfig'] .= $wpconfig_process['old_keys_string'];
+                            $template_variables['WPConfigUpdate.NewConfig'] .= "//\n";
+                            $template_variables['WPConfigUpdate.NewConfig'] .= "// New Keys\n";
+                            $template_variables['WPConfigUpdate.NewConfig'] .= $wpconfig_process['new_keys_string'];
+                        }else{
+                            sucuriscan_admin_notice('error', '<strong>Error.</strong> The wp-config.php file is not writable, please copy and paste the code shown bellow in the textarea into that file manually.');
+                            $template_variables['WPConfigUpdate.NewConfig'] = $wpconfig_process['new_wpconfig'];
+                        }
                     }else{
-                        sucuriscan_admin_notice('error', '<strong>Error.</strong> The wp-config.php file is not writable, please copy and paste the code shown bellow in the textarea into that file manually.');
-                        $template_variables['WPConfigUpdate.NewConfig'] = $wpconfig_process['new_wpconfig'];
+                        sucuri_admin_notice('error', '<strong>Error.</strong> The wp-config.php file was not found in the default location.');
                     }
                 }else{
                     sucuriscan_admin_notice('error', '<strong>Error.</strong> You need to confirm that you understand the risk of this operation');
@@ -616,7 +623,7 @@ function sucuriscan_lastlogins_page()
     echo sucuriscan_get_template('sucuri-wp-lastlogins.html.tpl', $template_variables);
 }
 
-function sucuri_login_redirect($redirect_to, $request, $user){
+function sucuri_login_redirect(){
     return admin_url('?sucuri_lastlogin_message=1');
 }
 add_filter('login_redirect', 'sucuri_login_redirect');
