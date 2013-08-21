@@ -711,7 +711,7 @@ function sucuriscan_get_logins($limit=10, $user_id=0)
     if( defined('SUCURISCAN_LASTLOGINS_TABLENAME') ){
         $table_name = SUCURISCAN_LASTLOGINS_TABLENAME;
 
-        $sql = "SELECT * FROM {$table_name} RIGHT JOIN {$wpdb->prefix}users ON {$table_name}.user_id = {$wpdb->prefix}users.ID";
+        $sql = "SELECT * FROM {$table_name} LEFT JOIN {$wpdb->prefix}users ON {$table_name}.user_id = {$wpdb->prefix}users.ID";
         if( !is_admin() ){
             $current_user = wp_get_current_user();
             $sql .= chr(32)."WHERE {$wpdb->prefix}users.user_login = '{$current_user->user_login}'";
