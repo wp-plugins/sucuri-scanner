@@ -169,9 +169,8 @@ function sucuriwp_list_admins($userlevel = '10') {
         'SucuriURL'=>SUCURI_URL,
         'AdminUsers.UserList'=>''
     );
-
-    $wp_user_level = "{$wpdb->prefix}user_level"; // This value is generated through $table_prefix.
-    $admins = $wpdb->get_results("SELECT * FROM $wpdb->usermeta WHERE meta_key = '{$wp_user_level}' AND meta_value = '$userlevel'");
+    
+    $admins = $wpdb->get_results("SELECT * FROM $wpdb->usermeta WHERE meta_value = '$userlevel'");
     foreach ( (array) $admins as $user ) {
         $admin    = get_userdata( $user->user_id );
         $admin->lastlogins = sucuriscan_get_logins(4, $admin->ID);
