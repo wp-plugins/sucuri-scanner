@@ -14,7 +14,7 @@
 
             <div id="poststuff">
                 <div class="postbox">
-                    <h3>Post-Hack - Update WP-Config Keys</h3>
+                    <h3>Update WP-Config Keys</h3>
                     <div class="inside">
                         <form method="post">
                             <input type="hidden" name="sucuri_posthack_nonce" value="%%SUCURI.PosthackNonce%%" />
@@ -42,7 +42,7 @@
                 </div>
 
                 <div class="postbox">
-                    <h3>Post-Hack - Reset user password</h3>
+                    <h3>Reset user password</h3>
                     <div class="inside">
                         <form method="post">
                             <input type="hidden" name="sucuri_posthack_nonce" value="%%SUCURI.PosthackNonce%%" />

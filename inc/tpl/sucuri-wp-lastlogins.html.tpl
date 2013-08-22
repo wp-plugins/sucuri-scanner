@@ -14,15 +14,11 @@
 
             <div id="poststuff">
                 <div class="postbox">
-                    <h3>Post-Hack - User logins (latest 10, newest to oldest)</h3>
+                    <h3>User logins (latest 10, newest to oldest)</h3>
                     <div class="inside">
                         <table class="wp-list-table widefat">
                             <thead>
                                 <tr>
-                                    <th class="manage-column column-cb check-column">
-                                        <label class="screen-reader-text" for="cb-select-all-1">Select All</label>
-                                        <input id="cb-select-all-1" type="checkbox">
-                                    </th>
                                     <th class="manage-column">Username</th>
                                     <th class="manage-column">Email</th>
                                     <th class="manage-column">IP Address</th>
