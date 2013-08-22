@@ -30,7 +30,7 @@ add_action( 'admin_enqueue_scripts', 'sucuriscan_admin_script_style_registration
 function sucuriscan_admin_script_style_registration() { ?>
     <link rel="stylesheet" href="<?php echo SUCURI_URL; ?>/inc/css/sucuriscan-default-css.css" type="text/css" media="all" />
     <script type="text/javascript">
-    function sucuri_alert_close(id){
+    function sucuriscan_alert_close(id){
         var element = document.getElementById('sucuri-alert-'+id);
         element.parentNode.removeChild(element);
     }
@@ -362,8 +362,8 @@ function sucuriscan_admin_notice($type='updated', $message='')
 {
     $alert_id = rand(100, 999);
     if( !empty($message) ): ?>
-        <div id="sucuri-alert-<?php echo $alert_id; ?>" class="<?php echo $type; ?> sucuri-alert">
-            <a href="javascript:void(0)" class="close" onclick="sucuri_alert_close('<?php echo $alert_id; ?>')">&times;</a>
+        <div id="sucuri-alert-<?php echo $alert_id; ?>" class="<?php echo $type; ?> sucuri-alert sucuri-alert-<?php echo $type; ?>">
+            <a href="javascript:void(0)" class="close" onclick="sucuriscan_alert_close('<?php echo $alert_id; ?>')">&times;</a>
             <p><?php _e($message); ?></p>
         </div>
     <?php endif;

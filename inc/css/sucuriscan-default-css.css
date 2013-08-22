@@ -76,6 +76,9 @@
 
 .sucuri-alert{
     position: relative;
+}
+
+.sucuri-alert-updated{
     background-color:#bbe8f5!important;
     border-color:#4393ac!important;
 }
