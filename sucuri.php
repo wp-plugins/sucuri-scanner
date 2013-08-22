@@ -642,7 +642,7 @@ function sucuriscan_get_flashdata()
         sucuriscan_admin_notice('updated', $lastlogin_message);
     }
 }
-add_action('admin_init', 'sucuriscan_get_flashdata');
+add_action('admin_notices', 'sucuriscan_get_flashdata');
 
 function sucuriscan_get_remoteaddr()
 {
