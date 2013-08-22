@@ -623,10 +623,12 @@ function sucuriscan_lastlogins_page()
     echo sucuriscan_get_template('sucuri-wp-lastlogins.html.tpl', $template_variables);
 }
 
-function sucuri_login_redirect(){
-    return admin_url('?sucuri_lastlogin_message=1');
+if( !function_exists('sucuri_login_redirect') ){
+    function sucuri_login_redirect(){
+        return admin_url('?sucuri_lastlogin_message=1');
+    }
+    add_filter('login_redirect', 'sucuri_login_redirect');
 }
-add_filter('login_redirect', 'sucuri_login_redirect');
 
 function sucuriscan_get_flashdata()
 {
