@@ -10,11 +10,11 @@
         </div>
 
         <div id="sucuri-latest-posts" class="sucuriscan-sidebar">
-            <h2><span class="promo">Stay updated with WordPress security news. </span></h2>
-            <p>Check out the <a href="http://blog.sucuri.net/">Sucuri Blog</a>!
+            <h2><span class="promo">Need extra protection and security for your site? You need a WAF (website firewall)!</span></h2>
+            <p>Check out our <a target="_blank" href="http://cloudproxy.sucuri.net/">Sucuri CloudProxy WAF</a>!
             </p>
             <p>
-            <a class="button-primary" href="http://blog.sucuri.net/">Read more »</a>
+            <a target="_blank" class="button-primary" href="http://blog.sucuri.net/2013/03/virtual-patching-for-websites-with-sucuri-cloudproxy.html">Read more »</a>
             </p>
         </div>
 
