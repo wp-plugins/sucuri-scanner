@@ -7,7 +7,7 @@ Description: The <a href="http://sucuri.net">Sucuri Security</a> - SiteCheck Mal
 You can also scan your site at <a href="http://sitecheck.sucuri.net">SiteCheck.Sucuri.net</a>.
 
 Author: Sucuri Security
-Version: 1.4.3
+Version: 1.4.4
 Author URI: http://sucuri.net
 */
 
@@ -18,14 +18,13 @@ if(!function_exists('add_action'))
 }
 
 define('SUCURISCAN','sucuriscan');
-define('SUCURISCAN_VERSION','1.4.3');
+define('SUCURISCAN_VERSION','1.4.4');
 define( 'SUCURI_URL',plugin_dir_url( __FILE__ ));
 define('SUCURISCAN_PLUGIN_FOLDER', 'sucuri-scanner');
 /* Sucuri Free/Paid Plugin will use the same tablename, check: sucuriscan_lastlogins_table_exists() */
 define('SUCURISCAN_LASTLOGINS_TABLENAME', "{$table_prefix}sucuri_lastlogins");
 
 /* Requires files. */
-//require_once(dirname(__FILE__ ) . '/inc/scripts.php');
 add_action( 'admin_enqueue_scripts', 'sucuriscan_admin_script_style_registration', 1 );
 function sucuriscan_admin_script_style_registration() { ?>
     <link rel="stylesheet" href="<?php echo SUCURI_URL; ?>/inc/css/sucuriscan-default-css.css" type="text/css" media="all" />
@@ -121,7 +120,7 @@ function sucuri_scan_page()
 
 function sucuriscan_print_scan()
 {
-    $myresults = wp_remote_get("http://sitecheck.sucuri.net/scanner/?serialized&fromwp&scan=".home_url(), array("timeout" => 180));
+    $myresults = wp_remote_get("http://sitecheck.sucuri.net/scanner/?serialized&clear&fromwp&scan=".home_url(), array("timeout" => 180));
 
     if(is_wp_error($myresults))
     {
