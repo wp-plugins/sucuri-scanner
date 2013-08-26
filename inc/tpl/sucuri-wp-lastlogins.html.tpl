@@ -12,29 +12,56 @@
                </div>
             </div>
 
-            <div id="poststuff">
+            <div id="poststuff" class="sucuri-%%SUCURI.LastLoginsSettings.Display%%">
                 <div class="postbox">
-                    <h3>User logins (latest 10, newest to oldest)</h3>
+                    <h3>User logins settings</h3>
                     <div class="inside">
-                        <table class="wp-list-table widefat">
-                            <thead>
-                                <tr>
-                                    <th class="manage-column">Username</th>
-                                    <th class="manage-column">Email</th>
-                                    <th class="manage-column">IP Address</th>
-                                    <th class="manage-column">Date/Time</th>
-                                </tr>
-                            </thead>
+                        <form method="POST">
+                            <input type="hidden" name="sucuri_lastlogins_nonce" value="%%SUCURI.LastLoginsNonce%%" />
 
-                            <tbody>
-                                %%SUCURI.UserList%%
-                            </tbody>
-                        </table>
-
-                        <a href="%%SUCURI.CurrentURL%%&limit=0" class="button button-primary lastlogins-showall" style="%%SUCURI.UserList.ShowAll%%">Show all results</a>
+                            <p>As part of the administrator accounts, you can choose who can see alerts of Last-Logins in the Wordpress Dashboard.</p>
+                            <label>
+                                <input type="radio" name="lastlogin_alerts" value="enable_everyone" %%SUCURI.LastLoginsAlerts.EnableEveryone%% />
+                                Enable last logins warnings for everyone.
+                            </label>
+                            <br />
+                            <label>
+                                <input type="radio" name="lastlogin_alerts" value="disable_everyone" %%SUCURI.LastLoginsAlerts.DisableEveryone%% />
+                                Disable last login flashs for everyone.
+                            </label>
+                            <br />
+                            <label>
+                                <input type="radio" name="lastlogin_alerts" value="just_admins" %%SUCURI.LastLoginsAlerts.JustAdmins%% />
+                                Disable last logins for any non admins.
+                            </label>
+                            <p>
+                                <input type="submit" value="Save values"  class="button-primary" />
+                            </p>
+                        </form>
                     </div>
                 </div>
             </div><!-- End poststuff -->
+
+            <table class="wp-list-table widefat">
+                <thead>
+                    <tr>
+                        <th colspan="4">
+                            User logins (latest 10, newest to oldest)
+                            <a href="%%SUCURI.CurrentURL%%&limit=0" class="button button-primary lastlogins-showall sucuri-%%SUCURI.UserList.ShowAll%%">Show all results</a>
+                        </th>
+                    </tr>
+                    <tr>
+                        <th class="manage-column">Username</th>
+                        <th class="manage-column">Email</th>
+                        <th class="manage-column">IP Address</th>
+                        <th class="manage-column">Date/Time</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    %%SUCURI.UserList%%
+                </tbody>
+            </table>
 
         </div><!-- End sucuriscan-maincontent -->
     </div><!-- End postbox-container -->

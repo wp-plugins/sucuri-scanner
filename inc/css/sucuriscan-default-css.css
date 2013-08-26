@@ -62,30 +62,35 @@
   padding: 6px 0 3px 0
 }
 
+.sucuriscan-maincontent .hardening-box .primary-secondary{
+  margin: 0 0 0 10px
+}
+
 .sucuriscan-maincontent a.lastlogins-showall{
-    margin: 10px auto 0 auto;
-}
-
-.sucuriscan-maincontent .adminusers-lastlogin{
-    padding: 0
-}
-
-.sucuriscan-maincontent .adminusers-lastlogin>table{
-    width: 100%
+  display: inline-block;
+  float: right
 }
 
 .sucuri-alert{
-    position: relative;
+  position: relative
 }
 
 .sucuri-alert-updated{
-    background-color:#bbe8f5!important;
-    border-color:#4393ac!important;
+  background-color: #bbe8f5 !important;
+  border-color: #4393ac !important
 }
 
 .sucuri-alert > a.close{
-    position: absolute;
-    top: 8px;
-    right: 10px;
-    font-size: 18px;
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 18px;
+  text-decoration: none
+}
+
+.sucuri-visible{
+}
+
+.sucuri-hidden{
+  display: none !important
 }

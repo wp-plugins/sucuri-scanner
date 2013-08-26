@@ -23,6 +23,10 @@ define( 'SUCURI_URL',plugin_dir_url( __FILE__ ));
 define('SUCURISCAN_PLUGIN_FOLDER', 'sucuri-scanner');
 /* Sucuri Free/Paid Plugin will use the same tablename, check: sucuriscan_lastlogins_table_exists() */
 define('SUCURISCAN_LASTLOGINS_TABLENAME', "{$table_prefix}sucuri_lastlogins");
+define('SUCURISCAN_LASTLOGINS_TABLEVERSION', '1.0');
+
+register_activation_hook(__FILE__, 'sucuriscan_plugin_activation');
+register_deactivation_hook(__FILE__, 'sucuriscan_plugin_deactivation');
 
 /* Requires files. */
 add_action( 'admin_enqueue_scripts', 'sucuriscan_admin_script_style_registration', 1 );
@@ -47,6 +51,43 @@ function sucuriscan_dir_filepath($path = '')
     return($wp_dir_array['basedir']."/sucuri/$path");
 }
 
+/* sucuri_plugin_activation:
+ * Creates the internal files / directories used by the plugin.
+ * Returns 0 on error and 1 on success.
+ */
+function sucuriscan_plugin_activation()
+{
+    if( function_exists('sucuriscan_capabilities') ){
+        sucuriscan_capabilities('add');
+    }
+    return(1);
+}
+
+function sucuriscan_plugin_deactivation()
+{
+    if( function_exists('sucuriscan_capabilities') ){
+        sucuriscan_capabilities('remove');
+    }
+    return TRUE;
+}
+
+function sucuriscan_capabilities($action=NULL){
+    $allowed_actions = array( 'add', 'remove' );
+
+    if( in_array($action, $allowed_actions) ){
+        $roles = get_editable_roles();
+        foreach($roles as $role_name=>$role_info){
+            /* $role_info = Array( name => String, capabilities => Array ) */
+            $role_object = get_role($role_name);
+            if( $action='add' ){
+                $role_object->add_cap('sucuriscan_cap_lastlogins');
+            }elseif( $action=='remove' ){
+                $role_object->remove_cap('sucuriscan_cap_lastlogins');
+            }
+        }
+    }
+}
+
 /* Starting Sucuri Scan side bar. */
 function sucuriscan_menu()
 {
@@ -64,7 +105,7 @@ function sucuriscan_menu()
     add_submenu_page('sucuriscan', 'Post-Hack', 'Post-Hack', 'manage_options',
                      'sucuriscan_posthack', 'sucuriscan_posthack_page');
 
-    add_submenu_page('sucuriscan', 'Last Logins', 'Last Logins', 'manage_options',
+    add_submenu_page('sucuriscan', 'Last Logins', 'Last Logins', 'sucuriscan_cap_lastlogins',
                      'sucuriscan_lastlogins', 'sucuriscan_lastlogins_page');
 }
 
@@ -75,7 +116,7 @@ function sucuri_scan_page()
     $U_ERROR = NULL;
     if(!current_user_can('manage_options'))
     {
-        wp_die(__('You do not have sufficient permissions to access this page.') );
+        wp_die(__('You do not have sufficient permissions to access this page: Sucuri Malware Scanner') );
     }
 
     if(isset($_POST['wpsucuri-doscan']))
@@ -256,7 +297,7 @@ function sucuriscan_pagestop($sucuri_title = 'Sucuri Plugin')
 {
     if(!current_user_can('manage_options'))
     {
-        wp_die(__('You do not have sufficient permissions to access this page.') );
+        wp_die(__('You do not have sufficient permissions to access this page: Sucuri Header') );
     }
     ?>
     <h2><?php echo htmlspecialchars($sucuri_title); ?></h2>
@@ -280,7 +321,7 @@ function sucuriscan_hardening_page()
 
     if(!current_user_can('manage_options'))
     {
-        wp_die(__('You do not have sufficient permissions to access this page.') );
+        wp_die(__('You do not have sufficient permissions to access this page: Sucuri Hardening') );
     }
 
     include_once("sucuriscan_hardening.php");
@@ -315,7 +356,7 @@ function sucuriscan_core_integrity_page()
 
     if(!current_user_can('manage_options'))
     {
-        wp_die(__('You do not have sufficient permissions to access this page.') );
+        wp_die(__('You do not have sufficient permissions to access this page: Sucuri Integrity Check') );
     }
 
     include_once("sucuriscan_core_integrity.php");
@@ -495,7 +536,7 @@ function sucuriscan_posthack_page()
 {
     if( !current_user_can('manage_options') )
     {
-        wp_die(__('You do not have sufficient permissions to access this page.') );
+        wp_die(__('You do not have sufficient permissions to access this page: Sucuri Post-Hack') );
     }
 
     // Page pseudo-variables initialization.
@@ -588,72 +629,17 @@ function sucuriscan_posthack_page()
     echo sucuriscan_get_template('sucuri-wp-posthack.html.tpl', $template_variables);
 }
 
-function sucuriscan_lastlogins_page()
-{
-    if( !current_user_can('manage_options') )
-    {
-        wp_die(__('You do not have sufficient permissions to access this page.') );
-    }
-
-    // Page pseudo-variables initialization.
-    $template_variables = array(
-        'SucuriURL'=>SUCURI_URL,
-        'PosthackNonce'=>wp_create_nonce('sucuri_posthack_nonce'),
-        'SucuriWPSidebar'=>sucuriscan_wp_sidebar_gen(),
-        'UserList'=>'',
-        'CurrentURL'=>site_url().'/wp-admin/admin.php?page='.$_GET['page']
-    );
-
-    $limit = isset($_GET['limit']) ? intval($_GET['limit']) : 10;
-    $template_variables['UserList.ShowAll'] = $limit>0 ? 'display:table' : 'display:none';
-
-    $user_list = sucuriscan_get_logins($limit);
-    foreach($user_list as $user){
-        $user_snippet = sucuriscan_get_template('sucuri-wp-lastlogins.snippet.tpl', array(
-            'UserList.UserId'=>$user->ID,
-            'UserList.Username'=>$user->user_login,
-            'UserList.Email'=>$user->user_email,
-            'UserList.RemoteAddr'=>$user->user_remoteaddr,
-            'UserList.Datetime'=>$user->user_lastlogin
-        ));
-        $template_variables['UserList'] .= $user_snippet;
-    }
-
-    echo sucuriscan_get_template('sucuri-wp-lastlogins.html.tpl', $template_variables);
-}
-
-if( !function_exists('sucuri_login_redirect') ){
-    function sucuri_login_redirect(){
-        return admin_url('?sucuri_lastlogin_message=1');
-    }
-    add_filter('login_redirect', 'sucuri_login_redirect');
-}
-
-function sucuriscan_get_flashdata()
-{
-    if( isset($_GET['sucuri_lastlogin_message']) ){
-        $remote_addr = sucuriscan_get_remoteaddr();
-        $lastlogin_message  = 'Last user login at <strong>'.date('Y/M/d H:i:s').'</strong>';
-        $lastlogin_message .= chr(32).'from <strong>'.$remote_addr.' - '.gethostbyaddr($remote_addr).'</strong>';
-        if( isset($_SERVER['GEOIP_REGION']) && isset($_SERVER['GEOIP_CITY']) ){
-            $lastlogin_message .= chr(32)."{$_SERVER['GEOIP_CITY']}/{$_SERVER['GEOIP_REGION']}";
-        }
-        $lastlogin_message .= chr(32).'(<a href="'.site_url('wp-admin/admin.php?page=sucuriscan_lastlogins').'">View Last-Logins</a>)';
-
-        sucuriscan_admin_notice('updated', $lastlogin_message);
-    }
-}
-add_action('admin_notices', 'sucuriscan_get_flashdata');
-
 function sucuriscan_get_remoteaddr()
 {
     $alternatives = array(
+        'HTTP_X_REAL_IP',
         'HTTP_CLIENT_IP',
         'HTTP_X_FORWARDED_FOR',
         'HTTP_X_FORWARDED',
         'HTTP_FORWARDED_FOR',
         'HTTP_FORWARDED',
-        'REMOTE_ADDR'
+        'REMOTE_ADDR',
+        'SUCURI_RIP',
     );
     foreach($alternatives as $alternative){
         if( !isset($_SERVER[$alternative]) ){ continue; }
@@ -665,46 +651,124 @@ function sucuriscan_get_remoteaddr()
     return $remote_addr;
 }
 
-function sucuriscan_lastlogins_table_exists()
+function sucuriscan_lastlogins_page()
 {
-    global $wpdb;
-    if( defined('SUCURISCAN_LASTLOGINS_TABLENAME') ){
-        $table_name = SUCURISCAN_LASTLOGINS_TABLENAME;
+    if( !current_user_can('sucuriscan_cap_lastlogins') )
+    {
+        wp_die(__('You do not have sufficient permissions to access this page: Sucuri Last-Logins') );
+    }
 
-        if( $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'")!=$table_name ){
-            $sql = 'CREATE TABLE '.$table_name.' (
-                id int(11) NOT NULL AUTO_INCREMENT,
-                user_id bigint(20) NOT NULL,
-                user_login varchar(60),
-                user_remoteaddr varchar(255),
-                user_lastlogin DATETIME DEFAULT "0000-00-00 00:00:00" NOT NULL,
-                UNIQUE KEY id(id)
-            )';
+    // Page pseudo-variables initialization.
+    $template_variables = array(
+        'SucuriURL'=>SUCURI_URL,
+        'LastLoginsNonce'=>wp_create_nonce('sucuriscan_lastlogins_nonce'),
+        'SucuriWPSidebar'=>sucuriscan_wp_sidebar_gen(),
+        'UserList'=>'',
+        'CurrentURL'=>site_url().'/wp-admin/admin.php?page='.$_GET['page'],
+        'LastLoginsAlerts.EnableEveryone'=>'',
+        'LastLoginsAlerts.DisableEveryone'=>'',
+        'LastLoginsAlerts.JustAdmins'=>''
+    );
 
-            require_once(ABSPATH.'wp-admin/includes/upgrade.php');
-            dbDelta($sql);
+    $can_edit_settings = current_user_can('manage_options') ? TRUE : FALSE;
+    $template_variables['LastLoginsSettings.Display'] = $can_edit_settings ? '' : 'hidden';
+
+    if( wp_verify_nonce($_POST['sucuri_lastlogins_nonce'], 'sucuriscan_lastlogins_nonce') ){
+        if( $can_edit_settings ){
+            update_option('sucuri_lastlogins_alerts', $_POST['lastlogin_alerts']);
+            sucuriscan_admin_notice('updated', '<strong>OK.</strong> New settings saved!');
+        }else{
+            sucuriscan_admin_notice('error', '<strong>Error.</strong> You do not have permissions to change these settings.');
         }
     }
-}
-add_action('plugins_loaded', 'sucuriscan_lastlogins_table_exists');
 
-function sucuriscan_set_lastlogin($user_login='')
-{
-    global $wpdb;
-    if( defined('SUCURISCAN_LASTLOGINS_TABLENAME') ){
-        $table_name = SUCURISCAN_LASTLOGINS_TABLENAME;
-        $current_user = get_user_by('login', $user_login);
-        $remote_addr = sucuriscan_get_remoteaddr();
-
-        $wpdb->insert($table_name, array(
-            'user_id'=>$current_user->ID,
-            'user_login'=>$current_user->user_login,
-            'user_remoteaddr'=>$remote_addr,
-            'user_lastlogin'=>current_time('mysql')
-        ));
+    switch( get_option('sucuri_lastlogins_alerts') ){
+        case 'disable_everyone':
+            $template_variables['LastLoginsAlerts.DisableEveryone'] = 'checked="checked"';
+            break;
+        case 'just_admins':
+            $template_variables['LastLoginsAlerts.JustAdmins'] = 'checked="checked"';
+            break;
+        case 'enable_everyone':
+        default:
+            $template_variables['LastLoginsAlerts.EnableEveryone'] = 'checked="checked"';
+            break;
     }
+
+    $limit = isset($_GET['limit']) ? intval($_GET['limit']) : 10;
+    $template_variables['UserList.ShowAll'] = $limit>0 ? 'visible' : 'hidden';
+
+    $user_list = sucuriscan_get_logins($limit);
+    foreach($user_list as $user){
+        $user_snippet = sucuriscan_get_template('sucuri-wp-lastlogins.snippet.tpl', array(
+            'UserList.UserId'=>intval($user->ID),
+            'UserList.Username'=>( !is_null($user->user_login) ? $user->user_login : '<em>Unknown</em>' ),
+            'UserList.Email'=>$user->user_email,
+            'UserList.RemoteAddr'=>$user->user_remoteaddr,
+            'UserList.Datetime'=>$user->user_lastlogin
+        ));
+        $template_variables['UserList'] .= $user_snippet;
+    }
+
+    echo sucuriscan_get_template('sucuri-wp-lastlogins.html.tpl', $template_variables);
 }
-add_action('wp_login', 'sucuriscan_set_lastlogin', 50);
+
+if( !function_exists('sucuri_lastlogins_table_exists') ){
+    function sucuriscan_lastlogins_table_exists()
+    {
+        global $wpdb;
+        if( defined('SUCURISCAN_LASTLOGINS_TABLENAME') ){
+            $table_name = SUCURISCAN_LASTLOGINS_TABLENAME;
+            $upgrade_table = FALSE;
+
+            if(
+                $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'")!=$table_name
+                || get_option('sucuriscan_lastlogin_table_version')!=SUCURISCAN_LASTLOGINS_TABLEVERSION
+            ){
+                $upgrade_table = TRUE;
+            }
+
+            if( $upgrade_table ){
+                $sql = 'CREATE TABLE '.$table_name.' (
+                    id int(11) NOT NULL AUTO_INCREMENT,
+                    user_id bigint(20) NOT NULL,
+                    user_login varchar(60),
+                    user_remoteaddr varchar(255),
+                    user_hostname varchar(255),
+                    user_lastlogin DATETIME DEFAULT "0000-00-00 00:00:00" NOT NULL,
+                    UNIQUE KEY id(id)
+                )';
+
+                require_once(ABSPATH.'wp-admin/includes/upgrade.php');
+                if( dbDelta($sql) ){
+                    update_option('sucuri_lastlogin_table_version', SUCURI_LASTLOGINS_TABLEVERSION);
+                }
+            }
+        }
+    }
+    add_action('plugins_loaded', 'sucuriscan_lastlogins_table_exists');
+}
+
+if( !function_exists('sucuri_set_lastlogin') ){
+    function sucuriscan_set_lastlogin($user_login='')
+    {
+        global $wpdb;
+        if( defined('SUCURISCAN_LASTLOGINS_TABLENAME') ){
+            $table_name = SUCURISCAN_LASTLOGINS_TABLENAME;
+            $current_user = get_user_by('login', $user_login);
+            $remote_addr = sucuriscan_get_remoteaddr();
+
+            $wpdb->insert($table_name, array(
+                'user_id'=>$current_user->ID,
+                'user_login'=>$current_user->user_login,
+                'user_remoteaddr'=>$remote_addr,
+                'user_hostname'=>@gethostbyaddr($remote_addr),
+                'user_lastlogin'=>current_time('mysql')
+            ));
+        }
+    }
+    add_action('wp_login', 'sucuriscan_set_lastlogin', 50);
+}
 
 function sucuriscan_get_logins($limit=10, $user_id=0)
 {
@@ -713,7 +777,7 @@ function sucuriscan_get_logins($limit=10, $user_id=0)
         $table_name = SUCURISCAN_LASTLOGINS_TABLENAME;
 
         $sql = "SELECT * FROM {$table_name} LEFT JOIN {$wpdb->prefix}users ON {$table_name}.user_id = {$wpdb->prefix}users.ID";
-        if( !is_admin() ){
+        if( !current_user_can('manage_options') ){
             $current_user = wp_get_current_user();
             $sql .= chr(32)."WHERE {$wpdb->prefix}users.user_login = '{$current_user->user_login}'";
         }
@@ -725,8 +789,61 @@ function sucuriscan_get_logins($limit=10, $user_id=0)
         if( preg_match('/^([0-9]+)$/', $limit) && $limit>0 ){
             $sql .= chr(32)."LIMIT {$limit}";
         }
+
         return $wpdb->get_results($sql);
     }
 
     return FALSE;
+}
+
+if( !function_exists('sucuri_login_redirect') ){
+    function sucuriscan_login_redirect($redirect_to='', $request=NULL, $user=FALSE){
+        $login_url = !empty($redirect_to) ? $redirect_to : admin_url();
+        if( $user instanceof WP_User && $user->ID ){
+            $login_url = add_query_arg( 'sucuriscan_lastlogin_message', 1, $login_url );
+        }
+        return $login_url;
+    }
+    add_filter('login_redirect', 'sucuriscan_login_redirect', 10, 3);
+}
+
+if( !function_exists('sucuri_get_user_lastlogin') ){
+    function sucuriscan_get_user_lastlogin()
+    {
+        global $wpdb;
+        if( isset($_GET['sucuriscan_lastlogin_message']) && defined('SUCURISCAN_LASTLOGINS_TABLENAME') ){
+            switch( get_option('sucuri_lastlogins_alerts') ){
+                case 'disable_everyone':
+                    $display_alert = FALSE;
+                    break;
+                case 'just_admins':
+                    $display_alert = current_user_can('manage_options') ? TRUE : FALSE;
+                    break;
+                case 'enable_everyone':
+                default:
+                    $display_alert = TRUE;
+                    break;
+            }
+
+            if($display_alert){
+                $table_name = SUCURISCAN_LASTLOGINS_TABLENAME;
+                $current_user = wp_get_current_user();
+
+                // Select the penultimate entry, not the last one.
+                $sql = "SELECT * FROM {$table_name} WHERE user_id = '{$current_user->ID}' ORDER BY user_lastlogin DESC LIMIT 1,1";
+                $row = $wpdb->get_row($sql);
+
+                if($row){
+                    $message_tpl  = 'The last time you logged in was: %s, from %s - %s';
+                    $lastlogin_message = sprintf( $message_tpl, date('Y/M/d'), $row->user_remoteaddr, $row->user_hostname );
+                    $lastlogin_message .= chr(32).'(<a href="'.site_url('wp-admin/admin.php?page='.SUCURISCAN.'_lastlogins').'">View Last-Logins</a>)';
+                }else{
+                    $lastlogin_message = 'There is no prior information related to the current user account';
+                }
+
+                sucuriscan_admin_notice('updated', $lastlogin_message);
+            }
+        }
+    }
+    add_action('admin_notices', 'sucuriscan_get_user_lastlogin');
 }
