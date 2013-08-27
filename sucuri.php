@@ -17,6 +17,11 @@ if(!function_exists('add_action'))
     exit(0);
 }
 
+set_time_limit(0);
+ini_set('memory_limit', '2048M');
+ini_set('max_execution_time', 0);
+ignore_user_abort(TRUE);
+
 define('SUCURISCAN','sucuriscan');
 define('SUCURISCAN_VERSION','1.4.5');
 define( 'SUCURI_URL',plugin_dir_url( __FILE__ ));
