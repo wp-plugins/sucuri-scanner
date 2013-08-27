@@ -837,9 +837,8 @@ if( !function_exists('sucuri_get_user_lastlogin') ){
                     $message_tpl  = 'The last time you logged in was: %s, from %s - %s';
                     $lastlogin_message = sprintf( $message_tpl, date('Y/M/d'), $row->user_remoteaddr, $row->user_hostname );
                     $lastlogin_message .= chr(32).'(<a href="'.site_url('wp-admin/admin.php?page='.SUCURISCAN.'_lastlogins').'">View Last-Logins</a>)';
+	                sucuriscan_admin_notice('updated', $lastlogin_message);
                 }
-
-                sucuriscan_admin_notice('updated', $lastlogin_message);
             }
         }
     }
