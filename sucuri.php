@@ -740,8 +740,7 @@ if( !function_exists('sucuri_lastlogins_table_exists') ){
                     user_login varchar(60),
                     user_remoteaddr varchar(255),
                     user_hostname varchar(255),
-                    user_lastlogin DATETIME DEFAULT "0000-00-00 00:00:00" NOT NULL,
-                    UNIQUE KEY id(id)
+                    user_lastlogin DATETIME DEFAULT "0000-00-00 00:00:00" NOT NULL
                 )';
 
                 require_once(ABSPATH.'wp-admin/includes/upgrade.php');
