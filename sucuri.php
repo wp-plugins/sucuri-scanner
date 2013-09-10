@@ -29,6 +29,7 @@ define('SUCURISCAN_PLUGIN_FOLDER', 'sucuri-scanner');
 /* Sucuri Free/Paid Plugin will use the same tablename, check: sucuriscan_lastlogins_table_exists() */
 define('SUCURISCAN_LASTLOGINS_TABLENAME', "{$table_prefix}sucuri_lastlogins");
 define('SUCURISCAN_LASTLOGINS_TABLEVERSION', '1.0');
+define('SUCURISCAN_LASTLOGINS_USERSLIMIT', 100);
 
 register_activation_hook(__FILE__, 'sucuriscan_plugin_activation');
 register_deactivation_hook(__FILE__, 'sucuriscan_plugin_deactivation');
@@ -700,7 +701,7 @@ function sucuriscan_lastlogins_page()
             break;
     }
 
-    $limit = isset($_GET['limit']) ? intval($_GET['limit']) : 10;
+    $limit = isset($_GET['limit']) ? intval($_GET['limit']) : SUCURI_LASTLOGINS_USERSLIMIT;
     $template_variables['UserList.ShowAll'] = $limit>0 ? 'visible' : 'hidden';
 
     $user_list = sucuriscan_get_logins($limit);
