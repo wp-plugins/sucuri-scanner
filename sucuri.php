@@ -746,13 +746,7 @@ if( !function_exists('sucuri_lastlogins_table_exists') ){
                 )';
 
                 require_once(ABSPATH.'wp-admin/includes/upgrade.php');
-                $upgrade_process = dbDelta($sql);
-                if($upgrade_process){
-                    update_option('sucuri_lastlogin_table_version', SUCURI_LASTLOGINS_TABLEVERSION);
-                    $notice_message = '<strong>Sucuri WP Plugin</strong>.';
-                    foreach($upgrade_process as $process_message){ $notice_message .= chr(32).$process_message.'.'; }
-                    sucuriscan_admin_notice('updated', $notice_message);
-                }else{
+                if( !dbDelta($sql) ){
                     sucuriscan_admin_notice('error', '<strong>Sucuri WP Plugin</strong>. Error upgrading Last-Logins table: '.$upgrade_process);
                 }
             }
