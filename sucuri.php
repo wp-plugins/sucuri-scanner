@@ -679,7 +679,10 @@ function sucuriscan_lastlogins_page()
     $can_edit_settings = current_user_can('manage_options') ? TRUE : FALSE;
     $template_variables['LastLoginsSettings.Display'] = $can_edit_settings ? '' : 'hidden';
 
-    if( wp_verify_nonce($_POST['sucuri_lastlogins_nonce'], 'sucuriscan_lastlogins_nonce') ){
+    if(
+        $_POST['sucuri_lastlogins_nonce']
+        && wp_verify_nonce($_POST['sucuri_lastlogins_nonce'], 'sucuriscan_lastlogins_nonce')
+    ){
         if( $can_edit_settings ){
             update_option('sucuri_lastlogins_alerts', $_POST['lastlogin_alerts']);
             sucuriscan_admin_notice('updated', '<strong>OK.</strong> New settings saved!');
@@ -742,7 +745,7 @@ if( !function_exists('sucuri_lastlogins_table_exists') ){
                     user_remoteaddr varchar(255),
                     user_hostname varchar(255),
                     user_lastlogin DATETIME DEFAULT "0000-00-00 00:00:00" NOT NULL,
-                    PRIMARY KEY (id)
+                    UNIQUE KEY id (id)
                 )';
 
                 require_once(ABSPATH.'wp-admin/includes/upgrade.php');
