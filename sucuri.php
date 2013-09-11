@@ -680,7 +680,7 @@ function sucuriscan_lastlogins_page()
     $template_variables['LastLoginsSettings.Display'] = $can_edit_settings ? '' : 'hidden';
 
     if(
-        $_POST['sucuri_lastlogins_nonce']
+        isset($_POST['sucuri_lastlogins_nonce'])
         && wp_verify_nonce($_POST['sucuri_lastlogins_nonce'], 'sucuriscan_lastlogins_nonce')
     ){
         if( $can_edit_settings ){

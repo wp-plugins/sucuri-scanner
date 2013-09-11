@@ -169,17 +169,13 @@ function sucuriwp_list_admins($userlevel = '10') {
         'SucuriURL'=>SUCURI_URL,
         'AdminUsers.UserList'=>''
     );
-    
+
     $admins = $wpdb->get_results("SELECT * FROM $wpdb->usermeta WHERE meta_value = '$userlevel'");
     foreach ( (array) $admins as $user ) {
         $admin    = get_userdata( $user->user_id );
         $admin->lastlogins = sucuriscan_get_logins(4, $admin->ID);
         $userlevel = $admin->wp2_user_level;
         $name      = $admin->nickname;
-
-        if ( $show_fullname && ($admin->first_name != '' && $admin->last_name != '') ) {
-            $name = "$admin->first_name $admin->last_name";
-        }
 
         $user_snippet = array(
             'AdminUsers.Username'=>$admin->user_login,
