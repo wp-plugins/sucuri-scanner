@@ -94,3 +94,8 @@
 .sucuri-hidden{
   display: none !important
 }
+
+.sucuri-inline-error{
+  font-weight: bold;
+  color: #ff0000;
+}

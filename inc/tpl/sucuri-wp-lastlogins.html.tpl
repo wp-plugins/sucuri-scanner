@@ -36,6 +36,7 @@
                             </label>
                             <p>
                                 <input type="submit" value="Save values"  class="button-primary" />
+                                <label class="sucuri-inline-error sucuri-%%SUCURI.LastLogins.DatastoreWritable%%">The Last-Logins datastore file is not writable, future logins won't be stored.</label>
                             </p>
                         </form>
                     </div>

@@ -26,9 +26,6 @@ define('SUCURISCAN','sucuriscan');
 define('SUCURISCAN_VERSION','1.4.6');
 define( 'SUCURI_URL',plugin_dir_url( __FILE__ ));
 define('SUCURISCAN_PLUGIN_FOLDER', 'sucuri-scanner');
-/* Sucuri Free/Paid Plugin will use the same tablename, check: sucuriscan_lastlogins_table_exists() */
-define('SUCURISCAN_LASTLOGINS_TABLENAME', "{$table_prefix}sucuri_lastlogins");
-define('SUCURISCAN_LASTLOGINS_TABLEVERSION', '1.0');
 define('SUCURISCAN_LASTLOGINS_USERSLIMIT', 100);
 
 register_activation_hook(__FILE__, 'sucuriscan_plugin_activation');
@@ -673,7 +670,8 @@ function sucuriscan_lastlogins_page()
         'CurrentURL'=>site_url().'/wp-admin/admin.php?page='.$_GET['page'],
         'LastLoginsAlerts.EnableEveryone'=>'',
         'LastLoginsAlerts.DisableEveryone'=>'',
-        'LastLoginsAlerts.JustAdmins'=>''
+        'LastLoginsAlerts.JustAdmins'=>'',
+        'LastLogins.DatastoreWritable'=>sucuriscan_lastlogins_datastore_is_writable() ? 'hidden' : 'visible',
     );
 
     $can_edit_settings = current_user_can('manage_options') ? TRUE : FALSE;
@@ -704,7 +702,7 @@ function sucuriscan_lastlogins_page()
             break;
     }
 
-    $limit = isset($_GET['limit']) ? intval($_GET['limit']) : SUCURI_LASTLOGINS_USERSLIMIT;
+    $limit = isset($_GET['limit']) ? intval($_GET['limit']) : SUCURISCAN_LASTLOGINS_USERSLIMIT;
     $template_variables['UserList.ShowAll'] = $limit>0 ? 'visible' : 'hidden';
 
     $user_list = sucuriscan_get_logins($limit);
@@ -722,87 +720,99 @@ function sucuriscan_lastlogins_page()
     echo sucuriscan_get_template('sucuri-wp-lastlogins.html.tpl', $template_variables);
 }
 
-if( !function_exists('sucuri_lastlogins_table_exists') ){
-    function sucuriscan_lastlogins_table_exists()
-    {
-        global $wpdb;
-        if( defined('SUCURISCAN_LASTLOGINS_TABLENAME') ){
-            $table_name = SUCURISCAN_LASTLOGINS_TABLENAME;
-            $upgrade_table = FALSE;
+function sucuriscan_lastlogins_datastore_exists(){
+    $plugin_upload_folder = sucuriscan_dir_filepath();
+    $datastore_filepath = rtrim($plugin_upload_folder,'/').'/sucuri-lastlogins.php';
 
-            if(
-                $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'")!=$table_name
-                || get_option('sucuriscan_lastlogin_table_version')!=SUCURISCAN_LASTLOGINS_TABLEVERSION
-            ){
-                $upgrade_table = TRUE;
-            }
-
-            if( $upgrade_table ){
-                $sql = 'CREATE TABLE `'.$table_name.'` (
-                    id int(11) NOT NULL AUTO_INCREMENT,
-                    user_id bigint(20) NOT NULL,
-                    user_login varchar(60),
-                    user_remoteaddr varchar(255),
-                    user_hostname varchar(255),
-                    user_lastlogin DATETIME DEFAULT "0000-00-00 00:00:00" NOT NULL,
-                    UNIQUE KEY id (id)
-                )';
-
-                require_once(ABSPATH.'wp-admin/includes/upgrade.php');
-                if( !dbDelta($sql) ){
-                    sucuriscan_admin_notice('error', '<strong>Sucuri WP Plugin</strong>. Error upgrading Last-Logins table: '.$upgrade_process);
-                }
-            }
+    if( !file_exists($datastore_filepath) ){
+        if( @file_put_contents($datastore_filepath, "<?php exit(0); ?>\n", LOCK_EX) ){
+            @chmod($datastore_filepath, 0644);
         }
     }
-    add_action('plugins_loaded', 'sucuriscan_lastlogins_table_exists');
+
+    return file_exists($datastore_filepath) ? $datastore_filepath : FALSE;
+}
+
+function sucuriscan_lastlogins_datastore_is_writable(){
+    $datastore_filepath = sucuriscan_lastlogins_datastore_exists();
+    if($datastore_filepath){
+        if( !is_writable($datastore_filepath) ){
+            @chmod($datastore_filepath, 0644);
+        }
+        return is_writable($datastore_filepath) ? $datastore_filepath : FALSE;
+    }
+    return FALSE;
+}
+
+function sucuriscan_lastlogins_datastore_is_readable(){
+    $datastore_filepath = sucuriscan_lastlogins_datastore_exists();
+    if( $datastore_filepath && is_readable($datastore_filepath) ){
+        return $datastore_filepath;
+    }
+    return FALSE;
 }
 
 if( !function_exists('sucuri_set_lastlogin') ){
-    function sucuriscan_set_lastlogin($user_login='')
-    {
-        global $wpdb;
-        if( defined('SUCURISCAN_LASTLOGINS_TABLENAME') ){
-            $table_name = SUCURISCAN_LASTLOGINS_TABLENAME;
+    function sucuriscan_set_lastlogin($user_login=''){
+        $datastore_filepath = sucuriscan_lastlogins_datastore_is_writable();
+
+        if($datastore_filepath){
             $current_user = get_user_by('login', $user_login);
             $remote_addr = sucuriscan_get_remoteaddr();
 
-            $wpdb->insert($table_name, array(
+            $login_info = array(
                 'user_id'=>$current_user->ID,
                 'user_login'=>$current_user->user_login,
                 'user_remoteaddr'=>$remote_addr,
                 'user_hostname'=>@gethostbyaddr($remote_addr),
                 'user_lastlogin'=>current_time('mysql')
-            ));
+            );
+
+            @file_put_contents($datastore_filepath, serialize($login_info)."\n", FILE_APPEND);
         }
     }
     add_action('wp_login', 'sucuriscan_set_lastlogin', 50);
 }
 
-function sucuriscan_get_logins($limit=10, $user_id=0)
-{
-    global $wpdb;
-    if( defined('SUCURISCAN_LASTLOGINS_TABLENAME') ){
-        $table_name = SUCURISCAN_LASTLOGINS_TABLENAME;
+function sucuriscan_get_logins($limit=10, $user_id=0){
+    $lastlogins = array();
+    $datastore_filepath = sucuriscan_lastlogins_datastore_is_readable();
 
-        $sql = "SELECT * FROM {$table_name} LEFT JOIN {$wpdb->prefix}users ON {$table_name}.user_id = {$wpdb->prefix}users.ID";
-        if( !current_user_can('manage_options') ){
-            $current_user = wp_get_current_user();
-            $sql .= chr(32)."WHERE {$wpdb->prefix}users.user_login = '{$current_user->user_login}'";
-        }
-        if( $user_id>0 ){
-            $where_append = strpos('WHERE ', $sql)===FALSE ? 'WHERE' : 'AND';
-            $sql .= chr(32)."{$where_append} {$table_name}.user_id = '{$user_id}'";
-        }
-        $sql .= chr(32)."ORDER BY {$table_name}.id DESC";
-        if( preg_match('/^([0-9]+)$/', $limit) && $limit>0 ){
-            $sql .= chr(32)."LIMIT {$limit}";
-        }
+    if($datastore_filepath){
+        $parsed_lines = 0;
+        $lastlogins_lines = array_reverse(file($datastore_filepath));
+        foreach($lastlogins_lines as $line){
+            $line = str_replace("\n", '', $line);
+            if( preg_match('/^a:/', $line) ){
+                $user_lastlogin = unserialize($line);
 
-        return $wpdb->get_results($sql);
+                /* Only administrators can see all login stats */
+                if( !current_user_can('manage_options') ){
+                    $current_user = wp_get_current_user();
+                    if( $current_user->user_login!=$user_lastlogin['user_login'] ){ continue; }
+                }
+
+                /* If an User_Id was specified when this function was called, filter by that number */
+                if( $user_id>0 ){
+                    if( $user_lastlogin['user_id']!=$user_id ){ continue; }
+                }
+
+                /* Get the WP_User object and add extra information from the last-login data */
+                $user_account = get_userdata($user_lastlogin['user_id']);
+                foreach($user_lastlogin as $user_extrainfo_key=>$user_extrainfo_value){
+                    $user_account->data->{$user_extrainfo_key} = $user_extrainfo_value;
+                }
+                $lastlogins[] = $user_account;
+                $parsed_lines += 1;
+            }
+
+            if( preg_match('/^([0-9]+)$/', $limit) && $limit>0 ){
+                if( $parsed_lines>=$limit ){ break; }
+            }
+        }
     }
 
-    return FALSE;
+    return $lastlogins;
 }
 
 if( !function_exists('sucuri_login_redirect') ){
@@ -819,8 +829,7 @@ if( !function_exists('sucuri_login_redirect') ){
 if( !function_exists('sucuri_get_user_lastlogin') ){
     function sucuriscan_get_user_lastlogin()
     {
-        global $wpdb;
-        if( isset($_GET['sucuriscan_lastlogin_message']) && defined('SUCURISCAN_LASTLOGINS_TABLENAME') ){
+        if( isset($_GET['sucuriscan_lastlogin_message']) ){
             switch( get_option('sucuri_lastlogins_alerts') ){
                 case 'disable_everyone':
                     $display_alert = FALSE;
@@ -835,12 +844,11 @@ if( !function_exists('sucuri_get_user_lastlogin') ){
             }
 
             if($display_alert){
-                $table_name = SUCURISCAN_LASTLOGINS_TABLENAME;
                 $current_user = wp_get_current_user();
 
                 // Select the penultimate entry, not the last one.
-                $sql = "SELECT * FROM {$table_name} WHERE user_id = '{$current_user->ID}' ORDER BY user_lastlogin DESC LIMIT 1,1";
-                $row = $wpdb->get_row($sql);
+                $user_lastlogins = sucuriscan_get_logins(2, $current_user->ID);
+                $row = isset($user_lastlogins[1]) ? $user_lastlogins[1] : FALSE;
 
                 if($row){
                     $message_tpl  = 'The last time you logged in was: %s, from %s - %s';
