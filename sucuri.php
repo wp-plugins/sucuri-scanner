@@ -628,39 +628,8 @@ function sucuriscan_lastlogins_page()
         'SucuriWPSidebar'=>sucuriscan_wp_sidebar_gen(),
         'UserList'=>'',
         'CurrentURL'=>site_url().'/wp-admin/admin.php?page='.$_GET['page'],
-        'LastLoginsAlerts.EnableEveryone'=>'',
-        'LastLoginsAlerts.DisableEveryone'=>'',
-        'LastLoginsAlerts.JustAdmins'=>'',
         'LastLogins.DatastoreWritable'=>sucuriscan_lastlogins_datastore_is_writable() ? 'hidden' : 'visible',
     );
-
-    $can_edit_settings = current_user_can('manage_options') ? TRUE : FALSE;
-    $template_variables['LastLoginsSettings.Display'] = $can_edit_settings ? '' : 'hidden';
-
-    if(
-        isset($_POST['sucuri_lastlogins_nonce'])
-        && wp_verify_nonce($_POST['sucuri_lastlogins_nonce'], 'sucuriscan_lastlogins_nonce')
-    ){
-        if( $can_edit_settings ){
-            update_option('sucuri_lastlogins_alerts', $_POST['lastlogin_alerts']);
-            sucuriscan_admin_notice('updated', '<strong>OK.</strong> New settings saved!');
-        }else{
-            sucuriscan_admin_notice('error', '<strong>Error.</strong> You do not have permissions to change these settings.');
-        }
-    }
-
-    switch( get_option('sucuri_lastlogins_alerts') ){
-        case 'disable_everyone':
-            $template_variables['LastLoginsAlerts.DisableEveryone'] = 'checked="checked"';
-            break;
-        case 'just_admins':
-            $template_variables['LastLoginsAlerts.JustAdmins'] = 'checked="checked"';
-            break;
-        case 'enable_everyone':
-        default:
-            $template_variables['LastLoginsAlerts.EnableEveryone'] = 'checked="checked"';
-            break;
-    }
 
     $limit = isset($_GET['limit']) ? intval($_GET['limit']) : SUCURISCAN_LASTLOGINS_USERSLIMIT;
     $template_variables['UserList.ShowAll'] = $limit>0 ? 'visible' : 'hidden';
