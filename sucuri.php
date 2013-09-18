@@ -787,35 +787,19 @@ if( !function_exists('sucuri_login_redirect') ){
 }
 
 if( !function_exists('sucuri_get_user_lastlogin') ){
-    function sucuriscan_get_user_lastlogin()
-    {
-        if( isset($_GET['sucuriscan_lastlogin_message']) ){
-            switch( get_option('sucuri_lastlogins_alerts') ){
-                case 'disable_everyone':
-                    $display_alert = FALSE;
-                    break;
-                case 'just_admins':
-                    $display_alert = current_user_can('manage_options') ? TRUE : FALSE;
-                    break;
-                case 'enable_everyone':
-                default:
-                    $display_alert = TRUE;
-                    break;
-            }
+    function sucuriscan_get_user_lastlogin(){
+        if( isset($_GET['sucuriscan_lastlogin_message']) && current_user_can('manage_options') ){
+            $current_user = wp_get_current_user();
 
-            if($display_alert){
-                $current_user = wp_get_current_user();
+            // Select the penultimate entry, not the last one.
+            $user_lastlogins = sucuriscan_get_logins(2, $current_user->ID);
+            $row = isset($user_lastlogins[1]) ? $user_lastlogins[1] : FALSE;
 
-                // Select the penultimate entry, not the last one.
-                $user_lastlogins = sucuriscan_get_logins(2, $current_user->ID);
-                $row = isset($user_lastlogins[1]) ? $user_lastlogins[1] : FALSE;
-
-                if($row){
-                    $message_tpl  = 'The last time you logged in was: %s, from %s - %s';
-                    $lastlogin_message = sprintf( $message_tpl, date('Y/M/d'), $row->user_remoteaddr, $row->user_hostname );
-                    $lastlogin_message .= chr(32).'(<a href="'.site_url('wp-admin/admin.php?page='.SUCURISCAN.'_lastlogins').'">View Last-Logins</a>)';
-	                sucuriscan_admin_notice('updated', $lastlogin_message);
-                }
+            if($row){
+                $message_tpl  = 'The last time you logged in was: %s, from %s - %s';
+                $lastlogin_message = sprintf( $message_tpl, date('Y/M/d'), $row->user_remoteaddr, $row->user_hostname );
+                $lastlogin_message .= chr(32).'(<a href="'.site_url('wp-admin/admin.php?page='.SUCURISCAN.'_lastlogins').'">View Last-Logins</a>)';
+                sucuriscan_admin_notice('updated', $lastlogin_message);
             }
         }
     }
