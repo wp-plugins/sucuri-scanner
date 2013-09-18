@@ -28,9 +28,6 @@ define( 'SUCURI_URL',plugin_dir_url( __FILE__ ));
 define('SUCURISCAN_PLUGIN_FOLDER', 'sucuri-scanner');
 define('SUCURISCAN_LASTLOGINS_USERSLIMIT', 100);
 
-register_activation_hook(__FILE__, 'sucuriscan_plugin_activation');
-register_deactivation_hook(__FILE__, 'sucuriscan_plugin_deactivation');
-
 /* Requires files. */
 add_action( 'admin_enqueue_scripts', 'sucuriscan_admin_script_style_registration', 1 );
 function sucuriscan_admin_script_style_registration() { ?>
@@ -54,43 +51,6 @@ function sucuriscan_dir_filepath($path = '')
     return($wp_dir_array['basedir']."/sucuri/$path");
 }
 
-/* sucuri_plugin_activation:
- * Creates the internal files / directories used by the plugin.
- * Returns 0 on error and 1 on success.
- */
-function sucuriscan_plugin_activation()
-{
-    if( function_exists('sucuriscan_capabilities') ){
-        sucuriscan_capabilities('add');
-    }
-    return(1);
-}
-
-function sucuriscan_plugin_deactivation()
-{
-    if( function_exists('sucuriscan_capabilities') ){
-        sucuriscan_capabilities('remove');
-    }
-    return TRUE;
-}
-
-function sucuriscan_capabilities($action=NULL){
-    $allowed_actions = array( 'add', 'remove' );
-
-    if( in_array($action, $allowed_actions) ){
-        $roles = get_editable_roles();
-        foreach($roles as $role_name=>$role_info){
-            /* $role_info = Array( name => String, capabilities => Array ) */
-            $role_object = get_role($role_name);
-            if( $action='add' ){
-                $role_object->add_cap('sucuriscan_cap_lastlogins');
-            }elseif( $action=='remove' ){
-                $role_object->remove_cap('sucuriscan_cap_lastlogins');
-            }
-        }
-    }
-}
-
 /* Starting Sucuri Scan side bar. */
 function sucuriscan_menu()
 {
@@ -108,7 +68,7 @@ function sucuriscan_menu()
     add_submenu_page('sucuriscan', 'Post-Hack', 'Post-Hack', 'manage_options',
                      'sucuriscan_posthack', 'sucuriscan_posthack_page');
 
-    add_submenu_page('sucuriscan', 'Last Logins', 'Last Logins', 'sucuriscan_cap_lastlogins',
+    add_submenu_page('sucuriscan', 'Last Logins', 'Last Logins', 'manage_options',
                      'sucuriscan_lastlogins', 'sucuriscan_lastlogins_page');
 }
 
@@ -656,7 +616,7 @@ function sucuriscan_get_remoteaddr()
 
 function sucuriscan_lastlogins_page()
 {
-    if( !current_user_can('sucuriscan_cap_lastlogins') )
+    if( !current_user_can('manage_options') )
     {
         wp_die(__('You do not have sufficient permissions to access this page: Sucuri Last-Logins') );
     }
