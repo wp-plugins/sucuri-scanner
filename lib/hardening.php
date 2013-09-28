@@ -359,3 +359,27 @@ function sucuriscan_harden_phpversion()
                          "This checks if you have the latest version of PHP installed.", NULL);
     sucuriscan_wrapper_close();
 }
+
+function sucuriscan_cloudproxy_enabled(){
+    $enabled = FALSE;
+
+    if(
+        isset($_SERVER['SUCURIREAL_REMOTE_ADDR'])
+        || preg_match('/cloudproxy.*\.sucuri\.net/', gethostbyaddr(gethostbyname($_SERVER['HTTP_HOST'])))
+    ){ $enabled = TRUE; }
+
+    sucuriscan_wrapper_open('Verify if your site is protected by a Web Firewall');
+    sucuriscan_harden_status(
+        $enabled, NULL,
+        'Your website is protected by a Web Firewall',
+        'Your website is not protected by a Web Firewall',
+        'A firewall is a software or hardware-based network security system that controls the incoming and
+        outgoing network traffic by analyzing the data packets and determining whether they should be allowed
+        through or not, based on a rule set. <a href="http://en.wikipedia.org/wiki/Firewall_(computing)">Read more</a>.',
+        NULL
+    );
+    if( $enabled!==TRUE ){
+        echo '<a href="https://login.sucuri.net/signup2/create?CloudProxy" target="_blank" class="button button-primary">Harden it!</a>';
+    }
+    sucuriscan_wrapper_close();
+}

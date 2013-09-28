@@ -12,50 +12,46 @@ if(!defined('SUCURISCAN'))
 
 /* Sucuri one-click hardening page. */
 
-function sucuriscan_hardening_lib()
-{
-        echo '<h2 id="warnings_hook"></h2>';
-        echo '<div class="postbox-container" style="width:75%;">';
-            echo '<div class="sucuriscan-maincontent">';
+function sucuriscan_hardening_lib(){ ?>
+    <h2 id="warnings_hook"></h2>
+    <div class="postbox-container" style="width:75%">
+        <div class="sucuriscan-maincontent">
+            <div class="postbox">
+               <div class="inside">
+                   <h2 align="center">Help secure your WordPress install with <a href="http://sucuri.net/signup">Sucuri</a> 1-Click Hardening Options.</h2>
+               </div>
+            </div>
 
-                echo '<div class="postbox">';
-                   echo '<div class="inside">';
-                       echo '<h2 align="center">Help secure your WordPress install with <a href="http://sucuri.net/signup">Sucuri</a> 1-Click Hardening Options.</h2>';
-                   echo '</div>';
-                echo '</div>';
-
-    include_once("lib/hardening.php");
-
-    if(isset($_POST['wpsucuri-doharden']))
-    {
-        if(!wp_verify_nonce($_POST['sucuriscan_wphardeningnonce'], 'sucuriscan_wphardeningnonce'))
-        {
-            unset($_POST['wpsucuri-doharden']);
-        }
-    }
-
-    ?>
-
-        <div id="poststuff">
-
-        <?php
-
-            echo '<form action="" method="post">'.
-                     '<input type="hidden" name="sucuriscan_wphardeningnonce" value="'.wp_create_nonce('sucuriscan_wphardeningnonce').'" />'.
-                     '<input type="hidden" name="wpsucuri-doharden" value="wpsucuri-doharden" />'.
-
-                        sucuriscan_harden_version();
-                        sucuri_harden_removegenerator();
-                        sucuriscan_harden_upload();
-                        sucuriscan_harden_wpcontent();
-                        sucuriscan_harden_wpincludes();
-                        sucuriscan_harden_phpversion();
-            echo '</form>'
+            <?php
+            include_once('lib/hardening.php');
+            if( isset($_POST['wpsucuri-doharden']) ){
+                if(!wp_verify_nonce($_POST['sucuriscan_wphardeningnonce'], 'sucuriscan_wphardeningnonce'))
+                {
+                    unset($_POST['wpsucuri-doharden']);
+                }
+            }
             ?>
 
-            <p align="center"><strong>If you have any questions about these checks or this plugin, contact us at <a href="mailto:info@sucuri.net">info@sucuri.net</a> or visit <a href="http://sucuri.net">Sucuri Security</a></strong></p>
+            <div id="poststuff">
+                <form method="post">
+                    <input type="hidden" name="sucuriscan_wphardeningnonce" value="<?php echo wp_create_nonce('sucuriscan_wphardeningnonce'); ?>" />
+                    <input type="hidden" name="wpsucuri-doharden" value="wpsucuri-doharden" />
+                    <?php
+                    sucuriscan_harden_version();
+                    sucuriscan_cloudproxy_enabled();
+                    sucuri_harden_removegenerator();
+                    sucuriscan_harden_upload();
+                    sucuriscan_harden_wpcontent();
+                    sucuriscan_harden_wpincludes();
+                    sucuriscan_harden_phpversion();
+                    ?>
+                </form>
 
-        </div>
-
+                <p align="center">
+                    <strong>If you have any questions about these checks or this plugin, contact us at
+                    <a href="mailto:info@sucuri.net">info@sucuri.net</a> or visit <a href="http://sucuri.net">
+                    Sucuri Security</a></strong>
+                </p>
+            </div><!-- End poststuff -->
     <?php
 }

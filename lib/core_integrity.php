@@ -183,16 +183,16 @@ function sucuriwp_list_admins($userlevel = '10') {
             'AdminUsers.LastLogins'=>''
         );
         foreach($admin->lastlogins as $lastlogin){
-            $user_snippet['AdminUsers.LastLogins'] .= sucuriscan_get_template('sucuri-wp-integrity-admins-lastlogin.snippet.tpl', array(
+            $user_snippet['AdminUsers.LastLogins'] .= sucuriscan_get_template('integrity-admins-lastlogin.snippet.tpl', array(
                 'AdminUsers.RemoteAddr'=>$lastlogin->user_remoteaddr,
                 'AdminUsers.Datetime'=>$lastlogin->user_lastlogin
             ));
         }
 
-        $template_variables['AdminUsers.UserList'] .= sucuriscan_get_template('sucuri-wp-integrity-admins.snippet.tpl', $user_snippet);
+        $template_variables['AdminUsers.UserList'] .= sucuriscan_get_template('integrity-admins.snippet.tpl', $user_snippet);
     }
 
-    echo sucuriscan_get_template('sucuri-wp-integrity-admins.html.tpl', $template_variables);
+    echo sucuriscan_get_template('integrity-admins.html.tpl', $template_variables);
 }
 
 function sucuriwp_content_check()

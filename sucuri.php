@@ -77,54 +77,26 @@ function sucuriscan_menu()
 function sucuri_scan_page()
 {
     $U_ERROR = NULL;
-    if(!current_user_can('manage_options'))
-    {
+    if( !current_user_can('manage_options') ){
         wp_die(__('You do not have sufficient permissions to access this page: Sucuri Malware Scanner') );
     }
 
-    if(isset($_POST['wpsucuri-doscan']))
-    {
+    $template_variables = array(
+        'PluginURL'=>SUCURI_URL,
+        'Sidebar'=>sucuriscan_get_template('sidebar.html.tpl')
+    );
+
+    if( isset($_POST['wpsucuri-doscan']) ){
         sucuriscan_print_scan();
         return(1);
     }
 
-    /* Setting's header. */
-    echo '<div class="wrap">';
-        echo '<h2 id="warnings_hook"></h2>';
-        echo '<div class="sucuriscan_header"><img src="'.SUCURI_URL.'/inc/images/logo.png">';
-        sucuriscan_pagestop("SiteCheck Scanner");
-        echo '</div>';
-
-        echo '<div class="postbox-container" style="width:75%;">';
-            echo '<div class="sucuriscan-maincontent">';
-
-            echo '<div class="postbox">';
-               echo '<div class="inside">';
-                   echo '<h2 align="center">Scan your site for malware using <a href="http://sitecheck.sucuri.net">Sucuri SiteCheck</a> right in your WordPress dashboard.</h2>';
-               echo '</div>';
-            echo '</div>';
-        ?>
-
-                <form action="" method="post">
-                    <input type="hidden" name="wpsucuri-doscan" value="wpsucuri-doscan" />
-                    <input class="button button-primary button-hero load-customize" type="submit" name="wpsucuri_doscanrun" value="Scan this site now!" />
-                </form>
-
-                <p><strong>If you have any questions about these checks or this plugin, contact us at <a href="mailto:info@sucuri.net">info@sucuri.net</a> or visit <a href="http://sucuri.net">sucuri.net</a></strong></p>
-
-            </div><!-- End sucuriscan-maincontent -->
-        </div><!-- End postbox-container -->
-
-        <?php echo sucuriscan_get_template('sucuri-wp-sidebar.html.tpl') ?>
-
-    </div><!-- End Wrap -->
-
-    <?php
+    echo sucuriscan_get_template('initial-page.html.tpl', $template_variables);
 }
 
 function sucuriscan_print_scan()
 {
-    $myresults = wp_remote_get("http://sitecheck.sucuri.net/scanner/?serialized&clear&fromwp&scan=".home_url(), array("timeout" => 180));
+    $myresults = wp_remote_get('http://sitecheck.sucuri.net/scanner/?serialized&clear&fromwp&scan='.home_url(), array('timeout' => 180));
 
     if(is_wp_error($myresults))
     {
@@ -247,7 +219,7 @@ function sucuriscan_print_scan()
             </div><!-- End sucuriscan-maincontent -->
         </div><!-- End postbox-container -->
 
-        <?php echo sucuriscan_get_template('sucuri-wp-sidebar.html.tpl') ?>
+        <?php echo sucuriscan_get_template('sidebar.html.tpl') ?>
 
     </div><!-- End Wrap -->
 
@@ -296,7 +268,7 @@ function sucuriscan_hardening_page()
             </div><!-- End sucuriscan-maincontent -->
         </div><!-- End postbox-container -->
 
-        <?php echo sucuriscan_get_template('sucuri-wp-sidebar.html.tpl') ?>
+        <?php echo sucuriscan_get_template('sidebar.html.tpl') ?>
 
     </div><!-- End Wrap -->
 
@@ -331,7 +303,7 @@ function sucuriscan_core_integrity_page()
             </div><!-- End sucuriscan-maincontent -->
         </div><!-- End postbox-container -->
 
-        <?php echo sucuriscan_get_template('sucuri-wp-sidebar.html.tpl') ?>
+        <?php echo sucuriscan_get_template('sidebar.html.tpl') ?>
 
     </div><!-- End Wrap -->
 
@@ -392,7 +364,7 @@ function sucuriscan_prettify_mail($subject='', $message='', $data_set=array())
         $mail_variables[$var_key] = $var_value;
     }
 
-    return sucuriscan_get_template("sucuri-wp-notification.{$prettify_type}.tpl", $mail_variables);
+    return sucuriscan_get_template("notification.{$prettify_type}.tpl", $mail_variables);
 }
 
 function sucuriscan_get_template($template='', $template_variables=array()){
@@ -410,7 +382,7 @@ function sucuriscan_get_template($template='', $template_variables=array()){
 
 function sucuriscan_wp_sidebar_gen()
 {
-    return sucuriscan_get_template('sucuri-wp-sidebar.html.tpl');
+    return sucuriscan_get_template('sidebar.html.tpl');
 }
 
 function sucuriscan_get_new_config_keys()
@@ -580,7 +552,7 @@ function sucuriscan_posthack_page()
     // Fill the user list for ResetPassword action.
     $user_list = get_users();
     foreach($user_list as $user){
-        $user_snippet = sucuriscan_get_template('sucuri-wp-resetpassword.snippet.tpl', array(
+        $user_snippet = sucuriscan_get_template('resetpassword.snippet.tpl', array(
             'ResetPassword.UserId'=>$user->ID,
             'ResetPassword.Username'=>$user->user_login,
             'ResetPassword.Displayname'=>$user->display_name,
@@ -589,7 +561,7 @@ function sucuriscan_posthack_page()
         $template_variables['ResetPassword.UserList'] .= $user_snippet;
     }
 
-    echo sucuriscan_get_template('sucuri-wp-posthack.html.tpl', $template_variables);
+    echo sucuriscan_get_template('posthack.html.tpl', $template_variables);
 }
 
 function sucuriscan_get_remoteaddr()
@@ -636,7 +608,7 @@ function sucuriscan_lastlogins_page()
 
     $user_list = sucuriscan_get_logins($limit);
     foreach($user_list as $user){
-        $user_snippet = sucuriscan_get_template('sucuri-wp-lastlogins.snippet.tpl', array(
+        $user_snippet = sucuriscan_get_template('lastlogins.snippet.tpl', array(
             'UserList.UserId'=>intval($user->ID),
             'UserList.Username'=>( !is_null($user->user_login) ? $user->user_login : '<em>Unknown</em>' ),
             'UserList.Email'=>$user->user_email,
@@ -646,7 +618,7 @@ function sucuriscan_lastlogins_page()
         $template_variables['UserList'] .= $user_snippet;
     }
 
-    echo sucuriscan_get_template('sucuri-wp-lastlogins.html.tpl', $template_variables);
+    echo sucuriscan_get_template('lastlogins.html.tpl', $template_variables);
 }
 
 function sucuriscan_lastlogins_datastore_exists(){
