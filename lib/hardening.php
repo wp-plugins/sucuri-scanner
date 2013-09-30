@@ -1,6 +1,6 @@
 <?php
 /* Sucuri Security - SiteCheck Malware Scanner
- * Copyright (C) 2010-2012 Sucuri Security - http://sucuri.net
+ * Copyright (C) 2010-2013 Sucuri Security - http://sucuri.net
  * Released under the GPL - see LICENSE file for details.
  */
 if(!defined('SUCURISCAN'))
@@ -371,11 +371,10 @@ function sucuriscan_cloudproxy_enabled(){
     sucuriscan_wrapper_open('Verify if your site is protected by a Web Firewall');
     sucuriscan_harden_status(
         $enabled, NULL,
-        'Your website is protected by a Web Firewall',
-        'Your website is not protected by a Web Firewall',
-        'A firewall is a software or hardware-based network security system that controls the incoming and
-        outgoing network traffic by analyzing the data packets and determining whether they should be allowed
-        through or not, based on a rule set. <a href="http://en.wikipedia.org/wiki/Firewall_(computing)">Read more</a>.',
+        'Your website is protected by a Website Firewall (WAF)',
+        'Your website is not protected by a Website Firewall (WAF)',
+        'A WAF is a protection layer for your web site, blocking all sort of attacks (brute force attempts, DDoS, SQL injections, etc) and helping it remain
+         malware and blacklist free. This test checks if your site is using <a href="http://sucuri.net/services/preventive">Sucuri\'s CloudProxy WAF</a> to protect your site. ',
         NULL
     );
     if( $enabled!==TRUE ){
