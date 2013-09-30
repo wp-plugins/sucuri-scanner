@@ -24,7 +24,7 @@ if(!function_exists('add_action'))
 
 define('SUCURISCAN','sucuriscan');
 define('SUCURISCAN_VERSION','1.4.7');
-define( 'SUCURI_URL',plugin_dir_url( __FILE__ ));
+define('SUCURI_URL',plugin_dir_url( __FILE__ ));
 define('SUCURISCAN_PLUGIN_FOLDER', 'sucuri-scanner');
 define('SUCURISCAN_LASTLOGINS_USERSLIMIT', 100);
 
@@ -96,126 +96,160 @@ function sucuri_scan_page()
 
 function sucuriscan_print_scan()
 {
-    $myresults = wp_remote_get('http://sitecheck.sucuri.net/scanner/?serialized&clear&fromwp&scan='.home_url(), array('timeout' => 180));
-
-    if(is_wp_error($myresults))
-    {
-        print_r($myresults);
-        return;
-    }
-
-    $res = unserialize($myresults['body']);
+    $website_scanned = home_url();
+    $myresults = wp_remote_get('http://sitecheck.sucuri.net/scanner/?serialized&clear&fromwp&scan='.$website_scanned, array('timeout' => 180));
 
     echo '<div class="wrap">';
-    echo '<h2 id="warnings_hook"></h2>';
-    echo '<div class="sucuriscan_header"><img src="'.SUCURI_URL.'/inc/images/logo.png">';
-    sucuriscan_pagestop("Sucuri SiteCheck Malware Scanner");
-    echo '</div>';
+        echo '<h2 id="warnings_hook"></h2>';
+        echo '<div class="sucuriscan_header"><img src="'.SUCURI_URL.'/inc/images/logo.png">';
+        sucuriscan_pagestop("Sucuri SiteCheck Malware Scanner");
+        echo '</div>';
 
         echo '<div class="postbox-container" style="width:75%;">';
             echo '<div class="sucuriscan-maincontent">';
 
-    if(!isset($res['MALWARE']['WARN']))
-    {
-        echo '<h3><img style="position:relative;top:5px" height="22" width="22" src="
-             '.site_url().'/wp-content/plugins/sucuri-scanner/images/ok.png" /> &nbsp;
-             No malware was identified</h3>';
+                if(is_wp_error($myresults))
+                {
+                    echo '<div id="poststuff">';
+                        echo '<div class="postbox">';
+                            echo '<h3>Error retrieving the scan report</h3>';
 
-        echo "<p><strong>Malware:</strong> No.</p>";
-        echo "<p><strong>Malicious javascript:</strong> No.</p>";
-        echo "<p><strong>Malicious iframes:</strong> No.</p>";
-        echo "<p><strong>Suspicious redirections (htaccess):</strong> No.</p>";
-        echo "<p><strong>Blackhat SEO Spam:</strong> No.</p>";
-        echo "<p><strong>Anomaly detection:</strong> Clean.</p>";
-    }
-    else
-    {
-        echo '<h3><img style="position:relative;top:5px" height="22" width="22" src="
-             '.site_url().'/wp-content/plugins/sucuri-scanner/images/ok.png" /> &nbsp;
-             Site compromised (malware was identified)</h3>';
-        foreach($res['MALWARE']['WARN'] as $malres)
-        {
-            if(!is_array($malres))
-            {
-                echo htmlspecialchars($malres);
-            }
-            else
-            {
-                $mwdetails = explode("\n", htmlspecialchars($malres[1]));
-                echo htmlspecialchars($malres[0])."\n<br />". substr($mwdetails[0], 1)."<br />\n";
-            }
-        }
-        echo "<br />";
-    }
-    echo '<i>More details here: <a href="http://sitecheck.sucuri.net/scanner/?&scan='.home_url().'">http://sitecheck.sucuri.net/scanner/?&scan='.home_url().'</a></i>';
+                            echo '<div class="inside">';
+                                print_r($myresults);
+                            echo '</div>';
+                        echo '</div>';
+                    echo '</div>';
+                }else{
+                    $res = unserialize($myresults['body']);
 
-    echo "<hr />\n";
-    echo '<i>If our free scanner did not detect any issue, you may have a more complicated and hidden problem. You can try our <a href="admin.php?page=sucuriscan_core_integrity">WordPress integrity checks</a> or sign up with Sucuri <a target="_blank" href="http://sucuri.net/signup">here</a> for a complete and in depth scan+cleanup (not included in the free checks).</i>';
-    echo "<hr />\n";
-    if(isset($res['BLACKLIST']['WARN']))
-    {
-        echo '<h3><img style="position:relative;top:5px" height="22" width="22" src="
-                 '.site_url().'/wp-content/plugins/sucuri-scanner/images/warn.png" /> &nbsp;
-                 Site blacklisted</h3>';
-    }
-    else
-    {
-        echo '<h3><img style="position:relative;top:5px" height="22" width="22" src="
-                 '.site_url().'/wp-content/plugins/sucuri-scanner/images/ok.png" /> &nbsp;
-                 Site blacklist-free</h3>';
-    }
-    if(isset($res['BLACKLIST']['INFO']))
-    {
-        foreach($res['BLACKLIST']['INFO'] as $blres)
-        {
-            echo "<b>CLEAN: </b>".htmlspecialchars($blres[0])." <a href=''>".htmlspecialchars($blres[1])."</a><br />";
-        }
-    }
-    if(isset($res['BLACKLIST']['WARN']))
-    {
-        foreach($res['BLACKLIST']['WARN'] as $blres)
-        {
-            echo "<b>WARN: </b>".htmlspecialchars($blres[0])." <a href=''>".htmlspecialchars($blres[1])."</a><br />";
-        }
-    }
 
-    echo "<hr />\n";
-    global $wp_version;
-    if(strcmp($wp_version, "3.5") >= 0)
-    {
-        echo '<h3><img style="position:relative;top:5px" height="22" width="22" src="
-                 '.site_url().'/wp-content/plugins/sucuri-scanner/images/ok.png" /> &nbsp;
-                 System info (WordPress upgraded)</h3>';
-    }
-    else
-    {
-        echo '<h3><img style="position:relative;top:5px" height="22" width="22" src="
-                 '.site_url().'/wp-content/plugins/sucuri-scanner/images/warn.png" /> &nbsp;
-                 System info (WordPress outdated)</h3>';
-    }
+                    // Check for general warnings, and return the information for Infected/Clean site.
+                    $malware_warns_exists = isset($res['MALWARE']['WARN']) ? TRUE : FALSE;
+                    echo '<div id="poststuff">';
+                        echo '<div class="postbox">';
+                            echo '<h3>';
+                                if( !$malware_warns_exists ){
+                                    echo '<img style="position:relative;top:5px" height="22" width="22" src="
+                                         '.site_url().'/wp-content/plugins/sucuri-scanner/images/ok.png" /> &nbsp;
+                                         No malware was identified';
+                                }else{
+                                    echo '<img style="position:relative;top:5px" height="22" width="22" src="
+                                         '.site_url().'/wp-content/plugins/sucuri-scanner/images/warn.png" /> &nbsp;
+                                         Site compromised (malware was identified)';
+                                }
+                            echo '</h3>';
+                            echo '<div class="inside">';
+                                if( !$malware_warns_exists ){
+                                    echo "<p><strong>Malware:</strong> No.</p>";
+                                    echo "<p><strong>Malicious javascript:</strong> No.</p>";
+                                    echo "<p><strong>Malicious iframes:</strong> No.</p>";
+                                    echo "<p><strong>Suspicious redirections (htaccess):</strong> No.</p>";
+                                    echo "<p><strong>Blackhat SEO Spam:</strong> No.</p>";
+                                    echo "<p><strong>Anomaly detection:</strong> Clean.</p>";
+                                }else{
+                                    foreach($res['MALWARE']['WARN'] as $malres)
+                                    {
+                                        if(!is_array($malres))
+                                        {
+                                            echo htmlspecialchars($malres);
+                                        }
+                                        else
+                                        {
+                                            $mwdetails = explode("\n", htmlspecialchars($malres[1]));
+                                            echo htmlspecialchars($malres[0])."\n<br />". substr($mwdetails[0], 1)."<br />\n";
+                                        }
+                                    }
+                                }
+                                echo "<br />";
+                                echo '<i>More details here: <a href="http://sitecheck.sucuri.net/scanner/?scan='.$website_scanned.'">http://sitecheck.sucuri.net/scanner/?scan='.$website_scanned.'</a></i>';
+                                echo "<hr />\n";
+                                echo '<i>If our free scanner did not detect any issue, you may have a more complicated and hidden problem. You can try our <a href="admin.php?page=sucuriscan_core_integrity">WordPress integrity checks</a> or sign up with Sucuri <a target="_blank" href="http://sucuri.net/signup">here</a> for a complete and in depth scan+cleanup (not included in the free checks).</i>';
+                                echo "<hr />\n";
+                            echo '</div>';
+                        echo '</div>';
+                    echo '</div>';
 
-    echo "<b>Site:</b> ".$res['SCAN']['SITE'][0]." (".$res['SCAN']['IP'][0].")<br />\n";
-    echo "<b>WordPress: </b> $wp_version<br />\n";
-    echo "<b>PHP: </b> ".phpversion()."<br />\n";
 
-    if(isset($res['SYSTEM']['NOTICE']))
-    {
-        foreach($res['SYSTEM']['NOTICE'] as $notres)
-        {
-            if(is_array($notres))
-            {
-                echo htmlspecialchars($notres[0]). " ".htmlspecialchars($notres[1]);
-            }
-            else
-            {
-                echo htmlspecialchars($notres)."<br />\n";
-            }
-        }
-    }
+                    // Check for blacklist reports, and return the information retrieved from multiple blacklist services.
+                    echo '<div id="poststuff">';
+                        echo '<div class="postbox">';
+                            echo '<h3>';
+                                if(isset($res['BLACKLIST']['WARN']))
+                                {
+                                    echo '<img style="position:relative;top:5px" height="22" width="22" src="
+                                        '.site_url().'/wp-content/plugins/sucuri-scanner/images/warn.png" /> &nbsp;
+                                        Site blacklisted';
+                                }
+                                else
+                                {
+                                    echo '<img style="position:relative;top:5px" height="22" width="22" src="
+                                        '.site_url().'/wp-content/plugins/sucuri-scanner/images/ok.png" /> &nbsp;
+                                        Site blacklist-free';
+                                }
+                            echo '</h3>';
+                            echo '<div class="inside">';
+                                if(isset($res['BLACKLIST']['INFO']))
+                                {
+                                    foreach($res['BLACKLIST']['INFO'] as $blres)
+                                    {
+                                        echo "<b>CLEAN: </b>".htmlspecialchars($blres[0])." <a href=''>".htmlspecialchars($blres[1])."</a><br />";
+                                    }
+                                }
+                                if(isset($res['BLACKLIST']['WARN']))
+                                {
+                                    foreach($res['BLACKLIST']['WARN'] as $blres)
+                                    {
+                                        echo "<b>WARN: </b>".htmlspecialchars($blres[0])." <a href=''>".htmlspecialchars($blres[1])."</a><br />";
+                                    }
+                                }
+                            echo '</div>';
+                        echo '</div>';
+                    echo '</div>';
 
-    ?>
+
+                    // Check for general versions in some common services/software used to serve this website.
+                    global $wp_version;
+                    echo '<div id="poststuff">';
+                        echo '<div class="postbox">';
+                            echo '<h3>';
+                                if(strcmp($wp_version, "3.5") >= 0)
+                                {
+                                    echo '<img style="position:relative;top:5px" height="22" width="22" src="
+                                        '.site_url().'/wp-content/plugins/sucuri-scanner/images/ok.png" /> &nbsp;
+                                        System info (WordPress upgraded)';
+                                }
+                                else
+                                {
+                                    echo '<img style="position:relative;top:5px" height="22" width="22" src="
+                                        '.site_url().'/wp-content/plugins/sucuri-scanner/images/warn.png" /> &nbsp;
+                                        System info (WordPress outdated)';
+                                }
+                            echo '</h3>';
+                            echo '<div class="inside">';
+                                echo "<b>Site:</b> ".$res['SCAN']['SITE'][0]." (".$res['SCAN']['IP'][0].")<br />\n";
+                                echo "<b>WordPress: </b> $wp_version<br />\n";
+                                echo "<b>PHP: </b> ".phpversion()."<br />\n";
+                                if(isset($res['SYSTEM']['NOTICE']))
+                                {
+                                    foreach($res['SYSTEM']['NOTICE'] as $notres)
+                                    {
+                                        if(is_array($notres))
+                                        {
+                                            echo htmlspecialchars($notres[0]). " ".htmlspecialchars($notres[1]);
+                                        }
+                                        else
+                                        {
+                                            echo htmlspecialchars($notres)."<br />\n";
+                                        }
+                                    }
+                                }
+                            echo '</div>';
+                        echo '</div>';
+                    echo '</div>';
+                }
+                ?>
+
                 <p>If you have any questions about these checks or this plugin, contact us at support@sucuri.net or visit <a href="http://sucuri.net">http://sucuri.net</a></p>
-
             </div><!-- End sucuriscan-maincontent -->
         </div><!-- End postbox-container -->
 
@@ -522,22 +556,26 @@ function sucuriscan_posthack_page()
                 $reset_password = ( isset($_POST['sucuri_reset_password']) && $_POST['sucuri_reset_password']==1 ) ? TRUE : FALSE;
 
                 if( $reset_password ){
-                    $user_identifiers = $_POST['user_ids'];
+                    $user_identifiers = isset($_POST['user_ids']) ? $_POST['user_ids'] : array();
                     $pwd_changed = $pwd_not_changed = array();
-                    arsort($user_identifiers);
 
-                    foreach($user_identifiers as $user_id){
-                        if( sucuriscan_new_password($user_id) ){
-                            $pwd_changed[] = $user_id;
-                        }else{
-                            $pwd_not_changed[] = $user_id;
+                    if( is_array($user_identifiers) && !empty($user_identifiers) ){
+                        arsort($user_identifiers);
+                        foreach($user_identifiers as $user_id){
+                            if( sucuriscan_new_password($user_id) ){
+                                $pwd_changed[] = $user_id;
+                            }else{
+                                $pwd_not_changed[] = $user_id;
+                            }
                         }
-                    }
-                    if( !empty($pwd_changed) ){
-                        sucuriscan_admin_notice('updated', '<strong>OK.</strong> Password changed successfully for users: '.implode(', ',$pwd_changed));
-                    }
-                    if( !empty($pwd_not_changed) ){
-                        sucuriscan_admin_notice('error', '<strong>Error.</strong> Password change failed for users: '.implode(', ',$pwd_not_changed));
+                        if( !empty($pwd_changed) ){
+                            sucuriscan_admin_notice('updated', '<strong>OK.</strong> Password changed successfully for users: '.implode(', ',$pwd_changed));
+                        }
+                        if( !empty($pwd_not_changed) ){
+                            sucuriscan_admin_notice('error', '<strong>Error.</strong> Password change failed for users: '.implode(', ',$pwd_not_changed));
+                        }
+                    }else{
+                        sucuri_admin_notice('error', '<strong>Error.</strong> You did not select any user account to be reseted');
                     }
                 }else{
                     sucuriscan_admin_notice('error', '<strong>Error.</strong> You need to confirm that you understand the risk of this operation');
@@ -600,8 +638,13 @@ function sucuriscan_lastlogins_page()
         'SucuriWPSidebar'=>sucuriscan_wp_sidebar_gen(),
         'UserList'=>'',
         'CurrentURL'=>site_url().'/wp-admin/admin.php?page='.$_GET['page'],
-        'LastLogins.DatastoreWritable'=>sucuriscan_lastlogins_datastore_is_writable() ? 'hidden' : 'visible',
     );
+
+    if( !sucuriscan_lastlogins_datastore_is_writable() ){
+        sucuri_admin_notice('error', '<strong>Error.</strong> The last-logins datastore
+            file is not writable, gives permissions to write in this location:<br>'.
+            '<code>'.sucuri_lastlogins_datastore_filepath().'</code>');
+    }
 
     $limit = isset($_GET['limit']) ? intval($_GET['limit']) : SUCURISCAN_LASTLOGINS_USERSLIMIT;
     $template_variables['UserList.ShowAll'] = $limit>0 ? 'visible' : 'hidden';
@@ -621,9 +664,14 @@ function sucuriscan_lastlogins_page()
     echo sucuriscan_get_template('lastlogins.html.tpl', $template_variables);
 }
 
-function sucuriscan_lastlogins_datastore_exists(){
+function sucuriscan_lastlogins_datastore_filepath(){
     $plugin_upload_folder = sucuriscan_dir_filepath();
     $datastore_filepath = rtrim($plugin_upload_folder,'/').'/sucuri-lastlogins.php';
+    return $datastore_filepath;
+}
+
+function sucuriscan_lastlogins_datastore_exists(){
+    $datastore_filepath = sucuriscan_lastlogins_datastore_filepath();
 
     if( !file_exists($datastore_filepath) ){
         if( @file_put_contents($datastore_filepath, "<?php exit(0); ?>\n", LOCK_EX) ){

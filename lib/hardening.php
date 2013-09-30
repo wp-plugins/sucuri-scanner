@@ -161,10 +161,10 @@ function sucuriscan_harden_upload()
     if( isset($_POST['wpsucuri-doharden']) ){
         if( isset($_POST['sucuriscan_harden_upload']) && $cp == 0 )
         {
-            if(file_put_contents($htaccess_upload,
+            if(@file_put_contents($htaccess_upload,
                                  "\n<Files *.php>\ndeny from all\n</Files>")===FALSE)
             {
-                $upmsg = sucuriscan_harden_error("ERROR: Unable to create .htaccess file.");
+                $upmsg = sucuriscan_harden_error("ERROR: Unable to create <code>.htaccess</code> file, folder destination is not writable.");
             }
             else
             {
@@ -181,7 +181,7 @@ function sucuriscan_harden_upload()
                 $cp = 0;
                 if( preg_match('/<Files \*\.php>\ndeny from all\n<\/Files>/', $htaccess_content, $match) ){
                     $htaccess_content = str_replace("<Files *.php>\ndeny from all\n</Files>", '', $htaccess_content);
-                    file_put_contents($htaccess_upload, $htaccess_content, LOCK_EX);
+                    @file_put_contents($htaccess_upload, $htaccess_content, LOCK_EX);
                 }
                 sucuriscan_admin_notice('updated', '<strong>OK.</strong> WP-Content Uploads directory protection reverted.');
             }else{
@@ -229,10 +229,10 @@ function sucuriscan_harden_wpcontent()
     if( isset($_POST['wpsucuri-doharden']) ){
         if( isset($_POST['sucuriscan_harden_wpcontent']) && $cp == 0 )
         {
-            if(file_put_contents($htaccess_upload,
+            if(@file_put_contents($htaccess_upload,
                                  "\n<Files *.php>\ndeny from all\n</Files>")===FALSE)
             {
-                $upmsg = sucuriscan_harden_error("ERROR: Unable to create .htaccess file.");
+                $upmsg = sucuriscan_harden_error("ERROR: Unable to create <code>.htaccess</code> file, folder destination is not writable.");
             }
             else
             {
@@ -249,7 +249,7 @@ function sucuriscan_harden_wpcontent()
                 $cp = 0;
                 if( preg_match('/<Files \*\.php>\ndeny from all\n<\/Files>/', $htaccess_content, $match) ){
                     $htaccess_content = str_replace("<Files *.php>\ndeny from all\n</Files>", '', $htaccess_content);
-                    file_put_contents($htaccess_upload, $htaccess_content, LOCK_EX);
+                    @file_put_contents($htaccess_upload, $htaccess_content, LOCK_EX);
                 }
                 sucuriscan_admin_notice('updated', '<strong>OK.</strong> WP-Content directory protection reverted.');
             }else{
@@ -297,10 +297,10 @@ function sucuriscan_harden_wpincludes()
     if( isset($_POST['wpsucuri-doharden']) ){
         if( isset($_POST['sucuriscan_harden_wpincludes']) && $cp == 0 )
         {
-            if(file_put_contents($htaccess_upload,
+            if(@file_put_contents($htaccess_upload,
                                  "\n<Files *.php>\ndeny from all\n</Files>\n<Files wp-tinymce.php>\nallow from all\n</Files>\n")===FALSE)
             {
-                $upmsg = sucuriscan_harden_error("ERROR: Unable to create .htaccess file.");
+                $upmsg = sucuriscan_harden_error("ERROR: Unable to create <code>.htaccess</code> file, folder destination is not writable.");
             }
             else
             {
@@ -319,7 +319,7 @@ function sucuriscan_harden_wpincludes()
                     foreach($match[0] as $restriction){
                         $htaccess_content = str_replace($restriction, '', $htaccess_content);
                     }
-                    file_put_contents($htaccess_upload, $htaccess_content, LOCK_EX);
+                    @file_put_contents($htaccess_upload, $htaccess_content, LOCK_EX);
                 }
                 sucuriscan_admin_notice('updated', '<strong>OK.</strong> WP-Includes directory protection reverted.');
             }else{
