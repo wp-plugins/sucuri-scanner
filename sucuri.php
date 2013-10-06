@@ -575,7 +575,7 @@ function sucuriscan_posthack_page()
                             sucuriscan_admin_notice('error', '<strong>Error.</strong> Password change failed for users: '.implode(', ',$pwd_not_changed));
                         }
                     }else{
-                        sucuri_admin_notice('error', '<strong>Error.</strong> You did not select any user account to be reseted');
+                        sucuriscan_admin_notice('error', '<strong>Error.</strong> You did not select any user account to be reseted');
                     }
                 }else{
                     sucuriscan_admin_notice('error', '<strong>Error.</strong> You need to confirm that you understand the risk of this operation');
@@ -641,7 +641,7 @@ function sucuriscan_lastlogins_page()
     );
 
     if( !sucuriscan_lastlogins_datastore_is_writable() ){
-        sucuri_admin_notice('error', '<strong>Error.</strong> The last-logins datastore
+        sucuriscan_admin_notice('error', '<strong>Error.</strong> The last-logins datastore
             file is not writable, gives permissions to write in this location:<br>'.
             '<code>'.sucuri_lastlogins_datastore_filepath().'</code>');
     }
