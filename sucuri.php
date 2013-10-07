@@ -28,6 +28,23 @@ define('SUCURI_URL',plugin_dir_url( __FILE__ ));
 define('SUCURISCAN_PLUGIN_FOLDER', 'sucuri-scanner');
 define('SUCURISCAN_LASTLOGINS_USERSLIMIT', 100);
 
+if( !function_exists('sucuriscan_create_uploaddir') ){
+    function sucuriscan_create_uploaddir(){
+        $plugin_upload_folder = sucuriscan_dir_filepath();
+        if( !file_exists($plugin_upload_folder) ){
+            if( @mkdir($plugin_upload_folder) ){
+                sucuriscan_lastlogins_datastore_exists();
+            }else{
+                sucuriscan_admin_notice('error', "<strong>Error.</strong> Sucuri data folder doesn't
+                    exists and couldn't be created. You'll need to create this folder manually and
+                    give it write permissions:<br><code>{$plugin_upload_folder}</code>");
+            }
+        }
+    }
+
+    add_action('admin_init', 'sucuriscan_create_uploaddir');
+}
+
 /* Requires files. */
 add_action( 'admin_enqueue_scripts', 'sucuriscan_admin_script_style_registration', 1 );
 function sucuriscan_admin_script_style_registration() { ?>
@@ -643,7 +660,7 @@ function sucuriscan_lastlogins_page()
     if( !sucuriscan_lastlogins_datastore_is_writable() ){
         sucuriscan_admin_notice('error', '<strong>Error.</strong> The last-logins datastore
             file is not writable, gives permissions to write in this location:<br>'.
-            '<code>'.sucuri_lastlogins_datastore_filepath().'</code>');
+            '<code>'.sucuriscan_lastlogins_datastore_filepath().'</code>');
     }
 
     $limit = isset($_GET['limit']) ? intval($_GET['limit']) : SUCURISCAN_LASTLOGINS_USERSLIMIT;
