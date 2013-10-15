@@ -21,3 +21,5 @@
 .sucuri-inline-error{font-weight:bold;color:red}
 .sucuri-list li{list-style:disc;margin:0 0 5px 15px}
 .sucuriscan-maincontent hr{border:none;border-top:1px solid #999}
+.sucuriscan-maincontent table td > table{background:#fff}
+.sucuriscan-maincontent table td > table th{padding:4px 8px}

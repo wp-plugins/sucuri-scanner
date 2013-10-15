@@ -182,11 +182,18 @@ function sucuriwp_list_admins($userlevel = '10') {
             'AdminUsers.Email'=>$admin->user_email,
             'AdminUsers.LastLogins'=>''
         );
-        foreach($admin->lastlogins as $lastlogin){
-            $user_snippet['AdminUsers.LastLogins'] .= sucuriscan_get_template('integrity-admins-lastlogin.snippet.tpl', array(
-                'AdminUsers.RemoteAddr'=>$lastlogin->user_remoteaddr,
-                'AdminUsers.Datetime'=>$lastlogin->user_lastlogin
-            ));
+        if( !empty($admin->lastlogins) ){
+            $user_snippet['AdminUsers.NoLastLogins'] = 'hidden';
+            $user_snippet['AdminUsers.NoLastLoginsTable'] = 'visible';
+            foreach($admin->lastlogins as $lastlogin){
+                $user_snippet['AdminUsers.LastLogins'] .= sucuriscan_get_template('integrity-admins-lastlogin.snippet.tpl', array(
+                    'AdminUsers.RemoteAddr'=>$lastlogin->user_remoteaddr,
+                    'AdminUsers.Datetime'=>$lastlogin->user_lastlogin
+                ));
+            }
+        }else{
+            $user_snippet['AdminUsers.NoLastLogins'] = 'visible';
+            $user_snippet['AdminUsers.NoLastLoginsTable'] = 'hidden';
         }
 
         $template_variables['AdminUsers.UserList'] .= sucuriscan_get_template('integrity-admins.snippet.tpl', $user_snippet);
