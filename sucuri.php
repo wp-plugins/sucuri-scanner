@@ -157,12 +157,12 @@ function sucuriscan_print_scan()
                             echo '</h3>';
                             echo '<div class="inside">';
                                 if( !$malware_warns_exists ){
-                                    echo "<p><strong>Malware:</strong> No.</p>";
-                                    echo "<p><strong>Malicious javascript:</strong> No.</p>";
-                                    echo "<p><strong>Malicious iframes:</strong> No.</p>";
-                                    echo "<p><strong>Suspicious redirections (htaccess):</strong> No.</p>";
-                                    echo "<p><strong>Blackhat SEO Spam:</strong> No.</p>";
-                                    echo "<p><strong>Anomaly detection:</strong> Clean.</p>";
+                                    echo "<span><strong>Malware:</strong> No.</span><br>";
+                                    echo "<span><strong>Malicious javascript:</strong> No.</span><br>";
+                                    echo "<span><strong>Malicious iframes:</strong> No.</span><br>";
+                                    echo "<span><strong>Suspicious redirections (htaccess):</strong> No.</span><br>";
+                                    echo "<span><strong>Blackhat SEO Spam:</strong> No.</span><br>";
+                                    echo "<span><strong>Anomaly detection:</strong> Clean.</span><br>";
                                 }else{
                                     foreach($res['MALWARE']['WARN'] as $malres)
                                     {
@@ -205,18 +205,16 @@ function sucuriscan_print_scan()
                                 }
                             echo '</h3>';
                             echo '<div class="inside">';
-                                if(isset($res['BLACKLIST']['INFO']))
-                                {
-                                    foreach($res['BLACKLIST']['INFO'] as $blres)
-                                    {
-                                        echo "<b>CLEAN: </b>".htmlspecialchars($blres[0])." <a href=''>".htmlspecialchars($blres[1])."</a><br />";
-                                    }
-                                }
-                                if(isset($res['BLACKLIST']['WARN']))
-                                {
-                                    foreach($res['BLACKLIST']['WARN'] as $blres)
-                                    {
-                                        echo "<b>WARN: </b>".htmlspecialchars($blres[0])." <a href=''>".htmlspecialchars($blres[1])."</a><br />";
+                                foreach(array(
+                                    'INFO'=>'CLEAN',
+                                    'WARN'=>'WARNING'
+                                ) as $type=>$group_title){
+                                    if( isset($res['BLACKLIST'][$type]) ){
+                                        foreach($res['BLACKLIST'][$type] as $blres){
+                                            $report_site = htmlspecialchars($blres[0]);
+                                            $report_url = htmlspecialchars($blres[1]);
+                                            echo "<b>{$group_title}: </b>{$report_site} <a href='{$report_url}' target='_blank'>{$report_url}</a><br />";
+                                        }
                                     }
                                 }
                             echo '</div>';
@@ -226,10 +224,16 @@ function sucuriscan_print_scan()
 
                     // Check for general versions in some common services/software used to serve this website.
                     global $wp_version;
+                    $wordpress_updated = FALSE;
+                    $updates = function_exists('get_core_updates') ? get_core_updates() : array();
+                    if( !is_array($updates) || empty($updates) || $updates[0]->response=='latest' ){
+                        $wordpress_updated = TRUE;
+                    }
+
                     echo '<div id="poststuff">';
                         echo '<div class="postbox">';
                             echo '<h3>';
-                                if(strcmp($wp_version, "3.5") >= 0)
+                                if($wordpress_updated)
                                 {
                                     echo '<img style="position:relative;top:5px" height="22" width="22" src="
                                         '.site_url().'/wp-content/plugins/sucuri-scanner/images/ok.png" /> &nbsp;
