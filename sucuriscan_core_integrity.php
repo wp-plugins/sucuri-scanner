@@ -12,14 +12,14 @@ if(!defined('SUCURISCAN'))
 
 /* Sucuri WordPress Integrity page. */
 
-function sucuriscan_core_integrity_function_wrapper($function_name, $description)
+function sucuriscan_core_integrity_function_wrapper($function_name, $stitle, $description)
 {
     echo '<div class="postbox">';
         echo '<div class="inside">';
         echo '<form action="" method="post">'.
                 '<input type="hidden" name="'.$function_name.'nonce" value="'.wp_create_nonce($function_name.'nonce').'" />'.
                 '<input type="hidden" name="'.$function_name.'" value="'.$function_name.'" />'.
-
+                '<h4>'.$stitle.'</h4>'.
                 '<p>'.$description.'</p>'.
                 '<input class="button-primary" type="submit" name="'.$function_name.'" value="Check">'.
             '</form>';
@@ -38,7 +38,7 @@ function sucuriscan_core_integrity_wp_content_wrapper()
         echo '<form action="" method="post">'.
                 '<input type="hidden" name="sucuriwp_content_checknonce" value="'.wp_create_nonce('sucuriwp_content_checknonce').'" />'.
                 '<input type="hidden" name="sucuriwp_content_check" value="sucuriwp_content_check" />'.
-
+                '<h4>Latest modified files</h4>'.
                 '<p>This test will list all files inside wp-content that have been modified in the past
 
                 <select name="sucuriwp_content_check_back">
@@ -88,6 +88,7 @@ function sucuriscan_core_integrity_lib()
 
                 sucuriscan_core_integrity_function_wrapper(
                     'sucuriwp_core_integrity_check', 
+                    'Verify Integrity of WordPress Core Files',
                     'This test will check wp-includes, wp-admin, and the top directory files against the latest WordPress hashing database. If any of those files were modified, it is a big sign of a possible compromise.'
                     );
 
@@ -95,14 +96,17 @@ function sucuriscan_core_integrity_lib()
 
                 sucuriscan_core_integrity_function_wrapper(
                     'sucuriwp_list_admins', 
+                    'Admin User Dump',
                     'List all administrator users and their latest login time.'
                     );
                 sucuriscan_core_integrity_function_wrapper(
                     'sucuriwp_check_plugins', 
+                    'Outdated Plugin list',
                     'This test will list any outdated (active) plugins.'
                     );
                 sucuriscan_core_integrity_function_wrapper(
                     'sucuriwp_check_themes', 
+                    'Outdated Theme List',
                     'This test will list any outdated theme.'
                     );
             ?>
