@@ -136,6 +136,8 @@ function sucuriscan_print_scan()
                             echo '</div>';
                         echo '</div>';
                     echo '</div>';
+                }else if( preg_match('/^ERROR:/', $myresults['body']) ){
+                    sucuriscan_admin_notice('error', $myresults['body'].' The URL scanned was: <code>'.$website_scanned.'</code>');
                 }else{
                     $res = unserialize($myresults['body']);
 
