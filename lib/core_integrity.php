@@ -198,25 +198,6 @@ function sucuriwp_list_admins($userlevel = '10') {
     echo sucuriscan_get_template('integrity-admins.html.tpl', $template_variables);
 }
 
-function sucuriwp_content_check()
-{
-    $wp_content_hashes = read_dir_r( ABSPATH . "wp-content", true);
-    $days = htmlspecialchars(trim((int)$_POST['sucuriwp_content_check_back']));
-    $back_days = current_time( 'timestamp' ) - ( $days * 86400);
-
-    echo '<div class="postbox">';
-        echo "<h3>wp_content latest modified files</h3>";
-        echo '<div class="inside">';
-                foreach ( $wp_content_hashes as $key => $value) {
-                    if ($value['time'] >= $back_days ){
-                        $date =  date('d-m-Y H:i:s', $value['time']);
-                        echo "<p>$key : $date </p>";
-                    }
-                }
-        echo '</div>';
-    echo '</div>';
-}
-
 function sucuriwp_check_plugins()
 {
     do_action("wp_update_plugins"); // force WP to check plugins for updates

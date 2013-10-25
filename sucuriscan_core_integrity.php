@@ -33,32 +33,60 @@ function sucuriscan_core_integrity_function_wrapper($function_name, $stitle, $de
     }
 }
 
-function sucuriscan_core_integrity_wp_content_wrapper()
-{
-    echo '<div class="postbox">';
-        echo '<div class="inside">';
-        echo '<form action="" method="post">'.
-                '<input type="hidden" name="sucuriwp_content_checknonce" value="'.wp_create_nonce('sucuriwp_content_checknonce').'" />'.
-                '<input type="hidden" name="sucuriwp_content_check" value="sucuriwp_content_check" />'.
-                '<h4>Latest modified files</h4>'.
-                '<p>This test will list all files inside wp-content that have been modified in the past
+function sucuriscan_core_integrity_wp_content_wrapper(){ ?>
+    <div class="postbox">
+        <h3>Latest modified files</h3>
+        <div class="inside">
+            <form method="post">
+                <input type="hidden" name="sucuriwp_content_checknonce" value="<?php echo wp_create_nonce('sucuriwp_content_checknonce'); ?>" />
+                <input type="hidden" name="sucuriwp_content_check" value="sucuriwp_content_check" />
+                <p>
+                    This test will list all files inside wp-content that have been modified in the past
+                    <select name="sucuriwp_content_check_back">
+                        <?php foreach(array( 1,3,7,30 ) as $days): ?>
+                            <?php $selected = $_POST['sucuriwp_content_check_back']==$days ? 'selected="selected"' : ''; ?>
+                            <option value="<?php echo $days; ?>" <?php echo $selected; ?>><?php echo $days; ?></option>
+                        <?php endforeach; ?>
+                    </select> days. (select the number of days first)
+                </p>
+                <input class="button-primary" type="submit" name="sucuriwp_content_check" value="Check">
+            </form>
 
-                <select name="sucuriwp_content_check_back">
-                  <option value="1">1</option>
-                  <option value="3">3</option>
-                  <option value="7">7</option>
-                  <option value="30">30</option>
-                </select> days. (select the number of days first)</p>'.
+            <?php if (
+                isset($_POST['sucuriwp_content_checknonce'])
+                // && wp_verify_nonce($_POST['sucuriwp_content_checknonce'], 'sucuriwp_content_checknonce')
+                && isset($_POST['sucuriwp_content_check'])
+            ): ?>
+                <br />
+                <table class="wp-list-table widefat sucuriscan-lastmodified">
+                    <thead>
+                        <tr>
+                            <th colspan="2">wp_content latest modified files</th>
+                        </tr>
+                        <tr>
+                            <th class="manage-column">Filepath</th>
+                            <th class="manage-column">Modification date/time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        $wp_content_hashes = read_dir_r(ABSPATH.'wp-content', true);
+                        $days = htmlspecialchars(trim((int)$_POST['sucuriwp_content_check_back']));
+                        $back_days = current_time( 'timestamp' ) - ( $days * 86400);
 
-                '<input class="button-primary" type="submit" name="sucuriwp_content_check" value="Check">'.
-            '</form>';
-        echo '</div>';
-    echo '</div>';
-
-    if (isset($_POST['sucuriwp_content_checknonce']) && isset($_POST['sucuriwp_content_check'])) {
-        sucuriwp_content_check();
-    }
-}
+                        foreach ( $wp_content_hashes as $key => $value) {
+                            if ($value['time'] >= $back_days ){
+                                $date =  date('d-m-Y H:i:s', $value['time']);
+                                printf('<tr><td>%s</td><td>%s</td></tr>', $key, $date);
+                            }
+                        }
+                        ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
+        </div>
+    </div>
+<?php }
 
 function sucuriscan_core_integrity_lib()
 {
