@@ -361,12 +361,7 @@ function sucuriscan_harden_phpversion()
 }
 
 function sucuriscan_cloudproxy_enabled(){
-    $enabled = FALSE;
-
-    if(
-        isset($_SERVER['SUCURIREAL_REMOTE_ADDR'])
-        || preg_match('/cloudproxy.*\.sucuri\.net/', gethostbyaddr(gethostbyname($_SERVER['HTTP_HOST'])))
-    ){ $enabled = TRUE; }
+    $enabled = sucuriscan_is_behind_cloudproxy();
 
     sucuriscan_wrapper_open('Verify if your site is protected by a Web Firewall');
     sucuriscan_harden_status(

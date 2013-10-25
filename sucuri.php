@@ -647,6 +647,21 @@ function sucuriscan_get_remoteaddr()
     return $remote_addr;
 }
 
+function sucuriscan_is_behind_cloudproxy(){
+    $http_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '127.0.0.1';
+    if( preg_match('/^(.*):.*/', $http_host, $match) ){ $http_host = $match[1]; }
+    $host = gethostbyaddr(gethostbyname($http_host));
+
+    if(
+        isset($_SERVER['SUCURIREAL_REMOTE_ADDR'])
+        || preg_match('/cloudproxy.*\.sucuri\.net/', $host)
+    ){
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
 function sucuriscan_lastlogins_page()
 {
     if( !current_user_can('manage_options') )
