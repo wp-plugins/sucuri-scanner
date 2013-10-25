@@ -8,18 +8,6 @@ if(!defined('SUCURISCAN'))
     return(0);
 }
 
-function sucuriscan_core_integrity_wrapper($content, $msg)
-{
-    echo '<div class="postbox">';
-        echo '<h3>'.$msg.'</h3>';
-        echo '<div class="inside">';
-                foreach ($content as $key => $value) {
-                    echo "<p>$key</p>";
-                }
-        echo '</div>';
-    echo '</div>';
-}
-
 function read_dir_r($dir = "./", $recursiv = false)
 {
     $skipname  = basename(__FILE__);
@@ -135,19 +123,36 @@ function sucuriwp_core_integrity_check()
                 unset($modified['./wp-config-sample.php']);
             }
 
-            //get count of changes
-            $addcount = sizeof( $added );
-            $removecount = sizeof( $removed );
-            $changecount = sizeof( $modified );
-
-            sucuriscan_core_integrity_wrapper($added, "Core File Added: $addcount");
-            sucuriscan_core_integrity_wrapper($removed, "Core File Removed: $removecount");
-            sucuriscan_core_integrity_wrapper($modified, "Core File Modified: $changecount");
+            sucuriscan_draw_corefiles_status(array(
+                'added'=>$added,
+                'removed'=>$removed,
+                'modified'=>$modified
+            ));
         }else{
             sucuriscan_admin_notice('error', 'Error retrieving the wordpress core hashes, try again.');
         }
     }
 }
+
+function sucuriscan_draw_corefiles_status($list=array()){
+    if( is_array($list) && !empty($list) ): ?>
+        <table class="wp-list-table widefat sucuriscan-corefiles">
+            <thead>
+                <tr><th>Core files altered</th></tr>
+            </thead>
+            <tbody>
+                <?php
+                foreach($list as $core_file_type=>$core_file_list){
+                    printf('<tr><th>Core File %s: %d</th></tr>', ucwords($core_file_type), sizeof($core_file_list));
+                    foreach($core_file_list as $filepath=>$extrainfo){
+                        printf('<tr><td>%s</td></tr>', $filepath);
+                    }
+                }
+                ?>
+            </tbody>
+        </table>
+    <?php endif; ?>
+<?php }
 
 function sucuriwp_list_admins($userlevel = '10') {
 

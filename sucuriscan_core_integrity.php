@@ -12,26 +12,27 @@ if(!defined('SUCURISCAN'))
 
 /* Sucuri WordPress Integrity page. */
 
-function sucuriscan_core_integrity_function_wrapper($function_name, $stitle, $description)
-{
-    echo '<div class="postbox">';
-        echo '<div class="inside">';
-        echo '<form action="" method="post">'.
-                '<input type="hidden" name="'.$function_name.'nonce" value="'.wp_create_nonce($function_name.'nonce').'" />'.
-                '<input type="hidden" name="'.$function_name.'" value="'.$function_name.'" />'.
-                '<h4>'.$stitle.'</h4>'.
-                '<p>'.$description.'</p>'.
-                '<input class="button-primary" type="submit" name="'.$function_name.'" value="Check">'.
-            '</form>';
-        echo '</div>';
-    echo '</div>';
-
-    if (isset($_POST[$function_name.'nonce']) && isset($_POST[$function_name])) {
-        if( function_exists($function_name) ){
-            $function_name();
-        }
-    }
-}
+function sucuriscan_core_integrity_function_wrapper($function_name, $stitle, $description){ ?>
+    <div class="postbox">
+        <div class="inside">
+            <form method="post">
+                <input type="hidden" name="<?php echo $function_name; ?>nonce" value="<?php echo wp_create_nonce($function_name.'nonce'); ?>" />
+                <input type="hidden" name="<?php echo $function_name; ?>" value="1" />
+                <h4><?php echo $stitle; ?></h4>
+                <p><?php echo $description; ?></p>
+                <input class="button-primary" type="submit" name="<?php echo $function_name; ?>" value="Check" />
+            </form>
+            <br />
+            <?php
+            if (isset($_POST[$function_name.'nonce']) && isset($_POST[$function_name])) {
+                if( function_exists($function_name) ){
+                    $function_name();
+                }
+            }
+            ?>
+        </div>
+    </div>
+<?php }
 
 function sucuriscan_core_integrity_wp_content_wrapper(){ ?>
     <div class="postbox">
