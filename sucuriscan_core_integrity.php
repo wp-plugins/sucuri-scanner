@@ -27,7 +27,9 @@ function sucuriscan_core_integrity_function_wrapper($function_name, $stitle, $de
     echo '</div>';
 
     if (isset($_POST[$function_name.'nonce']) && isset($_POST[$function_name])) {
-        $function_name();
+        if( function_exists($function_name) ){
+            $function_name();
+        }
     }
 }
 
@@ -87,7 +89,7 @@ function sucuriscan_core_integrity_lib()
             <?php
 
                 sucuriscan_core_integrity_function_wrapper(
-                    'sucuriwp_core_integrity_check', 
+                    'sucuriwp_core_integrity_check',
                     'Verify Integrity of WordPress Core Files',
                     'This test will check wp-includes, wp-admin, and the top directory files against the latest WordPress hashing database. If any of those files were modified, it is a big sign of a possible compromise.'
                     );
@@ -95,17 +97,17 @@ function sucuriscan_core_integrity_lib()
                 sucuriscan_core_integrity_wp_content_wrapper();
 
                 sucuriscan_core_integrity_function_wrapper(
-                    'sucuriwp_list_admins', 
+                    'sucuriwp_list_admins',
                     'Admin User Dump',
                     'List all administrator users and their latest login time.'
                     );
                 sucuriscan_core_integrity_function_wrapper(
-                    'sucuriwp_check_plugins', 
+                    'sucuriwp_check_plugins',
                     'Outdated Plugin list',
                     'This test will list any outdated (active) plugins.'
                     );
                 sucuriscan_core_integrity_function_wrapper(
-                    'sucuriwp_check_themes', 
+                    'sucuriwp_check_themes',
                     'Outdated Theme List',
                     'This test will list any outdated theme.'
                     );

@@ -70,16 +70,7 @@ function sucuriwp_core_integrity_check()
 
     $cp = 0;
     $updates = get_core_updates();
-    if (!is_array($updates))
-    {
-        $cp = 1;
-    }
-    else if(empty($updates))
-    {
-        $cp = 1;
-    }
-    else if($updates[0]->response == 'latest')
-    {
+    if( !is_array($updates) || empty($updates) || $updates[0]->response=='latest' ){
         $cp = 1;
     }
     if(strcmp($wp_version, "3.4.2") < 0)
@@ -90,66 +81,71 @@ function sucuriwp_core_integrity_check()
 
     if($cp == 0)
     {
-        echo '<p><img style="position:relative;top:5px" height="22" width="22"'.
-             'src="'.SUCURI_URL.'images/warn.png" /> &nbsp; Your current version ('.$wp_version.') is not the latest. <a class="button-primary" href="update-core.php">Update now!</a> to be able to run the integrity check.</p>';
+        echo '<p><img style="position:relative;top:5px" height="22" width="22" '
+             .'src="'.SUCURI_URL.'images/warn.png" /> &nbsp; Your current version ('.$wp_version.') is not the latest. '
+             .'<a class="button-primary" href="update-core.php">Update now!</a> to be able to run the integrity check.</p>';
     }
     else
     {
+        $latest_hashes = @file_get_contents("http://wordpress.sucuri.net/wp_core_latest_hashes.json");
+        if($latest_hashes){
+            $wp_core_latest_hashes = json_decode($latest_hashes, true);
 
-        $wp_core_latest_hashes = json_decode(file_get_contents("http://wordpress.sucuri.net/wp_core_latest_hashes.json"), true);
+            $wp_includes_hashes = read_dir_r( ABSPATH . "wp-includes", true);
+            $wp_admin_hashes = read_dir_r( ABSPATH . "wp-admin", true);
+            $wp_top_hashes = read_dir_r( ABSPATH , false);
 
-        $wp_includes_hashes = read_dir_r( ABSPATH . "wp-includes", true);
-        $wp_admin_hashes = read_dir_r( ABSPATH . "wp-admin", true);
-        $wp_top_hashes = read_dir_r( ABSPATH , false);
+            $wp_core_hashes = array_merge( $wp_includes_hashes , $wp_admin_hashes );
+            $wp_core_hashes = array_merge( $wp_core_hashes , $wp_top_hashes );
 
-        $wp_core_hashes = array_merge( $wp_includes_hashes , $wp_admin_hashes );
-        $wp_core_hashes = array_merge( $wp_core_hashes , $wp_top_hashes );
+            $added = @array_diff_assoc( $wp_core_hashes, $wp_core_latest_hashes ); //files added
+            $removed = @array_diff_assoc( $wp_core_latest_hashes, $wp_core_hashes ); //files deleted
+            unset($removed['wp_version']); //ignore wp_version key
+            $compcurrent = @array_diff_key( $wp_core_hashes, $added ); //remove all added files from current filelist
+            $complog = @array_diff_key( $wp_core_latest_hashes, $removed );  //remove all deleted files from old file list
+            $modified = array(); //array of modified files
 
-        $added = @array_diff_assoc( $wp_core_hashes, $wp_core_latest_hashes ); //files added
-        $removed = @array_diff_assoc( $wp_core_latest_hashes, $wp_core_hashes ); //files deleted
-        unset($removed['wp_version']); //ignore wp_version key
-        $compcurrent = @array_diff_key( $wp_core_hashes, $added ); //remove all added files from current filelist
-        $complog = @array_diff_key( $wp_core_latest_hashes, $removed );  //remove all deleted files from old file list
-        $modified = array(); //array of modified files
+            //compare file hashes and mod dates
+            foreach ( $compcurrent as $currfile => $currattr) {
 
-        //compare file hashes and mod dates
-        foreach ( $compcurrent as $currfile => $currattr) {
+                if ( array_key_exists( $currfile, $complog ) ) {
 
-            if ( array_key_exists( $currfile, $complog ) ) {
+                    //if attributes differ added to modified files array
+                    if ( strcmp( $currattr['md5'], $complog[$currfile]['md5'] ) != 0 ) {
+                        $modified[$currfile]['md5'] = $currattr['md5'];
+                    }
 
-                //if attributes differ added to modified files array
-                if ( strcmp( $currattr['md5'], $complog[$currfile]['md5'] ) != 0 ) {
-                    $modified[$currfile]['md5'] = $currattr['md5'];
                 }
 
             }
 
+            //ignore some junk files
+            if($curlang != "en_US")
+            {
+                //ignore added files
+                unset($added['./licencia.txt']);
+
+                //ignore removed files
+                unset($removed['./license.txt']);
+
+                //ignore modified files
+                unset($modified['./wp-includes/version.php']);
+                unset($modified['./wp-admin/setup-config.php']);
+                unset($modified['./readme.html']);
+                unset($modified['./wp-config-sample.php']);
+            }
+
+            //get count of changes
+            $addcount = sizeof( $added );
+            $removecount = sizeof( $removed );
+            $changecount = sizeof( $modified );
+
+            sucuriscan_core_integrity_wrapper($added, "Core File Added: $addcount");
+            sucuriscan_core_integrity_wrapper($removed, "Core File Removed: $removecount");
+            sucuriscan_core_integrity_wrapper($modified, "Core File Modified: $changecount");
+        }else{
+            sucuriscan_admin_notice('error', 'Error retrieving the wordpress core hashes, try again.');
         }
-
-        //ignore some junk files
-        if($curlang != "en_US")
-        {
-            //ignore added files
-            unset($added['./licencia.txt']);
-
-            //ignore removed files
-            unset($removed['./license.txt']);
-
-            //ignore modified files
-            unset($modified['./wp-includes/version.php']);
-            unset($modified['./wp-admin/setup-config.php']);
-            unset($modified['./readme.html']);
-            unset($modified['./wp-config-sample.php']);
-        }
-
-        //get count of changes
-        $addcount = sizeof( $added );
-        $removecount = sizeof( $removed );
-        $changecount = sizeof( $modified );
-
-        sucuriscan_core_integrity_wrapper($added, "Core File Added: $addcount");
-        sucuriscan_core_integrity_wrapper($removed, "Core File Removed: $removecount");
-        sucuriscan_core_integrity_wrapper($modified, "Core File Modified: $changecount");
     }
 }
 
