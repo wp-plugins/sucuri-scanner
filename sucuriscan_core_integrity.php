@@ -45,7 +45,9 @@ function sucuriscan_core_integrity_wp_content_wrapper(){ ?>
                     This test will list all files inside wp-content that have been modified in the past
                     <select name="sucuriwp_content_check_back">
                         <?php foreach(array( 1,3,7,30 ) as $days): ?>
-                            <?php $selected = $_POST['sucuriwp_content_check_back']==$days ? 'selected="selected"' : ''; ?>
+                            <?php $selected =
+                                ( isset($_POST['sucuriwp_content_check_back']) && $_POST['sucuriwp_content_check_back']==$days )
+                                ? 'selected="selected"' : ''; ?>
                             <option value="<?php echo $days; ?>" <?php echo $selected; ?>><?php echo $days; ?></option>
                         <?php endforeach; ?>
                     </select> days. (select the number of days first)
