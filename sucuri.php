@@ -6,8 +6,8 @@ Description: The <a href="http://sucuri.net">Sucuri Security</a> - SiteCheck Mal
 
 You can also scan your site at <a href="http://sitecheck.sucuri.net">SiteCheck.Sucuri.net</a>.
 
-Author: Sucuri Security
-Version: 1.5.0
+Author: Sucuri, INC
+Version: 1.5.1
 Author URI: http://sucuri.net
 */
 
@@ -23,7 +23,7 @@ if(!function_exists('add_action'))
 @ignore_user_abort(TRUE);
 
 define('SUCURISCAN','sucuriscan');
-define('SUCURISCAN_VERSION','1.5.0');
+define('SUCURISCAN_VERSION','1.5.1');
 define('SUCURI_URL',plugin_dir_url( __FILE__ ));
 define('SUCURISCAN_PLUGIN_FOLDER', 'sucuri-scanner');
 define('SUCURISCAN_LASTLOGINS_USERSLIMIT', 100);
@@ -545,7 +545,7 @@ function sucuriscan_posthack_page()
     if( isset($_POST['sucuri_posthack_action']) ){
         if( !wp_verify_nonce($_POST['sucuri_posthack_nonce'], 'sucuri_posthack_nonce') )
         {
-            wp_die(__('Wordpress Nonce verification failed, try again going back and checking the form.') );
+            wp_die(__('WordPress Nonce verification failed, try again going back and checking the form.') );
         }
 
         switch($_POST['sucuri_posthack_action']){

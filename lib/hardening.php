@@ -93,7 +93,7 @@ function sucuriscan_harden_version()
     {
         $cp = 1;
     }
-    if(strcmp($wp_version, "3.4.2") < 0)
+    if(strcmp($wp_version, "3.7") < 0)
     {
         $cp = 0;
     }

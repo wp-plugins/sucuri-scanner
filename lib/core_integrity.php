@@ -61,7 +61,7 @@ function sucuriwp_core_integrity_check()
     if( !is_array($updates) || empty($updates) || $updates[0]->response=='latest' ){
         $cp = 1;
     }
-    if(strcmp($wp_version, "3.4.2") < 0)
+    if(strcmp($wp_version, "3.7") < 0)
     {
         $cp = 0;
     }
