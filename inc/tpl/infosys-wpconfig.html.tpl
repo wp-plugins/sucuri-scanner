@@ -18,5 +18,5 @@
 </table>
 
 <div id="sucuri-wpconfig-content" style="display:none">
-    <textarea class="sucuri-full-textarea sucuri-wpconfig-textarea monospace">%%SUCURI.WordpressConfig.Content%%</textarea>
+    <textarea class="sucuri-full-textarea sucuriscan-wpconfig-textarea sucuriscan-monospace">%%SUCURI.WordpressConfig.Content%%</textarea>
 </div>

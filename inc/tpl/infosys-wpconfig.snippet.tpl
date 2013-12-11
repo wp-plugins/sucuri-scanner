@@ -1,4 +1,4 @@
 <tr>
-    <td class="monospace"><strong>%%SUCURI.WordpressConfig.VariableName%%</strong></td>
-    <td class="monospace">%%SUCURI.WordpressConfig.VariableValue%%</td>
+    <td class="sucuriscan-monospace"><strong>%%SUCURI.WordpressConfig.VariableName%%</strong></td>
+    <td class="sucuriscan-monospace">%%SUCURI.WordpressConfig.VariableValue%%</td>
 </tr>
