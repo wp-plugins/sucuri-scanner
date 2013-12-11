@@ -1,7 +1,9 @@
 <div class="wrap">
     <h2 id="warnings_hook"></h2>
     <div class="sucuriscan_header">
-        <img src="%%SUCURI.PluginURL%%/inc/images/logo.png">
+        <a href="http://sucuri.net/signup" target="_blank" title="Sucuri Security">
+            <img src="%%SUCURI.PluginURL%%/inc/images/logo.png" alt="Sucuri Security" />
+        </a>
         <h2>Sucuri SiteCheck Malware Scanner</h2>
         <br class="clear"/>
     </div>

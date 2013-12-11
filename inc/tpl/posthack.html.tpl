@@ -1,6 +1,9 @@
 <div class="wrap">
     <h2 id="warnings_hook"></h2>
-    <div class="sucuriscan_header"><img src="%%SUCURI.SucuriURL%%/inc/images/logo.png">
+    <div class="sucuriscan_header">
+        <a href="http://sucuri.net/signup" target="_blank" title="Sucuri Security">
+            <img src="%%SUCURI.SucuriURL%%/inc/images/logo.png" alt="Sucuri Security" />
+        </a>
         <h2>Sucuri Security WordPress Plugin</h2>
     </div>
 

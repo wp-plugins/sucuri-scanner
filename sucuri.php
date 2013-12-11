@@ -121,7 +121,10 @@ function sucuriscan_print_scan()
 
     echo '<div class="wrap">';
         echo '<h2 id="warnings_hook"></h2>';
-        echo '<div class="sucuriscan_header"><img src="'.SUCURI_URL.'/inc/images/logo.png">';
+        echo '<div class="sucuriscan_header">';
+        echo '<a href="http://sucuri.net/signup" target="_blank" title="Sucuri Security">';
+        echo '<img src="'.SUCURI_URL.'/inc/images/logo.png" alt="Sucuri Security" />';
+        echo '</a>';
         sucuriscan_pagestop("Sucuri SiteCheck Malware Scanner");
         echo '</div>';
 
@@ -310,7 +313,10 @@ function sucuriscan_hardening_page()
 
     echo '<div class="wrap">';
     echo '<h2 id="warnings_hook"></h2>';
-    echo '<div class="sucuriscan_header"><img src="'.SUCURI_URL.'/inc/images/logo.png">';
+    echo '<div class="sucuriscan_header">';
+    echo '<a href="http://sucuri.net/signup" target="_blank" title="Sucuri Security">';
+    echo '<img src="'.SUCURI_URL.'/inc/images/logo.png" alt="Sucuri Security" />';
+    echo '</a>';
     sucuriscan_pagestop("Sucuri 1-Click Hardening Options");
     echo '</div>';
 
@@ -345,7 +351,10 @@ function sucuriscan_core_integrity_page()
 
     echo '<div class="wrap">';
     echo '<h2 id="warnings_hook"></h2>';
-    echo '<div class="sucuriscan_header"><img src="'.SUCURI_URL.'/inc/images/logo.png">';
+    echo '<div class="sucuriscan_header">';
+    echo '<a href="http://sucuri.net/signup" target="_blank" title="Sucuri Security">';
+    echo '<img src="'.SUCURI_URL.'/inc/images/logo.png" alt="Sucuri Security" />';
+    echo '</a>';
     sucuriscan_pagestop("Sucuri WordPress Integrity");
     echo '</div>';
 
@@ -882,7 +891,7 @@ function sucuriscan_infosys_page(){
 
     // Page pseudo-variables initialization.
     $template_variables = array(
-        'SucuriURL'=>SUCURI_PLUGIN_URL,
+        'SucuriURL'=>SUCURI_URL,
         'SucuriWPSidebar'=>sucuriscan_wp_sidebar_gen(),
         'CurrentURL'=>site_url().'/wp-admin/admin.php?page='.$_GET['page']
     );
