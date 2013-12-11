@@ -87,6 +87,9 @@ function sucuriscan_menu()
 
     add_submenu_page('sucuriscan', 'Last Logins', 'Last Logins', 'manage_options',
                      'sucuriscan_lastlogins', 'sucuriscan_lastlogins_page');
+
+    add_submenu_page('sucuriscan', 'Info System', 'Info System', 'manage_options',
+                     'sucuriscan_infosys', 'sucuriscan_infosys_page');
 }
 
 /* Sucuri malware scan page. */
@@ -662,6 +665,12 @@ function sucuriscan_is_behind_cloudproxy(){
     return FALSE;
 }
 
+
+/**
+ * Sucuri Scanner - Last Logins
+ * @return Functions associated to the Last Logins page.
+ */
+
 function sucuriscan_lastlogins_page()
 {
     if( !current_user_can('manage_options') )
@@ -832,3 +841,338 @@ if( !function_exists('sucuri_get_user_lastlogin') ){
     }
     add_action('admin_notices', 'sucuriscan_get_user_lastlogin');
 }
+
+
+/**
+ * Sucuri Scanner - Info System
+ * @return Functions associated to the Info System page.
+ */
+
+function sucuriscan_is_multisite(){
+    if( function_exists('is_multisite') && is_multisite() ){ return TRUE; }
+    return FALSE;
+}
+
+
+function sucuriscan_get_wpconfig_path(){
+    $wp_config_path = ABSPATH.'wp-config.php';
+
+    // if wp-config.php doesn't exist/not readable check one directory up
+    if( !is_readable($wp_config_path)){
+        $wp_config_path = ABSPATH.'/../wp-config.php';
+    }
+    return $wp_config_path;
+}
+
+
+function sucuriscan_get_htaccess_path(){
+    $htaccess_path = ABSPATH.'.htaccess';
+    if( file_exists($htaccess_path) ){
+        return $htaccess_path;
+    }
+    return FALSE;
+}
+
+
+function sucuriscan_infosys_page(){
+    if( !current_user_can('manage_options') )
+    {
+        wp_die(__('You do not have sufficient permissions to access this page: Sucuri Last-Logins') );
+    }
+
+    // Page pseudo-variables initialization.
+    $template_variables = array(
+        'SucuriURL'=>SUCURI_PLUGIN_URL,
+        'SucuriWPSidebar'=>sucuriscan_wp_sidebar_gen(),
+        'CurrentURL'=>site_url().'/wp-admin/admin.php?page='.$_GET['page']
+    );
+
+    $template_variables['LoggedInUsers'] = sucuriscan_infosys_loggedin();
+    $template_variables['HTAccessIntegrity'] = sucuriscan_infosys_htaccess();
+    $template_variables['WordpressConfig'] = sucuriscan_infosys_wpconfig();
+
+    echo sucuriscan_get_template('infosys.html.tpl', $template_variables);
+}
+
+
+function sucuriscan_infosys_htaccess(){
+    $htaccess_path = sucuriscan_get_htaccess_path();
+    $template_variables = array(
+        'HTAccess.Content' => '',
+        'HTAccess.Message' => '',
+        'HTAccess.MessageType' => '',
+        'HTAccess.MessageVisible' => 'hidden',
+        'HTAccess.TextareaVisible' => 'hidden',
+    );
+
+    if( $htaccess_path ){
+        $htaccess_rules = file_get_contents($htaccess_path);
+        $template_variables['HTAccess.TextareaVisible'] = 'visible';
+        $template_variables['HTAccess.Content'] = $htaccess_rules;
+
+        if( sucuriscan_htaccess_is_standard($htaccess_rules) ){
+            $template_variables['HTAccess.Message'] = '
+                The main <code>.htaccess</code> file in your site has the standard rules for a WordPress installation. You can customize it to improve the
+                performance and change the behaviour of the redirections for pages and posts in your site. To get more information visit the official documentation at
+                <a href="http://codex.wordpress.org/Using_Permalinks#Creating_and_editing_.28.htaccess.29" target="_blank">Codex WordPrexx - Creating and editing (.htaccess)</a>';
+            $template_variables['HTAccess.MessageType'] = 'updated';
+            $template_variables['HTAccess.MessageVisible'] = 'visible';
+        }
+
+    }else{
+        $template_variables['HTAccess.Message'] = 'Your website does not contains a <code>.htaccess</code> file or it was not found in the default location.';
+        $template_variables['HTAccess.MessageType'] = 'error';
+        $template_variables['HTAccess.MessageVisible'] = 'visible';
+    }
+
+    return sucuriscan_get_template('infosys-htaccess.html.tpl', $template_variables);
+}
+
+
+function sucuriscan_htaccess_is_standard($rules=FALSE){
+    if( $rules===FALSE ){
+        $htaccess_path = sucuriscan_get_htaccess_path();
+        $rules = $htaccess_path ? file_get_contents($htaccess_path) : '';
+    }
+
+    if( !empty($rules) ){
+        $standard_lines = array(
+            '# BEGIN WordPress',
+            '<IfModule mod_rewrite\.c>',
+            'RewriteEngine On',
+            'RewriteBase \/',
+            'RewriteRule .index.\.php. - \[L\]',
+            'RewriteCond %\{REQUEST_FILENAME\} \!-f',
+            'RewriteCond %\{REQUEST_FILENAME\} \!-d',
+            'RewriteRule \. \/index\.php \[L\]',
+            '<\/IfModule>',
+            '# END WordPress',
+        );
+        $pattern  = '';
+        $standard_lines_total = count($standard_lines);
+        foreach($standard_lines as $i=>$line){
+            if( $i < ($standard_lines_total-1) ){
+                $end_of_line = "\n";
+            }else{
+                $end_of_line = '';
+            }
+            $pattern .= sprintf("%s%s", $line, $end_of_line);
+        }
+
+        if( preg_match("/{$pattern}/", $rules) ){
+            return TRUE;
+        }
+    }
+
+    return FALSE;
+}
+
+
+function sucuriscan_infosys_wpconfig(){
+    $template_variables = array(
+        'WordpressConfig.Rules' => '',
+        'WordpressConfig.Total' => 0,
+        'WordpressConfig.Content' => '',
+    );
+
+    $wp_config_path = sucuriscan_get_wpconfig_path();
+    if( $wp_config_path ){
+        add_thickbox();
+        $wp_config_content = file($wp_config_path);
+        $template_variables['WordpressConfig.Content'] = file_get_contents($wp_config_path);
+
+        // Read WordPress main configuration file as text plain.
+        $wp_config_rules = array();
+        foreach( (array)$wp_config_content as $line ){
+            $line = str_replace("\n", '', $line);
+
+            // Ignore useless lines and append to the clean string the important lines.
+            if( preg_match('/^define\(/', $line) ){
+                $line = str_replace('define(', '', $line);
+                $line = str_replace(');', '', $line);
+                $line_parts = explode(',', $line, 2);
+            }
+            else if( preg_match('/^\$[a-zA-Z_]+/', $line) ){
+                $line_parts = explode('=', $line, 2);
+            }
+            else{ continue; }
+
+            // Clean and append the rule to the wp_config_rules variable.
+            if( isset($line_parts) && count($line_parts)==2 ){
+                $key_name = $key_value = '';
+                foreach($line_parts as $i=>$line_part){
+                    $line_part = trim($line_part);
+                    $line_part = ltrim($line_part, '$');
+                    $line_part = rtrim($line_part, ';');
+
+                    // Remove single/double quotes at the beginning and end of the string.
+                    $line_part = ltrim($line_part, "'");
+                    $line_part = rtrim($line_part, "'");
+                    $line_part = ltrim($line_part, '"');
+                    $line_part = rtrim($line_part, '"');
+
+                    // Assign the clean strings to specific variables.
+                    if( $i==0 ){ $key_name  = $line_part; }
+                    if( $i==1 ){ $key_value = $line_part; }
+                }
+                $wp_config_rules[$key_name] = $key_value;
+            }
+        }
+
+        // Pass the WordPress configuration rules to the template and show them.
+        foreach( $wp_config_rules as $var_name=>$var_value ){
+            $template_variables['WordpressConfig.Total'] += 1;
+            $template_variables['WordpressConfig.Rules'] .= sucuriscan_get_template('infosys-wpconfig.snippet.tpl', array(
+                'WordpressConfig.VariableName' => $var_name,
+                'WordpressConfig.VariableValue' => htmlentities($var_value),
+            ));
+        }
+    }
+
+    return sucuriscan_get_template('infosys-wpconfig.html.tpl', $template_variables);
+}
+
+
+function sucuriscan_infosys_loggedin(){
+    // Get user logged in list.
+    $template_variables = array(
+        'LoggedInUsers.List' => '',
+        'LoggedInUsers.Total' => 0,
+    );
+
+    $logged_in_users = sucuriscan_get_online_users();
+    if( is_array($logged_in_users) && !empty($logged_in_users) ){
+        $template_variables['LoggedInUsers.Total'] = count($logged_in_users);
+
+        foreach( (array)$logged_in_users as $logged_in_user ){
+            $logged_in_user['last_activity_datetime'] = date('d/M/Y H:i', $logged_in_user['last_activity']);
+            $logged_in_user['user_registered_datetime'] = date('d/M/Y H:i', strtotime($logged_in_user['user_registered']));
+
+            $template_variables['LoggedInUsers.List'] .= sucuriscan_get_template('infosys-loggedin.snippet.tpl', array(
+                'LoggedInUsers.Id' => $logged_in_user['user_id'],
+                'LoggedInUsers.UserURL' => admin_url('user-edit.php?user_id='.$logged_in_user['user_id']),
+                'LoggedInUsers.UserLogin' => $logged_in_user['user_login'],
+                'LoggedInUsers.UserEmail' => $logged_in_user['user_email'],
+                'LoggedInUsers.LastActivity' => $logged_in_user['last_activity_datetime'],
+                'LoggedInUsers.Registered' => $logged_in_user['user_registered_datetime'],
+                'LoggedInUsers.RemoveAddr' => $logged_in_user['remote_addr'],
+            ));
+        }
+    }
+
+    return sucuriscan_get_template('infosys-loggedin.html.tpl', $template_variables);
+}
+
+
+function sucuriscan_get_online_users(){
+    if( sucuriscan_is_multisite() ){
+        return get_site_transient('online_users');
+    }else{
+        return get_transient('online_users');
+    }
+}
+
+
+function sucuriscan_save_online_users($logged_in_users=array()){
+    $expiration = 30 * 60;
+    if( sucuriscan_is_multisite() ){
+        return set_site_transient('online_users', $logged_in_users, $expiration);
+    }else{
+        return set_transient('online_users', $logged_in_users, $expiration);
+    }
+}
+
+
+if( !function_exists('sucuriscan_unset_online_user_on_logout') ){
+    function sucuriscan_unset_online_user_on_logout(){
+        $current_user = wp_get_current_user();
+        $user_id = $current_user->ID;
+        $remote_addr = sucuriscan_get_remoteaddr();
+
+        sucuriscan_unset_online_user($user_id, $remote_addr);
+    }
+
+    add_action('wp_logout', 'sucuriscan_unset_online_user_on_logout');
+}
+
+function sucuriscan_unset_online_user($user_id=0, $remote_addr=0){
+    $logged_in_users = sucuriscan_get_online_users();
+
+    // Remove the specified user identifier from the list.
+    if( is_array($logged_in_users) && !empty($logged_in_users) ){
+        foreach($logged_in_users as $i=>$user){
+            if(
+                $user['user_id']==$user_id
+                && strcmp($user['remote_addr'],$remote_addr)==0
+            ){
+                unset($logged_in_users[$i]);
+                break;
+            }
+        }
+    }
+
+    return sucuriscan_save_online_users($logged_in_users);
+}
+
+
+if( !function_exists('sucuriscan_set_online_user') ){
+    function sucuriscan_set_online_user($user_login='', $user=FALSE){
+        if( $user ){
+            // Get logged in user information.
+            $current_user = ($user instanceof WP_User) ? $user : wp_get_current_user();
+            $current_user_id = $current_user->ID;
+            $remote_addr = sucuriscan_get_remoteaddr();
+            $current_time = current_time('timestamp');
+            $logged_in_users = sucuriscan_get_online_users();
+
+            // Build the dataset array that will be stored in the transient variable.
+            $current_user_info = array(
+                'user_id' => $current_user_id,
+                'user_login' => $current_user->user_login,
+                'user_email' => $current_user->user_email,
+                'user_registered' => $current_user->user_registered,
+                'last_activity' => $current_time,
+                'remote_addr' => $remote_addr
+            );
+
+            if( !is_array($logged_in_users) || empty($logged_in_users) ){
+                $logged_in_users = array( $current_user_info );
+                sucuriscan_save_online_users($logged_in_users);
+            }else{
+                $do_nothing = FALSE;
+                $update_existing = FALSE;
+                $item_index = 0;
+
+                // Check if the user is already in the logged-in-user list and update it if is necessary.
+                foreach($logged_in_users as $i=>$user){
+                    if(
+                        $user['user_id']==$current_user_id
+                        && strcmp($user['remote_addr'],$remote_addr)==0
+                    ){
+                        if( $user['last_activity'] < ($current_time - (15 * 60)) ){
+                            $update_existing = TRUE;
+                            $item_index = $i;
+                            break;
+                        }else{
+                            $do_nothing = TRUE;
+                            break;
+                        }
+                    }
+                }
+
+                if($update_existing){
+                    $logged_in_users[$item_index] = $current_user_info;
+                    sucuriscan_save_online_users($logged_in_users);
+                }else if($do_nothing){
+                    // Do nothing.
+                }else{
+                    $logged_in_users[] = $current_user_info;
+                    sucuriscan_save_online_users($logged_in_users);
+                }
+            }
+        }
+    }
+
+    add_action('wp_login', 'sucuriscan_set_online_user', 10, 2);
+}
+
