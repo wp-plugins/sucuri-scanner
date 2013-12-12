@@ -88,7 +88,7 @@ function sucuriscan_menu()
     add_submenu_page('sucuriscan', 'Last Logins', 'Last Logins', 'manage_options',
                      'sucuriscan_lastlogins', 'sucuriscan_lastlogins_page');
 
-    add_submenu_page('sucuriscan', 'Info System', 'Info System', 'manage_options',
+    add_submenu_page('sucuriscan', 'Site Info', 'Site Info', 'manage_options',
                      'sucuriscan_infosys', 'sucuriscan_infosys_page');
 }
 
@@ -983,6 +983,7 @@ function sucuriscan_infosys_wpconfig(){
         'WordpressConfig.Total' => 0,
         'WordpressConfig.Content' => '',
     );
+    $ignore_wp_rules = array('DB_PASSWORD');
 
     $wp_config_path = sucuriscan_get_wpconfig_path();
     if( $wp_config_path ){
@@ -1024,7 +1025,10 @@ function sucuriscan_infosys_wpconfig(){
                     if( $i==0 ){ $key_name  = $line_part; }
                     if( $i==1 ){ $key_value = $line_part; }
                 }
-                $wp_config_rules[$key_name] = $key_value;
+
+                if( !in_array($key_name, $ignore_wp_rules) ){
+                    $wp_config_rules[$key_name] = $key_value;
+                }
             }
         }
 

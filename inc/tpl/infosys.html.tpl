@@ -4,7 +4,7 @@
         <a href="http://sucuri.net/signup" target="_blank" title="Sucuri Security">
             <img src="%%SUCURI.SucuriURL%%/inc/images/logo.png" alt="Sucuri Security" />
         </a>
-        <h2>Sucuri Security WordPress Plugin (Info System)</h2>
+        <h2>Sucuri Security WordPress Plugin (Site Info)</h2>
     </div>
 
 
