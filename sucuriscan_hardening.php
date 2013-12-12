@@ -13,7 +13,6 @@ if(!defined('SUCURISCAN'))
 /* Sucuri one-click hardening page. */
 
 function sucuriscan_hardening_lib(){ ?>
-    <h2 id="warnings_hook"></h2>
     <div class="postbox-container" style="width:75%">
         <div class="sucuriscan-maincontent">
             <div class="postbox">

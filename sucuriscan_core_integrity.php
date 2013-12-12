@@ -14,11 +14,11 @@ if(!defined('SUCURISCAN'))
 
 function sucuriscan_core_integrity_function_wrapper($function_name, $stitle, $description){ ?>
     <div class="postbox">
+        <h3><?php echo $stitle; ?></h3>
         <div class="inside">
             <form method="post">
                 <input type="hidden" name="<?php echo $function_name; ?>nonce" value="<?php echo wp_create_nonce($function_name.'nonce'); ?>" />
                 <input type="hidden" name="<?php echo $function_name; ?>" value="1" />
-                <h4><?php echo $stitle; ?></h4>
                 <p><?php echo $description; ?></p>
                 <input class="button-primary" type="submit" name="<?php echo $function_name; ?>" value="Check" />
             </form>
@@ -91,39 +91,33 @@ function sucuriscan_core_integrity_wp_content_wrapper(){ ?>
     </div>
 <?php }
 
-function sucuriscan_core_integrity_lib()
-{
-        echo '<h2 id="warnings_hook"></h2>';
-        echo '<div class="postbox-container" style="width:75%;">';
-            echo '<div class="sucuriscan-maincontent">';
-
-                echo '<div class="postbox">';
-                   echo '<div class="inside">';
-                       echo '<h2 align="center">Sucuri WordPress Integrity Checks</h2>';
-                   echo '</div>';
-                echo '</div>';
-
-    include_once("lib/core_integrity.php");
-
-    if(isset($_POST['wpsucuri-core-integrity']))
-    {
-        if(!wp_verify_nonce($_POST['sucuriscan_core_integritynonce'], 'sucuriscan_core_integritynonce'))
-        {
-            unset($_POST['wpsucuri-core_integrity']);
-        }
-    }
-
-    ?>
-
-        <div id="poststuff">
+function sucuriscan_core_integrity_lib() { ?>
+    <div class="postbox-container" style="width:75%;">
+        <div class="sucuriscan-maincontent">
+            <div class="postbox">
+               <div class="inside">
+                   <h2 align="center">Sucuri WordPress Integrity Checks</h2>
+               </div>
+            </div>
 
             <?php
+            include_once("lib/core_integrity.php");
+            if( isset($_POST['wpsucuri-core-integrity']) ){
+                if(!wp_verify_nonce($_POST['sucuriscan_core_integritynonce'], 'sucuriscan_core_integritynonce'))
+                {
+                    unset($_POST['wpsucuri-core_integrity']);
+                }
+            }
+            ?>
 
+            <div id="poststuff">
+                <?php
                 sucuriscan_core_integrity_function_wrapper(
                     'sucuriwp_core_integrity_check',
                     'Verify Integrity of WordPress Core Files',
-                    'This test will check wp-includes, wp-admin, and the top directory files against the latest WordPress hashing database. If any of those files were modified, it is a big sign of a possible compromise.'
-                    );
+                    'This test will check wp-includes, wp-admin, and the top directory files against the latest WordPress
+                    hashing database. If any of those files were modified, it is a big sign of a possible compromise.'
+                );
 
                 sucuriscan_core_integrity_wp_content_wrapper();
 
@@ -131,22 +125,25 @@ function sucuriscan_core_integrity_lib()
                     'sucuriwp_list_admins',
                     'Admin User Dump',
                     'List all administrator users and their latest login time.'
-                    );
+                );
+
                 sucuriscan_core_integrity_function_wrapper(
                     'sucuriwp_check_plugins',
                     'Outdated Plugin list',
                     'This test will list any outdated (active) plugins.'
-                    );
+                );
+
                 sucuriscan_core_integrity_function_wrapper(
                     'sucuriwp_check_themes',
                     'Outdated Theme List',
                     'This test will list any outdated theme.'
-                    );
-            ?>
+                );
+                ?>
+            </div>
 
-        </div>
-
-        <p align="center"><strong>If you have any questions about these tests or this plugin, contact us at info@sucuri.net or visit <a href="http://sucuri.net">Sucuri Security</a></strong></p>
-
+            <p align="center">
+                <strong>If you have any questions about these tests or this plugin, contact us at <a href="mailto:info@sucuri.net">
+                info@sucuri.net</a> or visit <a href="http://sucuri.net">Sucuri Security</a></strong>
+            </p>
     <?php
 }

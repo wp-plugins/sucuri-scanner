@@ -25,7 +25,11 @@ if(!function_exists('add_action'))
 define('SUCURISCAN','sucuriscan');
 define('SUCURISCAN_VERSION','1.5.2');
 define('SUCURI_URL',plugin_dir_url( __FILE__ ));
+define('SUCURISCAN_PLUGIN_FILE', 'sucuri.php');
 define('SUCURISCAN_PLUGIN_FOLDER', 'sucuri-scanner');
+define('SUCURISCAN_PLUGIN_PATH', WP_PLUGIN_DIR.'/'.SUCURISCAN_PLUGIN_FOLDER);
+define('SUCURISCAN_PLUGIN_FILEPATH', SUCURISCAN_PLUGIN_PATH.'/'.SUCURISCAN_PLUGIN_FILE);
+
 define('SUCURISCAN_LASTLOGINS_USERSLIMIT', 100);
 
 if( !function_exists('sucuriscan_create_uploaddir') ){
@@ -90,6 +94,9 @@ function sucuriscan_menu()
 
     add_submenu_page('sucuriscan', 'Site Info', 'Site Info', 'manage_options',
                      'sucuriscan_infosys', 'sucuriscan_infosys_page');
+
+    add_submenu_page('sucuriscan', 'About', 'About', 'manage_options',
+                     'sucuriscan_about', 'sucuriscan_about_page');
 }
 
 /* Sucuri malware scan page. */
@@ -1189,3 +1196,100 @@ if( !function_exists('sucuriscan_set_online_user') ){
     add_action('wp_login', 'sucuriscan_set_online_user', 10, 2);
 }
 
+
+/**
+ * Sucuri Scanner - About page
+ * @return Functions associated to the About page.
+ */
+
+function sucuriscan_about_page()
+{
+    if( !current_user_can('manage_options') )
+    {
+        wp_die(__('You do not have sufficient permissions to access this page: Sucuri Last-Logins') );
+    }
+
+    // Page pseudo-variables initialization.
+    $template_variables = array(
+        'SucuriURL'=>SUCURI_URL,
+        'SucuriWPSidebar'=>sucuriscan_wp_sidebar_gen(),
+        'CurrentURL'=>site_url().'/wp-admin/admin.php?page='.$_GET['page'],
+        'SettingsDisplay'=>'hidden'
+    );
+
+    $template_variables = sucuriscan_about_information($template_variables);
+    $template_variables = sucuriscan_show_cronjobs($template_variables);
+
+    echo sucuriscan_get_template('about.html.tpl', $template_variables);
+}
+
+function sucuriscan_about_information($template_variables=array())
+{
+    global $wpdb;
+
+    if( current_user_can('manage_options') ){
+        $memory_usage = function_exists('memory_get_usage') ? round(memory_get_usage()/1024/1024,2).' MB' : 'N/A';
+        $mysql_version = $wpdb->get_var('SELECT VERSION() AS version');
+        $mysql_info = $wpdb->get_results('SHOW VARIABLES LIKE "sql_mode"');
+        $sql_mode = ( is_array($mysql_info) && !empty($mysql_info[0]->Value) ) ? $mysql_info[0]->Value : 'Not set';
+        $plugin_runtime_filepath = sucuriscan_dir_filepath('.runtime');
+        $plugin_runtime_datetime = file_exists($plugin_runtime_filepath) ? date('r',filemtime($plugin_runtime_filepath)) : 'N/A';
+
+        $template_variables = array_merge($template_variables, array(
+            'SettingsDisplay'=>'block',
+            'PluginVersion'=>SUCURISCAN_VERSION,
+            'PluginForceUpdate'=>admin_url('admin.php?page=sucurisec_settings&sucuri_force_update=1'),
+            'PluginMD5'=>md5_file(SUCURISCAN_PLUGIN_FILEPATH),
+            'PluginRuntimeDatetime'=>$plugin_runtime_datetime,
+            'OperatingSystem'=>sprintf('%s (%d Bit)', PHP_OS, PHP_INT_SIZE*8),
+            'Server'=>isset($_SERVER['SERVER_SOFTWARE']) ? $_SERVER['SERVER_SOFTWARE'] : 'Unknown',
+            'MemoryUsage'=>$memory_usage,
+            'MySQLVersion'=>$mysql_version,
+            'SQLMode'=>$sql_mode,
+            'PHPVersion'=>PHP_VERSION,
+        ));
+
+        foreach(array(
+            'safe_mode',
+            'allow_url_fopen',
+            'memory_limit',
+            'upload_max_filesize',
+            'post_max_size',
+            'max_execution_time',
+            'max_input_time',
+        ) as $php_flag){
+            $php_flag_name = ucwords(str_replace('_', chr(32), $php_flag) );
+            $tpl_varname = str_replace(chr(32), '', $php_flag_name);
+            $php_flag_value = ini_get($php_flag);
+            $template_variables[$tpl_varname] = $php_flag_value ? $php_flag_value : 'N/A';
+        }
+    }
+
+    return $template_variables;
+}
+
+function sucuriscan_show_cronjobs($template_variables=array())
+{
+    $template_variables['Cronjobs'] = '';
+
+    $cronjobs = _get_cron_array();
+    $schedules = wp_get_schedules();
+    $date_format = _x('M j, Y - H:i', 'Publish box date format', 'cron-view' );
+
+    foreach( $cronjobs as $timestamp=>$cronhooks ){
+        foreach( (array)$cronhooks as $hook=>$events ){
+            foreach( (array)$events as $key=>$event ){
+                $cronjob_snippet = '';
+                $template_variables['Cronjobs'] .= sucuriscan_get_template('about-cronjobs.snippet.tpl', array(
+                    'Cronjob.Task'=>ucwords(str_replace('_',chr(32),$hook)),
+                    'Cronjob.Schedule'=>$event['schedule'],
+                    'Cronjob.Nexttime'=>date_i18n($date_format, $timestamp),
+                    'Cronjob.Hook'=>$hook,
+                    'Cronjob.Arguments'=>implode(', ', $event['args'])
+                ));
+            }
+        }
+    }
+
+    return $template_variables;
+}

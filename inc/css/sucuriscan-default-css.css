@@ -3,14 +3,15 @@
  * Copyright (C) 2010-2012 Sucuri Security - http://sucuri.net
  * Released under the GPL - see LICENSE file for details.
  */
-.sucuriscan_header{background:#333;border-bottom-left-radius:5px;border-bottom-right-radius:5px;border-top-left-radius:5px;border-top-right-radius:5px;height:38px;margin:16px 0 8px;min-width:255px;padding:10px;position:relative}
+.sucuriscan_header{background:#333;border-radius:5px;height:38px;margin:0 0 20px 0;min-width:255px;padding:10px;position:relative}
 .sucuriscan_header img{float:left;height:38px;width:101px}
 .wrap .sucuriscan_header h2{color:#fff;float:left;margin-left:10px;padding:3px 0 0;text-shadow:#000 0 1px 0}
-.sucuriscan-maincontent{padding:10px 20px 0 0}
-#sidebar{padding-top:10px}
+.sucuriscan-maincontent{padding:0 20px 0 0}
+#sidebar{}
 #sidebar .sucuriscan-sidebar{border:1px solid #ccc;border-bottom-left-radius:5px;border-bottom-right-radius:5px;border-top-left-radius:5px;border-top-right-radius:5px;margin:0 0 10px;padding:10px 15px}
 #sitecleanup.sucuriscan-sidebar{background-color:#bbe8f5;border-color:#4393ac}
 #sucuri-latest-posts.sucuriscan-sidebar{background-color:#ececec;border-color:#999}
+.sucuriscan-maincontent #poststuff{padding-top:0}
 .sucuriscan-maincontent .widefat tbody th.check-column{padding:6px 0 3px 0}
 .sucuriscan-maincontent .hardening-box .primary-secondary{margin:0 0 0 10px}
 .sucuriscan-maincontent a.lastlogins-showall{display:inline-block;float:right}
@@ -33,3 +34,6 @@
 .sucuriscan-maincontent .sucuri-full-textarea{width:100%;height:400px;line-height:normal;resize:vertical;padding:10px}
 .sucuriscan-maincontent .sucuri-notice-error{background:#ffebe8;margin:5px 0 15px;padding:0 .6em;border:1px solid #c00;border-radius:3px}
 .sucuriscan-wpconfig-textarea{width:600px;height:525px;background:#f5f5f5;line-height:1.4em;resize:none;margin:15px 0 0 0;padding:10px}
+.sucuriscan-about-list td+td{font-family:Monaco, Monspace, Courier;font-weight:bold}
+.sucuriscan-maincontent .sucuriscan-wpcron-list{margin:20px 0 15px 0}
+.sucuriscan-maincontent .sucuriscan-wpcron-list td+td+td+td{font-family:Monaco, Monspace, Courier;font-weight:bold}
