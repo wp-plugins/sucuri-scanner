@@ -373,7 +373,7 @@ function sucuriscan_cloudproxy_enabled(){
         NULL
     );
     if( $enabled!==TRUE ){
-        echo '<a href="https://login.sucuri.net/signup2/create?CloudProxy" target="_blank" class="button button-primary">Harden it!</a>';
+        echo '<a href="http://cloudproxy.sucuri.net" target="_blank" class="button button-primary">Harden it!</a>';
     }
     sucuriscan_wrapper_close();
 }
