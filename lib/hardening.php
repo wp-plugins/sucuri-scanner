@@ -369,7 +369,7 @@ function sucuriscan_cloudproxy_enabled(){
         'Your website is protected by a Website Firewall (WAF)',
         'Your website is not protected by a Website Firewall (WAF)',
         'A WAF is a protection layer for your web site, blocking all sort of attacks (brute force attempts, DDoS, SQL injections, etc) and helping it remain
-         malware and blacklist free. This test checks if your site is using <a href="http://sucuri.net/services/preventive">Sucuri\'s CloudProxy WAF</a> to protect your site. ',
+         malware and blacklist free. This test checks if your site is using <a href="http://cloudproxy.sucuri.net/" target="_blank">Sucuri\'s CloudProxy WAF</a> to protect your site. ',
         NULL
     );
     if( $enabled!==TRUE ){
