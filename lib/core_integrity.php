@@ -171,7 +171,7 @@ function sucuriwp_list_admins($userlevel = '10') {
         'AdminUsers.UserList'=>''
     );
 
-    $admins = $wpdb->get_results("SELECT * FROM $wpdb->usermeta WHERE meta_value = '$userlevel'");
+    $admins = $wpdb->get_results("SELECT DISTINCT(user_id) AS user_id FROM `$wpdb->usermeta` WHERE meta_value = '$userlevel'");
     foreach ( (array) $admins as $user ) {
         $admin    = get_userdata( $user->user_id );
         $admin->lastlogins = sucuriscan_get_logins(4, $admin->ID);
@@ -181,7 +181,8 @@ function sucuriwp_list_admins($userlevel = '10') {
         $user_snippet = array(
             'AdminUsers.Username'=>$admin->user_login,
             'AdminUsers.Email'=>$admin->user_email,
-            'AdminUsers.LastLogins'=>''
+            'AdminUsers.LastLogins'=>'',
+            'AdminUsers.UserURL'=>admin_url('user-edit.php?user_id='.$user->user_id)
         );
         if( !empty($admin->lastlogins) ){
             $user_snippet['AdminUsers.NoLastLogins'] = 'hidden';
