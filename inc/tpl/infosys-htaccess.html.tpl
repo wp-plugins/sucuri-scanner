@@ -10,7 +10,7 @@
                 modifies this file to be able to handle pretty permalinks.
             </p>
 
-            <div class="sucuri-notice-error sucuri-alert sucuri-alert-%%SUCURI.HTAccess.MessageType%% %%SUCURI.HTAccess.MessageVisible%%">
+            <div class="sucuri-alert-%%SUCURI.HTAccess.MessageType%% %%SUCURI.HTAccess.MessageVisible%%">
                 <p>%%SUCURI.HTAccess.Message%%</p>
             </div>
 

@@ -883,10 +883,19 @@ function sucuriscan_get_wpconfig_path(){
 
 
 function sucuriscan_get_htaccess_path(){
-    $htaccess_path = ABSPATH.'.htaccess';
-    if( file_exists($htaccess_path) ){
-        return $htaccess_path;
+    $base_dirs = array(
+        rtrim(ABSPATH, '/'),
+        dirname(ABSPATH),
+        dirname(dirname(ABSPATH))
+    );
+
+    foreach($base_dirs as $base_dir){
+        $htaccess_path = sprintf('%s/.htaccess', $base_dir);
+        if( file_exists($htaccess_path) ){
+            return $htaccess_path;
+        }
     }
+
     return FALSE;
 }
 
@@ -914,6 +923,7 @@ function sucuriscan_infosys_page(){
 
 function sucuriscan_infosys_htaccess(){
     $htaccess_path = sucuriscan_get_htaccess_path();
+
     $template_variables = array(
         'HTAccess.Content' => '',
         'HTAccess.Message' => '',
@@ -924,18 +934,23 @@ function sucuriscan_infosys_htaccess(){
 
     if( $htaccess_path ){
         $htaccess_rules = file_get_contents($htaccess_path);
+
+        $template_variables['HTAccess.MessageType'] = 'updated';
+        $template_variables['HTAccess.MessageVisible'] = 'visible';
         $template_variables['HTAccess.TextareaVisible'] = 'visible';
         $template_variables['HTAccess.Content'] = $htaccess_rules;
+        $template_variables['HTAccess.Message'] .= 'HTAccess file found in this path <code>'.$htaccess_path.'</code>';
 
+        if( empty($htaccess_rules) ){
+            $template_variables['HTAccess.TextareaVisible'] = 'hidden';
+            $template_variables['HTAccess.Message'] .= '</p><p>The HTAccess file found is completely empty.';
+        }
         if( sucuriscan_htaccess_is_standard($htaccess_rules) ){
-            $template_variables['HTAccess.Message'] = '
+            $template_variables['HTAccess.Message'] .= '</p><p>
                 The main <code>.htaccess</code> file in your site has the standard rules for a WordPress installation. You can customize it to improve the
                 performance and change the behaviour of the redirections for pages and posts in your site. To get more information visit the official documentation at
                 <a href="http://codex.wordpress.org/Using_Permalinks#Creating_and_editing_.28.htaccess.29" target="_blank">Codex WordPrexx - Creating and editing (.htaccess)</a>';
-            $template_variables['HTAccess.MessageType'] = 'updated';
-            $template_variables['HTAccess.MessageVisible'] = 'visible';
         }
-
     }else{
         $template_variables['HTAccess.Message'] = 'Your website does not contains a <code>.htaccess</code> file or it was not found in the default location.';
         $template_variables['HTAccess.MessageType'] = 'error';
