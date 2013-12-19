@@ -7,7 +7,7 @@ Description: The <a href="http://sucuri.net">Sucuri Security</a> - SiteCheck Mal
 You can also scan your site at <a href="http://sitecheck.sucuri.net">SiteCheck.Sucuri.net</a>.
 
 Author: Sucuri, INC
-Version: 1.5.2
+Version: 1.5.3
 Author URI: http://sucuri.net
 */
 
@@ -23,7 +23,7 @@ if(!function_exists('add_action'))
 @ignore_user_abort(TRUE);
 
 define('SUCURISCAN','sucuriscan');
-define('SUCURISCAN_VERSION','1.5.2');
+define('SUCURISCAN_VERSION','1.5.3');
 define('SUCURI_URL',plugin_dir_url( __FILE__ ));
 define('SUCURISCAN_PLUGIN_FILE', 'sucuri.php');
 define('SUCURISCAN_PLUGIN_FOLDER', 'sucuri-scanner');
@@ -667,13 +667,14 @@ function sucuriscan_get_remoteaddr()
 }
 
 function sucuriscan_is_behind_cloudproxy(){
-    $http_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '127.0.0.1';
-    if( preg_match('/^(.*):.*/', $http_host, $match) ){ $http_host = $match[1]; }
-    $host = gethostbyaddr(gethostbyname($http_host));
+    $http_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost';
+    if( preg_match('/^(.*):([0-9]+)/', $http_host, $match) ){ $http_host = $match[1]; }
+    $host_by_name = gethostbyname($http_host);
+    $host_by_addr = gethostbyaddr($host_by_name);
 
     if(
         isset($_SERVER['SUCURIREAL_REMOTE_ADDR'])
-        || preg_match('/cloudproxy.*\.sucuri\.net/', $host)
+        || preg_match('/^cloudproxy([0-9]+)\.sucuri\.net$/', $host_by_addr)
     ){
         return TRUE;
     }
