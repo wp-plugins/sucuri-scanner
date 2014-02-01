@@ -11,23 +11,74 @@ Version: 1.5.4
 Author URI: http://sucuri.net
 */
 
+
+/**
+ * Main file to control the plugin.
+ *
+ * @category  Bootstrap
+ * @package   Sucuri Security - SiteCheck Malware Scanner
+ * @author    Daniel <dcid@sucuri.net>
+ * @copyright Since 2010 Sucuri Inc.
+ * @license   Released under the GPL - see LICENSE file for details.
+ * @version   HG: $Id$
+ * @link      https://wordpress.sucuri.net/
+ * @since     File available since Release 0.1
+ */
+
+
 /* No direct access. */
 if(!function_exists('add_action'))
 {
     exit(0);
 }
 
+/**
+ * Unique name of the plugin through out all the code.
+ */
 define('SUCURISCAN','sucuriscan');
+
+/**
+ * Current version of the plugin's code.
+ */
 define('SUCURISCAN_VERSION','1.5.4');
+
+/**
+ * The local URL where the plugin's files and assets are served.
+ */
 define('SUCURI_URL',plugin_dir_url( __FILE__ ));
+
+/**
+ * The name of the Sucuri plugin main file.
+ */
 define('SUCURISCAN_PLUGIN_FILE', 'sucuri.php');
+
+/**
+ * The name of the folder where the plugin's files will be located.
+ */
 define('SUCURISCAN_PLUGIN_FOLDER', 'sucuri-scanner');
+
+/**
+ * The fullpath where the plugin's files will be located.
+ */
 define('SUCURISCAN_PLUGIN_PATH', WP_PLUGIN_DIR.'/'.SUCURISCAN_PLUGIN_FOLDER);
+
+/**
+ * The fullpath of the main plugin file.
+ */
 define('SUCURISCAN_PLUGIN_FILEPATH', SUCURISCAN_PLUGIN_PATH.'/'.SUCURISCAN_PLUGIN_FILE);
 
+/**
+ * The maximum quantity of entries that will be displayed in the last login page.
+ */
 define('SUCURISCAN_LASTLOGINS_USERSLIMIT', 100);
 
 if( !function_exists('sucuriscan_create_uploaddir') ){
+    /**
+     * Create a folder in the Wordpress upload directory where the plugin will
+     * store all the temporal or dynamic information.
+     *
+     * @return void
+     */
     function sucuriscan_create_uploaddir(){
         $plugin_upload_folder = sucuriscan_dir_filepath();
         if( !file_exists($plugin_upload_folder) ){
@@ -44,8 +95,10 @@ if( !function_exists('sucuriscan_create_uploaddir') ){
     add_action('admin_init', 'sucuriscan_create_uploaddir');
 }
 
-/* Requires files. */
-add_action( 'admin_enqueue_scripts', 'sucuriscan_admin_script_style_registration', 1 );
+/**
+ * Define which javascript and css files will be loaded in the header of the page.
+ * @return void
+ */
 function sucuriscan_admin_script_style_registration() { ?>
     <link rel="stylesheet" href="<?php echo SUCURI_URL; ?>/inc/css/sucuriscan-default-css.css" type="text/css" media="all" />
     <script type="text/javascript">
@@ -55,10 +108,14 @@ function sucuriscan_admin_script_style_registration() { ?>
     }
     </script>
 <?php }
+add_action( 'admin_enqueue_scripts', 'sucuriscan_admin_script_style_registration', 1 );
 
-/* sucuri_dir_filepath:
- * Returns the system filepath to the relevant user uploads
- * directory for this site. Multisite capable.
+/**
+ * Returns the system filepath to the relevant user uploads directory for this
+ * site. This is a multisite capable function.
+ *
+ * @param  string $path The relative path that needs to be completed to get the absolute path.
+ * @return string       The full filesystem path including the directory specified.
  */
 function sucuriscan_dir_filepath($path = '')
 {
@@ -67,7 +124,11 @@ function sucuriscan_dir_filepath($path = '')
     return($wp_dir_array['basedir']."/sucuri/$path");
 }
 
-/* Starting Sucuri Scan side bar. */
+/**
+ * Generate the menu and submenus for the plugin in the admin interface.
+ *
+ * @return void
+ */
 function sucuriscan_menu()
 {
     add_menu_page('Sucuri Free', 'Sucuri Free', 'manage_options',
@@ -97,6 +158,34 @@ function sucuriscan_menu()
 add_action('admin_menu', 'sucuriscan_menu');
 remove_action('wp_head', 'wp_generator');
 
+/**
+ * Print the HTML code for the header of each plugin's page.
+ *
+ * @param  string $sucuri_title Title of the page that will be loaded.
+ * @return void
+ */
+function sucuriscan_pagestop($sucuri_title = 'Sucuri Plugin')
+{
+    if(!current_user_can('manage_options'))
+    {
+        wp_die(__('You do not have sufficient permissions to access this page: Sucuri Header') );
+    }
+    ?>
+    <h2><?php echo htmlspecialchars($sucuri_title); ?></h2>
+    <br class="clear"/>
+    <?php
+}
+
+/**
+ * Send a message to a specific email address.
+ *
+ * @param  string  $to       The email address of the recipient that will receive the message.
+ * @param  string  $subject  The reason of the message that will be sent.
+ * @param  string  $message  Body of the message that will be sent.
+ * @param  array   $data_set Optional parameter to add more information to the notification.
+ * @param  boolean $debug    TRUE if you want to test the function printing the email before sending it.
+ * @return void
+ */
 function sucuriscan_send_mail($to='', $subject='', $message='', $data_set=array(), $debug=FALSE)
 {
     $headers = array();
@@ -115,6 +204,13 @@ function sucuriscan_send_mail($to='', $subject='', $message='', $data_set=array(
     }
 }
 
+/**
+ * Prints a HTML alert in the Wordpress admin interface.
+ *
+ * @param  string $type    The type of alert, it can be either Updated or Error.
+ * @param  string $message The message that will be printed in the alert.
+ * @return void
+ */
 function sucuriscan_admin_notice($type='updated', $message='')
 {
     $alert_id = rand(100, 999);
@@ -126,6 +222,14 @@ function sucuriscan_admin_notice($type='updated', $message='')
     <?php endif;
 }
 
+/**
+ * Generate a HTML version of the message that will be sent through an email.
+ *
+ * @param  string $subject  The reason of the message that will be sent.
+ * @param  string $message  Body of the message that will be sent.
+ * @param  array  $data_set Optional parameter to add more information to the notification.
+ * @return string           The message formatted in a HTML template.
+ */
 function sucuriscan_prettify_mail($subject='', $message='', $data_set=array())
 {
     $current_user = wp_get_current_user();
@@ -149,6 +253,15 @@ function sucuriscan_prettify_mail($subject='', $message='', $data_set=array())
     return sucuriscan_get_template("notification.{$prettify_type}.tpl", $mail_variables);
 }
 
+/**
+ * Generate a HTML code using a template and replacing all the pseudo-variables
+ * by the dynamic variables provided by the developer through one of the parameters
+ * of the function.
+ *
+ * @param  string $template           Filename of the template that will be used to generate the page.
+ * @param  array  $template_variables A hash containing the pseudo-variable name as the key and the value that will replace it.
+ * @return string                     The formatted HTML page after replace all the pseudo-variables.
+ */
 function sucuriscan_get_template($template='', $template_variables=array()){
     $template_content = '';
     $template_path =  WP_PLUGIN_DIR.'/'.SUCURISCAN_PLUGIN_FOLDER."/inc/tpl/{$template}";
@@ -162,11 +275,22 @@ function sucuriscan_get_template($template='', $template_variables=array()){
     return $template_content;
 }
 
+/**
+ * Get the HTML content of the sidebar for the plugin interface.
+ *
+ * @return string HTML of the side for the plugin interface.
+ */
 function sucuriscan_wp_sidebar_gen()
 {
     return sucuriscan_get_template('sidebar.html.tpl');
 }
 
+/**
+ * Retrieve a new set of keys for the Wordpress configuration file using the
+ * official API provided by Wordpress itself.
+ *
+ * @return array A list of the new set of keys generated by Wordpress API.
+ */
 function sucuriscan_get_new_config_keys()
 {
     $request = wp_remote_get('https://api.wordpress.org/secret-key/1.1/salt/');
@@ -182,10 +306,20 @@ function sucuriscan_get_new_config_keys()
     return FALSE;
 }
 
+/**
+ * Modify the Wordpress configuration file and change the keys that were defined
+ * by a new random-generated list of keys retrieved from the official Wordpress
+ * API. The result of the operation will be either FALSE in case of error, or an
+ * array containing multiple indexes explaining the modification, among them you
+ * will find the old and new keys.
+ *
+ * @return false|array Either FALSE in case of error, or an array with the old and new keys.
+ */
 function sucuriscan_set_new_config_keys()
 {
     $new_wpconfig = '';
     $wp_config_path = ABSPATH.'wp-config.php';
+
     if( file_exists($wp_config_path) ){
         $wp_config_lines = file($wp_config_path);
         $new_keys = sucuriscan_get_new_config_keys();
@@ -226,6 +360,12 @@ function sucuriscan_set_new_config_keys()
     return FALSE;
 }
 
+/**
+ * Generate and set a new password for a specific user not in session.
+ *
+ * @param  integer $user_id The user identifier that will be changed, this must be different than the user in session.
+ * @return boolean          Either TRUE or FALSE in case of success or error respectively.
+ */
 function sucuriscan_new_password($user_id=0)
 {
     $user_id = intval($user_id);
@@ -249,6 +389,11 @@ function sucuriscan_new_password($user_id=0)
     return FALSE;
 }
 
+/**
+ * Retrieve the real ip address of the user in the current request.
+ *
+ * @return string The real ip address of the user in the current request.
+ */
 function sucuriscan_get_remoteaddr()
 {
     $alternatives = array(
@@ -271,6 +416,11 @@ function sucuriscan_get_remoteaddr()
     return $remote_addr;
 }
 
+/**
+ * Check whether the site is behing the Sucuri CloudProxy network.
+ *
+ * @return boolean Either TRUE or FALSE if the site is behind CloudProxy.
+ */
 function sucuriscan_is_behind_cloudproxy(){
     $http_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost';
     if( preg_match('/^(.*):([0-9]+)/', $http_host, $match) ){ $http_host = $match[1]; }
@@ -287,12 +437,21 @@ function sucuriscan_is_behind_cloudproxy(){
     return FALSE;
 }
 
+/**
+ * Check whether the current site is working as a multi-site instance.
+ *
+ * @return boolean Either TRUE or FALSE in case Wordpress is being used as a multi-site instance.
+ */
 function sucuriscan_is_multisite(){
     if( function_exists('is_multisite') && is_multisite() ){ return TRUE; }
     return FALSE;
 }
 
-
+/**
+ * Find and retrieve the absolute path of the Wordpress configuration file.
+ *
+ * @return string Absolute path of the Wordpress configuration file.
+ */
 function sucuriscan_get_wpconfig_path(){
     $wp_config_path = ABSPATH.'wp-config.php';
 
@@ -303,7 +462,11 @@ function sucuriscan_get_wpconfig_path(){
     return $wp_config_path;
 }
 
-
+/**
+ * Find and retrieve the absolute path of the main Wordpress htaccess file.
+ *
+ * @return string Absolute path of the main Wordpress htaccess file.
+ */
 function sucuriscan_get_htaccess_path(){
     $base_dirs = array(
         rtrim(ABSPATH, '/'),
@@ -321,8 +484,12 @@ function sucuriscan_get_htaccess_path(){
     return FALSE;
 }
 
-/* Sucuri malware scan page. */
-
+/**
+ * Print a HTML code with a form from where the administrator can check the state
+ * of this site through Sucuri SiteCheck.
+ *
+ * @return void
+ */
 function sucuri_scan_page()
 {
     $U_ERROR = NULL;
@@ -343,6 +510,11 @@ function sucuri_scan_page()
     echo sucuriscan_get_template('initial-page.html.tpl', $template_variables);
 }
 
+/**
+ * Display the result of site scan made through SiteCheck.
+ *
+ * @return void
+ */
 function sucuriscan_print_scan()
 {
     $website_scanned = home_url();
@@ -518,45 +690,87 @@ function sucuriscan_print_scan()
     <?php
 }
 
-/* Sucuri Header Function */
-
-function sucuriscan_pagestop($sucuri_title = 'Sucuri Plugin')
-{
-    if(!current_user_can('manage_options'))
-    {
-        wp_die(__('You do not have sufficient permissions to access this page: Sucuri Header') );
-    }
-    ?>
-    <h2><?php echo htmlspecialchars($sucuri_title); ?></h2>
-    <br class="clear"/>
-    <?php
-}
-
-/* Sucuri WordPress Integrity page. */
-
+/**
+ * Wordpress core integrity page.
+ *
+ * It checks whether the Wordpress core files are the original ones, and the state
+ * of the themes and plugins reporting the availability of updates. It also checks
+ * the user accounts under the administrator group.
+ *
+ * @return void
+ */
 function sucuriscan_core_integrity_page()
 {
 
     /* WordPress Integrity page. */
 
     echo '<div class="wrap">';
-    echo '<h2 id="warnings_hook"></h2>';
-    echo '<div class="sucuriscan_header">';
-    echo '<a href="http://sucuri.net/signup" target="_blank" title="Sucuri Security">';
-    echo '<img src="'.SUCURI_URL.'/inc/images/logo.png" alt="Sucuri Security" />';
-    echo '</a>';
-    sucuriscan_pagestop("Sucuri WordPress Integrity");
-    echo '</div>';
+        echo '<h2 id="warnings_hook"></h2>';
+        echo '<div class="sucuriscan_header">';
+            echo '<a href="http://sucuri.net/signup" target="_blank" title="Sucuri Security">';
+                echo '<img src="'.SUCURI_URL.'/inc/images/logo.png" alt="Sucuri Security" />';
+            echo '</a>';
+            sucuriscan_pagestop("Sucuri WordPress Integrity");
+        echo '</div>';
 
-    if(!current_user_can('manage_options'))
-    {
-        wp_die(__('You do not have sufficient permissions to access this page: Sucuri Integrity Check') );
-    }
+        if(!current_user_can('manage_options'))
+        {
+            wp_die(__('You do not have sufficient permissions to access this page: Sucuri Integrity Check') );
+        }
+        ?>
 
-    sucuriscan_core_integrity_lib()
+        <div class="postbox-container" style="width:75%;">
+            <div class="sucuriscan-maincontent">
+                <div class="postbox">
+                   <div class="inside">
+                       <h2 align="center">Sucuri WordPress Integrity Checks</h2>
+                   </div>
+                </div>
 
-    ?>
+                <?php
+                if( isset($_POST['wpsucuri-core-integrity']) ){
+                    if(!wp_verify_nonce($_POST['sucuriscan_core_integritynonce'], 'sucuriscan_core_integritynonce'))
+                    {
+                        unset($_POST['wpsucuri-core_integrity']);
+                    }
+                }
+                ?>
 
+                <div id="poststuff">
+                    <?php
+                    sucuriscan_core_integrity_function_wrapper(
+                        'sucuriwp_core_integrity_check',
+                        'Verify Integrity of WordPress Core Files',
+                        'This test will check wp-includes, wp-admin, and the top directory files against the latest WordPress
+                        hashing database. If any of those files were modified, it is a big sign of a possible compromise.'
+                    );
+
+                    sucuriscan_core_integrity_wp_content_wrapper();
+
+                    sucuriscan_core_integrity_function_wrapper(
+                        'sucuriwp_list_admins',
+                        'Admin User Dump',
+                        'List all administrator users and their latest login time.'
+                    );
+
+                    sucuriscan_core_integrity_function_wrapper(
+                        'sucuriwp_check_plugins',
+                        'Outdated Plugin list',
+                        'This test will list any outdated (active) plugins.'
+                    );
+
+                    sucuriscan_core_integrity_function_wrapper(
+                        'sucuriwp_check_themes',
+                        'Outdated Theme List',
+                        'This test will list any outdated theme.'
+                    );
+                    ?>
+                </div>
+
+                <p align="center">
+                    <strong>If you have any questions about these tests or this plugin, contact us at <a href="mailto:info@sucuri.net">
+                    info@sucuri.net</a> or visit <a href="http://sucuri.net">Sucuri Security</a></strong>
+                </p>
             </div><!-- End sucuriscan-maincontent -->
         </div><!-- End postbox-container -->
 
@@ -567,7 +781,16 @@ function sucuriscan_core_integrity_page()
     <?php
 }
 
-function sucuriscan_core_integrity_function_wrapper($function_name, $stitle, $description){ ?>
+/**
+ * Print the HTML code with the form needed to check the integrity of specific
+ * parts of the site and administrator panel.
+ *
+ * @param  string $function_name Name of the function that will be executed on form submission.
+ * @param  string $stitle        Title of the HTML panel.
+ * @param  string $description   Explanation of the action that will be performed once the form is submitted.
+ * @return void
+ */
+function sucuriscan_core_integrity_function_wrapper($function_name='', $stitle='', $description=''){ ?>
     <div class="postbox">
         <h3><?php echo $stitle; ?></h3>
         <div class="inside">
@@ -589,6 +812,11 @@ function sucuriscan_core_integrity_function_wrapper($function_name, $stitle, $de
     </div>
 <?php }
 
+/**
+ * List all files inside wp-content that have been modified in the last days.
+ *
+ * @return void
+ */
 function sucuriscan_core_integrity_wp_content_wrapper(){ ?>
     <div class="postbox">
         <h3>Latest modified files</h3>
@@ -646,6 +874,14 @@ function sucuriscan_core_integrity_wp_content_wrapper(){ ?>
     </div>
 <?php }
 
+/**
+ * Retrieve a list of md5sum and last modification time of all the files in the
+ * folder specified. This is a recursive function.
+ *
+ * @param  string  $dir      The base path where the scanning will start.
+ * @param  boolean $recursiv Either TRUE or FALSE if the scan should be performed recursively.
+ * @return array             List of arrays containing the md5sum and last modification time of the files found.
+ */
 function read_dir_r($dir = "./", $recursiv = false)
 {
     $skipname  = basename(__FILE__);
@@ -687,6 +923,13 @@ function read_dir_r($dir = "./", $recursiv = false)
     return $files_info;
 }
 
+/**
+ * Compare the md5sum of the core files in the current site with the hashes hosted
+ * remotely in Sucuri servers. These hashes are updated every time a new version
+ * of Wordpress is released.
+ *
+ * @return void
+ */
 function sucuriwp_core_integrity_check()
 {
 
@@ -772,6 +1015,12 @@ function sucuriwp_core_integrity_check()
     }
 }
 
+/**
+ * List all the Wordpress core files modified until now.
+ *
+ * @param  array  $list List of Wordpress core files modified.
+ * @return void
+ */
 function sucuriscan_draw_corefiles_status($list=array()){
     if( is_array($list) && !empty($list) ): ?>
         <table class="wp-list-table widefat sucuriscan-corefiles">
@@ -792,6 +1041,13 @@ function sucuriscan_draw_corefiles_status($list=array()){
     <?php endif; ?>
 <?php }
 
+/**
+ * List all the user accounts under the user level specified, by default the
+ * users analyzed are the administrator accounts.
+ *
+ * @param  string $userlevel Identifier of the user level that will be filtered in the search.
+ * @return void
+ */
 function sucuriwp_list_admins($userlevel = '10') {
 
     global $wpdb;
@@ -842,6 +1098,11 @@ function sucuriwp_list_admins($userlevel = '10') {
     echo sucuriscan_get_template('integrity-admins.html.tpl', $template_variables);
 }
 
+/**
+ * Check if any installed plugin has an update available.
+ *
+ * @return void
+ */
 function sucuriwp_check_plugins()
 {
     do_action("wp_update_plugins"); // force WP to check plugins for updates
@@ -879,6 +1140,11 @@ function sucuriwp_check_plugins()
     echo '</div>';
 }
 
+/**
+ * Check if any installed theme has an update available.
+ *
+ * @return void
+ */
 function sucuriwp_check_themes()
 {
     do_action("wp_update_themes"); // force WP to check for theme updates
@@ -907,88 +1173,68 @@ function sucuriwp_check_themes()
     echo '</div>';
 }
 
-function sucuriscan_core_integrity_lib() { ?>
-    <div class="postbox-container" style="width:75%;">
-        <div class="sucuriscan-maincontent">
-            <div class="postbox">
-               <div class="inside">
-                   <h2 align="center">Sucuri WordPress Integrity Checks</h2>
-               </div>
-            </div>
-
-            <?php
-            if( isset($_POST['wpsucuri-core-integrity']) ){
-                if(!wp_verify_nonce($_POST['sucuriscan_core_integritynonce'], 'sucuriscan_core_integritynonce'))
-                {
-                    unset($_POST['wpsucuri-core_integrity']);
-                }
-            }
-            ?>
-
-            <div id="poststuff">
-                <?php
-                sucuriscan_core_integrity_function_wrapper(
-                    'sucuriwp_core_integrity_check',
-                    'Verify Integrity of WordPress Core Files',
-                    'This test will check wp-includes, wp-admin, and the top directory files against the latest WordPress
-                    hashing database. If any of those files were modified, it is a big sign of a possible compromise.'
-                );
-
-                sucuriscan_core_integrity_wp_content_wrapper();
-
-                sucuriscan_core_integrity_function_wrapper(
-                    'sucuriwp_list_admins',
-                    'Admin User Dump',
-                    'List all administrator users and their latest login time.'
-                );
-
-                sucuriscan_core_integrity_function_wrapper(
-                    'sucuriwp_check_plugins',
-                    'Outdated Plugin list',
-                    'This test will list any outdated (active) plugins.'
-                );
-
-                sucuriscan_core_integrity_function_wrapper(
-                    'sucuriwp_check_themes',
-                    'Outdated Theme List',
-                    'This test will list any outdated theme.'
-                );
-                ?>
-            </div>
-
-            <p align="center">
-                <strong>If you have any questions about these tests or this plugin, contact us at <a href="mailto:info@sucuri.net">
-                info@sucuri.net</a> or visit <a href="http://sucuri.net">Sucuri Security</a></strong>
-            </p>
-    <?php
-}
-
-/* Sucuri one-click hardening page. */
-
-function sucuriscan_hardening_page()
-
-{
-
-    /* Hardening page. */
-
+/**
+ * Sucuri one-click hardening page.
+ *
+ * It loads all the functions defined in /lib/hardening.php and shows the forms
+ * that the administrator can use to harden multiple parts of the site.
+ *
+ * @return void
+ */
+function sucuriscan_hardening_page(){
     echo '<div class="wrap">';
-    echo '<h2 id="warnings_hook"></h2>';
-    echo '<div class="sucuriscan_header">';
-    echo '<a href="http://sucuri.net/signup" target="_blank" title="Sucuri Security">';
-    echo '<img src="'.SUCURI_URL.'/inc/images/logo.png" alt="Sucuri Security" />';
-    echo '</a>';
-    sucuriscan_pagestop("Sucuri 1-Click Hardening Options");
-    echo '</div>';
+        echo '<h2 id="warnings_hook"></h2>';
+        echo '<div class="sucuriscan_header">';
+            echo '<a href="http://sucuri.net/signup" target="_blank" title="Sucuri Security">';
+                echo '<img src="'.SUCURI_URL.'/inc/images/logo.png" alt="Sucuri Security" />';
+            echo '</a>';
+            sucuriscan_pagestop("Sucuri 1-Click Hardening Options");
+        echo '</div>';
 
-    if(!current_user_can('manage_options'))
-    {
-        wp_die(__('You do not have sufficient permissions to access this page: Sucuri Hardening') );
-    }
+        if(!current_user_can('manage_options'))
+        {
+            wp_die(__('You do not have sufficient permissions to access this page: Sucuri Hardening') );
+        }
+        ?>
 
-    sucuriscan_hardening_lib()
+        <div class="postbox-container" style="width:75%">
+            <div class="sucuriscan-maincontent">
+                <div class="postbox">
+                   <div class="inside">
+                       <h2 align="center">Help secure your WordPress install with <a href="http://sucuri.net/signup">Sucuri</a> 1-Click Hardening Options.</h2>
+                   </div>
+                </div>
 
-    ?>
+                <?php
+                if( isset($_POST['wpsucuri-doharden']) ){
+                    if(!wp_verify_nonce($_POST['sucuriscan_wphardeningnonce'], 'sucuriscan_wphardeningnonce'))
+                    {
+                        unset($_POST['wpsucuri-doharden']);
+                    }
+                }
+                ?>
 
+                <div id="poststuff">
+                    <form method="post">
+                        <input type="hidden" name="sucuriscan_wphardeningnonce" value="<?php echo wp_create_nonce('sucuriscan_wphardeningnonce'); ?>" />
+                        <input type="hidden" name="wpsucuri-doharden" value="wpsucuri-doharden" />
+                        <?php
+                        sucuriscan_harden_version();
+                        sucuriscan_cloudproxy_enabled();
+                        sucuri_harden_removegenerator();
+                        sucuriscan_harden_upload();
+                        sucuriscan_harden_wpcontent();
+                        sucuriscan_harden_wpincludes();
+                        sucuriscan_harden_phpversion();
+                        ?>
+                    </form>
+
+                    <p align="center">
+                        <strong>If you have any questions about these checks or this plugin, contact us at
+                        <a href="mailto:info@sucuri.net">info@sucuri.net</a> or visit <a href="http://sucuri.net">
+                        Sucuri Security</a></strong>
+                    </p>
+                </div><!-- End poststuff -->
             </div><!-- End sucuriscan-maincontent -->
         </div><!-- End postbox-container -->
 
@@ -999,6 +1245,12 @@ function sucuriscan_hardening_page()
     <?php
 }
 
+/**
+ * Print the HTML code to show the title of a hardening option box.
+ *
+ * @param  string $msg The title of the hardening option.
+ * @return void
+ */
 function sucuriscan_wrapper_open($msg)
 {
     ?>
@@ -1007,6 +1259,12 @@ function sucuriscan_wrapper_open($msg)
         <div class="inside">
     <?php
 }
+
+/**
+ * Close the HTML tags of the containers opened with __ss_wraphardeningboxopen()
+ *
+ * @return void
+ */
 function sucuriscan_wrapper_close()
 {
     ?>
@@ -1015,19 +1273,42 @@ function sucuriscan_wrapper_close()
     <?php
 }
 
+/**
+ * Print an error message in the interface.
+ *
+ * @param  string $message The text string that will be shown inside the error box.
+ * @return void
+ */
 function sucuriscan_harden_error($message)
 {
     return('<div id="message" class="error"><p>'.$message.'</p></div>');
 }
 
+/**
+ * Print a success message in the interface.
+ *
+ * @param  string $message The text string that will be shown inside the success box.
+ * @return void
+ */
 function sucuriscan_harden_ok($message)
 {
     return( '<div id="message" class="updated"><p>'.$message.'</p></div>');
 }
 
-function sucuriscan_harden_status($status, $type, $messageok, $messagewarn,
-                              $desc = NULL, $updatemsg = NULL)
-{
+/**
+ * Generate the HTML code necessary to show a form with the options to harden
+ * a specific part of the Wordpress installation, if the Status variable is
+ * set as a positive integer the button is shown as "unharden".
+ *
+ * @param  integer $status      Either one or zero representing the state of the hardening, one for secure, zero for insecure.
+ * @param  string  $type        Name of the hardening option, this will be used through out the form generation.
+ * @param  string  $messageok   Message that will be shown if the hardening was executed.
+ * @param  string  $messagewarn Message that will be shown if the hardening is not executed.
+ * @param  string  $desc        Optional description of the hardening.
+ * @param  string  $updatemsg   Optional explanation of the hardening after the submission of the form.
+ * @return void
+ */
+function sucuriscan_harden_status($status=0, $type='', $messageok='', $messagewarn='', $desc = NULL, $updatemsg = NULL){
     if($desc != NULL)
     {
         echo "<p>$desc</p>";
@@ -1063,10 +1344,14 @@ function sucuriscan_harden_status($status, $type, $messageok, $messagewarn,
                          value="Harden it!" />';
         }
     }
-
-
 }
 
+/**
+ * Check whether the version number of the Wordpress installed is the latest
+ * version available officially.
+ *
+ * @return void
+ */
 function sucuriscan_harden_version()
 {
     global $wp_version;
@@ -1109,6 +1394,13 @@ function sucuriscan_harden_version()
     sucuriscan_wrapper_close();
 }
 
+/**
+ * Notify the state of the hardening for the removal of the Generator tag in
+ * HTML code printed by Wordpress to show the current version number of the
+ * installation.
+ *
+ * @return void
+ */
 function sucuri_harden_removegenerator()
 {
     /* Enabled by default with this plugin. */
@@ -1125,6 +1417,15 @@ function sucuri_harden_removegenerator()
     sucuriscan_wrapper_close();
 }
 
+/**
+ * Check whether the Wordpress upload folder is protected or not.
+ *
+ * A htaccess file is placed in the upload folder denying the access to any php
+ * file that could be uploaded through a vulnerability in a Plugin, Theme or
+ * Wordpress itself.
+ *
+ * @return void
+ */
 function sucuriscan_harden_upload()
 {
     $cp = 1;
@@ -1193,6 +1494,15 @@ function sucuriscan_harden_upload()
     sucuriscan_wrapper_close();
 }
 
+/**
+ * Check whether the Wordpress content folder is protected or not.
+ *
+ * A htaccess file is placed in the content folder denying the access to any php
+ * file that could be uploaded through a vulnerability in a Plugin, Theme or
+ * Wordpress itself.
+ *
+ * @return void
+ */
 function sucuriscan_harden_wpcontent()
 {
     $cp = 1;
@@ -1261,6 +1571,16 @@ function sucuriscan_harden_wpcontent()
     sucuriscan_wrapper_close();
 }
 
+/**
+ * Check whether the Wordpress includes folder is protected or not.
+ *
+ * A htaccess file is placed in the includes folder denying the access to any php
+ * file that could be uploaded through a vulnerability in a Plugin, Theme or
+ * Wordpress itself, there are some exceptions for some specific files that must
+ * be available publicly.
+ *
+ * @return void
+ */
 function sucuriscan_harden_wpincludes()
 {
     $cp = 1;
@@ -1330,6 +1650,12 @@ function sucuriscan_harden_wpincludes()
     sucuriscan_wrapper_close();
 }
 
+/**
+ * Check the version number of the PHP interpreter set to work with the site,
+ * is considered that old versions of the PHP interpreter are insecure.
+ *
+ * @return void
+ */
 function sucuriscan_harden_phpversion()
 {
     $phpv = phpversion();
@@ -1351,6 +1677,11 @@ function sucuriscan_harden_phpversion()
     sucuriscan_wrapper_close();
 }
 
+/**
+ * Check whether the site is behind a secure proxy server or not.
+ *
+ * @return void
+ */
 function sucuriscan_cloudproxy_enabled(){
     $enabled = sucuriscan_is_behind_cloudproxy();
 
@@ -1369,48 +1700,11 @@ function sucuriscan_cloudproxy_enabled(){
     sucuriscan_wrapper_close();
 }
 
-function sucuriscan_hardening_lib(){ ?>
-    <div class="postbox-container" style="width:75%">
-        <div class="sucuriscan-maincontent">
-            <div class="postbox">
-               <div class="inside">
-                   <h2 align="center">Help secure your WordPress install with <a href="http://sucuri.net/signup">Sucuri</a> 1-Click Hardening Options.</h2>
-               </div>
-            </div>
-
-            <?php
-            if( isset($_POST['wpsucuri-doharden']) ){
-                if(!wp_verify_nonce($_POST['sucuriscan_wphardeningnonce'], 'sucuriscan_wphardeningnonce'))
-                {
-                    unset($_POST['wpsucuri-doharden']);
-                }
-            }
-            ?>
-
-            <div id="poststuff">
-                <form method="post">
-                    <input type="hidden" name="sucuriscan_wphardeningnonce" value="<?php echo wp_create_nonce('sucuriscan_wphardeningnonce'); ?>" />
-                    <input type="hidden" name="wpsucuri-doharden" value="wpsucuri-doharden" />
-                    <?php
-                    sucuriscan_harden_version();
-                    sucuriscan_cloudproxy_enabled();
-                    sucuri_harden_removegenerator();
-                    sucuriscan_harden_upload();
-                    sucuriscan_harden_wpcontent();
-                    sucuriscan_harden_wpincludes();
-                    sucuriscan_harden_phpversion();
-                    ?>
-                </form>
-
-                <p align="center">
-                    <strong>If you have any questions about these checks or this plugin, contact us at
-                    <a href="mailto:info@sucuri.net">info@sucuri.net</a> or visit <a href="http://sucuri.net">
-                    Sucuri Security</a></strong>
-                </p>
-            </div><!-- End poststuff -->
-    <?php
-}
-
+/**
+ * Generate and print the HTML code for the Post-Hack page.
+ *
+ * @return void
+ */
 function sucuriscan_posthack_page()
 {
     if( !current_user_can('manage_options') )
@@ -1513,10 +1807,12 @@ function sucuriscan_posthack_page()
 }
 
 /**
- * Sucuri Scanner - Last Logins
- * @return Functions associated to the Last Logins page.
+ * Generate and print the HTML code for the Last Logins page.
+ *
+ * This page will contains information of all the logins of the registered users.
+ *
+ * @return void
  */
-
 function sucuriscan_lastlogins_page()
 {
     if( !current_user_can('manage_options') )
@@ -1557,12 +1853,23 @@ function sucuriscan_lastlogins_page()
     echo sucuriscan_get_template('lastlogins.html.tpl', $template_variables);
 }
 
+/**
+ * Get the filepath where the information of the last logins of all users is stored.
+ *
+ * @return string Absolute filepath where the user's last login information is stored.
+ */
 function sucuriscan_lastlogins_datastore_filepath(){
     $plugin_upload_folder = sucuriscan_dir_filepath();
     $datastore_filepath = rtrim($plugin_upload_folder,'/').'/sucuri-lastlogins.php';
     return $datastore_filepath;
 }
 
+/**
+ * Check whether the user's last login datastore file exists or not, if not then
+ * we try to create the file and check again the success of the operation.
+ *
+ * @return string Absolute filepath where the user's last login information is stored.
+ */
 function sucuriscan_lastlogins_datastore_exists(){
     $datastore_filepath = sucuriscan_lastlogins_datastore_filepath();
 
@@ -1575,6 +1882,12 @@ function sucuriscan_lastlogins_datastore_exists(){
     return file_exists($datastore_filepath) ? $datastore_filepath : FALSE;
 }
 
+/**
+ * Check whether the user's last login datastore file is writable or not, if not
+ * we try to set the right permissions and check again the success of the operation.
+ *
+ * @return boolean Whether the user's last login datastore file is writable or not.
+ */
 function sucuriscan_lastlogins_datastore_is_writable(){
     $datastore_filepath = sucuriscan_lastlogins_datastore_exists();
     if($datastore_filepath){
@@ -1586,6 +1899,12 @@ function sucuriscan_lastlogins_datastore_is_writable(){
     return FALSE;
 }
 
+/**
+ * Check whether the user's last login datastore file is readable or not, if not
+ * we try to set the right permissions and check again the success of the operation.
+ *
+ * @return boolean Whether the user's last login datastore file is readable or not.
+ */
 function sucuriscan_lastlogins_datastore_is_readable(){
     $datastore_filepath = sucuriscan_lastlogins_datastore_exists();
     if( $datastore_filepath && is_readable($datastore_filepath) ){
@@ -1595,6 +1914,12 @@ function sucuriscan_lastlogins_datastore_is_readable(){
 }
 
 if( !function_exists('sucuri_set_lastlogin') ){
+    /**
+     * Add a new user session to the list of last user logins.
+     *
+     * @param  string $user_login The name of the user account involved in the operation.
+     * @return void
+     */
     function sucuriscan_set_lastlogin($user_login=''){
         $datastore_filepath = sucuriscan_lastlogins_datastore_is_writable();
 
@@ -1616,6 +1941,16 @@ if( !function_exists('sucuri_set_lastlogin') ){
     add_action('wp_login', 'sucuriscan_set_lastlogin', 50);
 }
 
+/**
+ * Retrieve the list of all the user logins from the datastore file.
+ *
+ * The results of this operation can be filtered by specific user identifiers,
+ * or limiting the quantity of entries.
+ *
+ * @param  integer $limit   How many entries will be returned from the operation.
+ * @param  integer $user_id Optional user identifier to filter the results.
+ * @return array            The list of all the user logins through the time until now.
+ */
 function sucuriscan_get_logins($limit=10, $user_id=0){
     $lastlogins = array();
     $datastore_filepath = sucuriscan_lastlogins_datastore_is_readable();
@@ -1658,6 +1993,15 @@ function sucuriscan_get_logins($limit=10, $user_id=0){
 }
 
 if( !function_exists('sucuri_login_redirect') ){
+    /**
+     * Hook for the wp-login action to redirect the user to a specific URL after
+     * his successfully login to the administrator interface.
+     *
+     * @param  string  $redirect_to URL where the browser must be originally redirected to, set by Wordpress itself.
+     * @param  object  $request     Optional parameter set by Wordpress itself through the event triggered.
+     * @param  boolean $user        Wordpress user object with the information of the account involved in the operation.
+     * @return string               URL where the browser must be redirected to.
+     */
     function sucuriscan_login_redirect($redirect_to='', $request=NULL, $user=FALSE){
         $login_url = !empty($redirect_to) ? $redirect_to : admin_url();
         if( $user instanceof WP_User && $user->ID ){
@@ -1669,6 +2013,11 @@ if( !function_exists('sucuri_login_redirect') ){
 }
 
 if( !function_exists('sucuri_get_user_lastlogin') ){
+    /**
+     * Display the last user login at the top of the admin interface.
+     *
+     * @return void
+     */
     function sucuriscan_get_user_lastlogin(){
         if( isset($_GET['sucuriscan_lastlogin_message']) && current_user_can('manage_options') ){
             $current_user = wp_get_current_user();
@@ -1689,10 +2038,14 @@ if( !function_exists('sucuri_get_user_lastlogin') ){
 }
 
 /**
- * Sucuri Scanner - Info System
- * @return Functions associated to the Info System page.
+ * Generate and print the HTML code for the InfoSys page.
+ *
+ * This page will contains information of the system where the site is hosted,
+ * also information about users in session, htaccess rules and configuration
+ * options.
+ *
+ * @return void
  */
-
 function sucuriscan_infosys_page(){
     if( !current_user_can('manage_options') )
     {
@@ -1713,7 +2066,12 @@ function sucuriscan_infosys_page(){
     echo sucuriscan_get_template('infosys.html.tpl', $template_variables);
 }
 
-
+/**
+ * Find the main htaccess file for the site and check whether the rules of the
+ * main htaccess file of the site are the default rules generated by Wordpress.
+ *
+ * @return string The HTML code displaying the information about the HTAccess rules.
+ */
 function sucuriscan_infosys_htaccess(){
     $htaccess_path = sucuriscan_get_htaccess_path();
 
@@ -1753,7 +2111,13 @@ function sucuriscan_infosys_htaccess(){
     return sucuriscan_get_template('infosys-htaccess.html.tpl', $template_variables);
 }
 
-
+/**
+ * Check whether the rules in a htaccess file are the default options generated
+ * by Wordpress or if the file has custom options added by other Plugins.
+ *
+ * @param  string  $rules Optional parameter containing a text string with the content of the main htaccess file.
+ * @return boolean        Either TRUE or FALSE if the rules found in the htaccess file specified are the default ones or not.
+ */
 function sucuriscan_htaccess_is_standard($rules=FALSE){
     if( $rules===FALSE ){
         $htaccess_path = sucuriscan_get_htaccess_path();
@@ -1792,7 +2156,13 @@ function sucuriscan_htaccess_is_standard($rules=FALSE){
     return FALSE;
 }
 
-
+/**
+ * Retrieve all the constants and variables with their respective values defined
+ * in the Wordpress configuration file, only the database password constant is
+ * omitted for security reasons.
+ *
+ * @return string The HTML code displaying the constants and variables found in the wp-config file.
+ */
 function sucuriscan_infosys_wpconfig(){
     $template_variables = array(
         'WordpressConfig.Rules' => '',
@@ -1861,7 +2231,11 @@ function sucuriscan_infosys_wpconfig(){
     return sucuriscan_get_template('infosys-wpconfig.html.tpl', $template_variables);
 }
 
-
+/**
+ * Print a list of all the registered users that are currently in session.
+ *
+ * @return string The HTML code displaying a list of all the users logged in at the moment.
+ */
 function sucuriscan_infosys_loggedin(){
     // Get user logged in list.
     $template_variables = array(
@@ -1892,7 +2266,11 @@ function sucuriscan_infosys_loggedin(){
     return sucuriscan_get_template('infosys-loggedin.html.tpl', $template_variables);
 }
 
-
+/**
+ * Get a list of all the registered users that are currently in session.
+ *
+ * @return array List of registered users currently in session.
+ */
 function sucuriscan_get_online_users(){
     if( sucuriscan_is_multisite() ){
         return get_site_transient('online_users');
@@ -1901,7 +2279,14 @@ function sucuriscan_get_online_users(){
     }
 }
 
-
+/**
+ * Update the list of the registered users currently in session.
+ *
+ * Useful when you are removing users and need the list of the remaining users.
+ *
+ * @param  array   $logged_in_users List of registered users currently in session.
+ * @return boolean                  Either TRUE or FALSE representing the success or fail of the operation.
+ */
 function sucuriscan_save_online_users($logged_in_users=array()){
     $expiration = 30 * 60;
     if( sucuriscan_is_multisite() ){
@@ -1911,8 +2296,13 @@ function sucuriscan_save_online_users($logged_in_users=array()){
     }
 }
 
-
 if( !function_exists('sucuriscan_unset_online_user_on_logout') ){
+    /**
+     * Remove a logged in user from the list of registered users in session when
+     * the logout page is requested.
+     *
+     * @return void
+     */
     function sucuriscan_unset_online_user_on_logout(){
         $current_user = wp_get_current_user();
         $user_id = $current_user->ID;
@@ -1924,6 +2314,14 @@ if( !function_exists('sucuriscan_unset_online_user_on_logout') ){
     add_action('wp_logout', 'sucuriscan_unset_online_user_on_logout');
 }
 
+/**
+ * Remove a logged in user from the list of registered users in session using
+ * the user identifier and the ip address of the last computer used to login.
+ *
+ * @param  integer $user_id     User identifier of the account that will be logged out.
+ * @param  integer $remote_addr IP address of the computer where the user logged in.
+ * @return boolean              Either TRUE or FALSE representing the success or fail of the operation.
+ */
 function sucuriscan_unset_online_user($user_id=0, $remote_addr=0){
     $logged_in_users = sucuriscan_get_online_users();
 
@@ -1943,8 +2341,14 @@ function sucuriscan_unset_online_user($user_id=0, $remote_addr=0){
     return sucuriscan_save_online_users($logged_in_users);
 }
 
-
 if( !function_exists('sucuriscan_set_online_user') ){
+    /**
+     * Add an user account to the list of registered users in session.
+     *
+     * @param  string  $user_login The name of the user account that just logged in the site.
+     * @param  boolean $user       The Wordpress object containing all the information associated to the user.
+     * @return void
+     */
     function sucuriscan_set_online_user($user_login='', $user=FALSE){
         if( $user ){
             // Get logged in user information.
@@ -2006,10 +2410,11 @@ if( !function_exists('sucuriscan_set_online_user') ){
 }
 
 /**
- * Sucuri Scanner - About page
- * @return Functions associated to the About page.
+ * Print the HTML code for the plugin about page with information of the plugin,
+ * the scheduled tasks, and some settings from the PHP environment and server.
+ *
+ * @return void
  */
-
 function sucuriscan_about_page()
 {
     if( !current_user_can('manage_options') )
@@ -2031,6 +2436,12 @@ function sucuriscan_about_page()
     echo sucuriscan_get_template('about.html.tpl', $template_variables);
 }
 
+/**
+ * Gather information from the server, database engine and PHP interpreter.
+ *
+ * @param  array $template_variables The hash for the template system, keys are pseudo-variables.
+ * @return array                     A list of pseudo-variables and values that will replace them in the HTML template.
+ */
 function sucuriscan_about_information($template_variables=array())
 {
     global $wpdb;
@@ -2076,6 +2487,12 @@ function sucuriscan_about_information($template_variables=array())
     return $template_variables;
 }
 
+/**
+ * Retrieve a list with the scheduled tasks configured for the site.
+ *
+ * @param  array $template_variables The hash for the template system, keys are pseudo-variables.
+ * @return array                     A list of pseudo-variables and values that will replace them in the HTML template.
+ */
 function sucuriscan_show_cronjobs($template_variables=array())
 {
     $template_variables['Cronjobs'] = '';
