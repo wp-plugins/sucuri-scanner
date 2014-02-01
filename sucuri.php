@@ -132,7 +132,7 @@ function sucuriscan_dir_filepath($path = '')
 function sucuriscan_menu()
 {
     add_menu_page('Sucuri Free', 'Sucuri Free', 'manage_options',
-                  'sucuriscan', 'sucuri_scan_page', SUCURI_URL.'images/menu-icon.png');
+                  'sucuriscan', 'sucuri_scan_page', SUCURI_URL.'inc/images/menu-icon.png');
     add_submenu_page('sucuriscan', 'Sucuri Scanner', 'Sucuri Scanner', 'manage_options',
                      'sucuriscan', 'sucuri_scan_page');
 
@@ -518,102 +518,99 @@ function sucuri_scan_page()
 function sucuriscan_print_scan()
 {
     $website_scanned = home_url();
-    $myresults = wp_remote_get('http://sitecheck.sucuri.net/scanner/?serialized&clear&fromwp&scan='.$website_scanned, array('timeout' => 180));
+    $remote_url = 'http://sitecheck.sucuri.net/scanner/?serialized&clear&fromwp&scan='.$website_scanned;
+    $myresults = wp_remote_get($remote_url, array('timeout' => 180));
+    ?>
+    <div class="wrap">
+        <h2 id="warnings_hook"></h2>
+        <div class="sucuriscan_header">
+            <a href="http://sucuri.net/signup" target="_blank" title="Sucuri Security">
+                <img src="<?php echo SUCURI_URL; ?>/inc/images/logo.png" alt="Sucuri Security" />
+            </a>
+            <?php sucuriscan_pagestop('Sucuri SiteCheck Malware Scanner'); ?>
+        </div>
 
-    echo '<div class="wrap">';
-        echo '<h2 id="warnings_hook"></h2>';
-        echo '<div class="sucuriscan_header">';
-        echo '<a href="http://sucuri.net/signup" target="_blank" title="Sucuri Security">';
-        echo '<img src="'.SUCURI_URL.'/inc/images/logo.png" alt="Sucuri Security" />';
-        echo '</a>';
-        sucuriscan_pagestop("Sucuri SiteCheck Malware Scanner");
-        echo '</div>';
-
-        echo '<div class="postbox-container" style="width:75%;">';
-            echo '<div class="sucuriscan-maincontent">';
-
-                if(is_wp_error($myresults))
-                {
-                    echo '<div id="poststuff">';
-                        echo '<div class="postbox">';
-                            echo '<h3>Error retrieving the scan report</h3>';
-
-                            echo '<div class="inside">';
-                                print_r($myresults);
-                            echo '</div>';
-                        echo '</div>';
-                    echo '</div>';
+        <div class="postbox-container sucuriscan-results" style="width:75%;">
+            <div class="sucuriscan-maincontent">
+                <?php if( is_wp_error($myresults) ){ ?>
+                    <div id="poststuff">
+                        <div class="postbox">
+                            <h3>Error retrieving the scan report</h3>
+                            <div class="inside">
+                                <?php print_r($myresults); ?>
+                            </div>
+                        </div>
+                    </div>
+                <?php
                 }else if( preg_match('/^ERROR:/', $myresults['body']) ){
                     sucuriscan_admin_notice('error', $myresults['body'].' The URL scanned was: <code>'.$website_scanned.'</code>');
                 }else{
                     $res = unserialize($myresults['body']);
 
-
                     // Check for general warnings, and return the information for Infected/Clean site.
                     $malware_warns_exists = isset($res['MALWARE']['WARN']) ? TRUE : FALSE;
-                    echo '<div id="poststuff">';
-                        echo '<div class="postbox">';
-                            echo '<h3>';
-                                if( !$malware_warns_exists ){
-                                    echo '<img style="position:relative;top:5px" height="22" width="22" src="
-                                         '.site_url().'/wp-content/plugins/sucuri-scanner/images/ok.png" /> &nbsp;
-                                         No malware was identified';
-                                }else{
-                                    echo '<img style="position:relative;top:5px" height="22" width="22" src="
-                                         '.site_url().'/wp-content/plugins/sucuri-scanner/images/warn.png" /> &nbsp;
-                                         Site compromised (malware was identified)';
-                                }
-                            echo '</h3>';
-                            echo '<div class="inside">';
-                                if( !$malware_warns_exists ){
-                                    echo "<span><strong>Malware:</strong> No.</span><br>";
-                                    echo "<span><strong>Malicious javascript:</strong> No.</span><br>";
-                                    echo "<span><strong>Malicious iframes:</strong> No.</span><br>";
-                                    echo "<span><strong>Suspicious redirections (htaccess):</strong> No.</span><br>";
-                                    echo "<span><strong>Blackhat SEO Spam:</strong> No.</span><br>";
-                                    echo "<span><strong>Anomaly detection:</strong> Clean.</span><br>";
-                                }else{
-                                    foreach($res['MALWARE']['WARN'] as $malres)
-                                    {
-                                        if(!is_array($malres))
-                                        {
+                    ?>
+                    <div id="poststuff">
+                        <div class="postbox">
+                            <h3>
+                                <?php if( !$malware_warns_exists ): ?>
+                                    <img src="<?php echo SUCURI_URL; ?>/inc/images/ok.png" class="icon-ok" /> &nbsp;
+                                    No malware was identified
+                                <?php else: ?>
+                                    <img src="<?php echo SUCURI_URL; ?>/inc/images/warn.png" class="icon-warn" /> &nbsp;
+                                    Site compromised (malware was identified)
+                                <?php endif; ?>
+                            </h3>
+                            <div class="inside">
+                                <?php if( !$malware_warns_exists ): ?>
+                                    <span><strong>Malware:</strong> No.</span><br>
+                                    <span><strong>Malicious javascript:</strong> No.</span><br>
+                                    <span><strong>Malicious iframes:</strong> No.</span><br>
+                                    <span><strong>Suspicious redirections (htaccess):</strong> No.</span><br>
+                                    <span><strong>Blackhat SEO Spam:</strong> No.</span><br>
+                                    <span><strong>Anomaly detection:</strong> Clean.</span><br>
+                                <?php else: ?>
+                                    <?php
+                                    foreach( $res['MALWARE']['WARN'] as $malres ){
+                                        if( !is_array($malres) ){
                                             echo htmlspecialchars($malres);
-                                        }
-                                        else
-                                        {
+                                        }else{
                                             $mwdetails = explode("\n", htmlspecialchars($malres[1]));
                                             echo htmlspecialchars($malres[0])."\n<br />". substr($mwdetails[0], 1)."<br />\n";
                                         }
                                     }
-                                }
-                                echo "<br />";
-                                echo '<i>More details here: <a href="http://sitecheck.sucuri.net/scanner/?scan='.$website_scanned.'">http://sitecheck.sucuri.net/scanner/?scan='.$website_scanned.'</a></i>';
-                                echo "<hr />\n";
-                                echo '<i>If our free scanner did not detect any issue, you may have a more complicated and hidden problem. You can try our <a href="admin.php?page=sucuriscan_core_integrity">WordPress integrity checks</a> or sign up with Sucuri <a target="_blank" href="http://sucuri.net/signup">here</a> for a complete and in depth scan+cleanup (not included in the free checks).</i>';
-                                echo "<hr />\n";
-                            echo '</div>';
-                        echo '</div>';
-                    echo '</div>';
+                                    ?>
+                                <?php endif; ?>
+                                <br />
+                                <i>
+                                    More details here: <a href="http://sitecheck.sucuri.net/scanner/?scan=<?php echo $website_scanned; ?>">
+                                    http://sitecheck.sucuri.net/scanner/?scan=<?php echo $website_scanned; ?></a>
+                                </i>
+                                <hr />
+                                <i>
+                                    If our free scanner did not detect any issue, you may have a more complicated and hidden
+                                    problem. You can try our <a href="admin.php?page=sucuriscan_core_integrity">WordPress integrity
+                                    checks</a> or sign up with Sucuri <a target="_blank" href="http://sucuri.net/signup">here</a>
+                                    for a complete and in depth scan+cleanup (not included in the free checks).
+                                </i>
+                                <hr />
+                            </div>
+                        </div>
+                    </div>
 
-
-                    // Check for blacklist reports, and return the information retrieved from multiple blacklist services.
-                    echo '<div id="poststuff">';
-                        echo '<div class="postbox">';
-                            echo '<h3>';
-                                if(isset($res['BLACKLIST']['WARN']))
-                                {
-                                    echo '<img style="position:relative;top:5px" height="22" width="22" src="
-                                        '.site_url().'/wp-content/plugins/sucuri-scanner/images/warn.png" /> &nbsp;
-                                        Site blacklisted';
-                                }
-                                else
-                                {
-                                    echo '<img style="position:relative;top:5px" height="22" width="22" src="
-                                        '.site_url().'/wp-content/plugins/sucuri-scanner/images/ok.png" /> &nbsp;
-                                        Site blacklist-free';
-                                }
-                            echo '</h3>';
-                            echo '<div class="inside">';
+                    <div id="poststuff">
+                        <div class="postbox">
+                            <h3>
+                                <?php if( isset($res['BLACKLIST']['WARN']) ): ?>
+                                    <img src="<?php echo SUCURI_URL; ?>/inc/images/warn.png" class="icon-warn" /> &nbsp;
+                                    Site blacklisted
+                                <?php else: ?>
+                                    <img src="<?php echo SUCURI_URL; ?>/inc/images/ok.png" class="icon-ok" /> &nbsp;
+                                    Site blacklist-free
+                                <?php endif; ?>
+                            </h3>
+                            <div class="inside">
+                                <?php
                                 foreach(array(
                                     'INFO'=>'CLEAN',
                                     'WARN'=>'WARNING'
@@ -626,58 +623,53 @@ function sucuriscan_print_scan()
                                         }
                                     }
                                 }
-                            echo '</div>';
-                        echo '</div>';
-                    echo '</div>';
+                                ?>
+                            </div>
+                        </div>
+                    </div>
 
-
-                    // Check for general versions in some common services/software used to serve this website.
+                    <?php
                     global $wp_version;
                     $wordpress_updated = FALSE;
                     $updates = function_exists('get_core_updates') ? get_core_updates() : array();
                     if( !is_array($updates) || empty($updates) || $updates[0]->response=='latest' ){
                         $wordpress_updated = TRUE;
                     }
-
-                    echo '<div id="poststuff">';
-                        echo '<div class="postbox">';
-                            echo '<h3>';
-                                if($wordpress_updated)
-                                {
-                                    echo '<img style="position:relative;top:5px" height="22" width="22" src="
-                                        '.site_url().'/wp-content/plugins/sucuri-scanner/images/ok.png" /> &nbsp;
-                                        System info (WordPress upgraded)';
-                                }
-                                else
-                                {
-                                    echo '<img style="position:relative;top:5px" height="22" width="22" src="
-                                        '.site_url().'/wp-content/plugins/sucuri-scanner/images/warn.png" /> &nbsp;
-                                        System info (WordPress outdated)';
-                                }
-                            echo '</h3>';
-                            echo '<div class="inside">';
-                                echo "<b>Site:</b> ".$res['SCAN']['SITE'][0]." (".$res['SCAN']['IP'][0].")<br />\n";
-                                echo "<b>WordPress: </b> $wp_version<br />\n";
-                                echo "<b>PHP: </b> ".phpversion()."<br />\n";
-                                if(isset($res['SYSTEM']['NOTICE']))
-                                {
-                                    foreach($res['SYSTEM']['NOTICE'] as $notres)
-                                    {
-                                        if(is_array($notres))
-                                        {
-                                            echo htmlspecialchars($notres[0]). " ".htmlspecialchars($notres[1]);
-                                        }
-                                        else
-                                        {
+                    ?>
+                    <div id="poststuff">
+                        <div class="postbox">
+                            <h3>
+                                <?php if($wordpress_updated): ?>
+                                    <img src="<?php echo SUCURI_URL; ?>/inc/images/ok.png" class="icon-ok" /> &nbsp;
+                                    System info (WordPress upgraded)
+                                <?php else: ?>
+                                    <img src="<?php echo SUCURI_URL; ?>/inc/images/warn.png" class="icon-warn" /> &nbsp;
+                                    System info (WordPress outdated)
+                                <?php endif; ?>
+                            </h3>
+                            <div class="inside">
+                                <b>Site:</b> <?php echo $res['SCAN']['SITE'][0]; ?> (<?php echo $res['SCAN']['IP'][0]; ?>)<br />
+                                <b>PHP (version installed): </b> <?php echo phpversion(); ?><br />
+                                <b>WordPress (installed):</b> <?php echo $wp_version; ?><br />
+                                <?php if( !$wordpress_updated ): ?>
+                                    <b>WordPress (update):</b> <?php echo $updates[0]->version; ?><br />
+                                    <a href="<?php echo admin_url('update-core.php'); ?>" class="button button-primary">Update</a>
+                                <?php endif; ?>
+                                <?php
+                                if( isset($res['SYSTEM']['NOTICE']) ){
+                                    foreach( $res['SYSTEM']['NOTICE'] as $notres ){
+                                        if( is_array($notres) ){
+                                            echo htmlspecialchars($notres[0]).chr(32).htmlspecialchars($notres[1]);
+                                        }else{
                                             echo htmlspecialchars($notres)."<br />\n";
                                         }
                                     }
                                 }
-                            echo '</div>';
-                        echo '</div>';
-                    echo '</div>';
-                }
-                ?>
+                                ?>
+                            </div>
+                        </div>
+                    </div>
+                <?php } ?>
 
                 <p>If you have any questions about these checks or this plugin, contact us at support@sucuri.net or visit <a href="http://sucuri.net">http://sucuri.net</a></p>
             </div><!-- End sucuriscan-maincontent -->
@@ -951,7 +943,7 @@ function sucuriwp_core_integrity_check()
     if($cp == 0)
     {
         echo '<p><img style="position:relative;top:5px" height="22" width="22" '
-             .'src="'.SUCURI_URL.'images/warn.png" /> &nbsp; Your current version ('.$wp_version.') is not the latest. '
+             .'src="'.SUCURI_URL.'inc/images/warn.png" /> &nbsp; Your current version ('.$wp_version.') is not the latest. '
              .'<a class="button-primary" href="update-core.php">Update now!</a> to be able to run the integrity check.</p>';
     }
     else
@@ -1318,7 +1310,7 @@ function sucuriscan_harden_status($status=0, $type='', $messageok='', $messagewa
     {
         echo '<h4>'.
              '<img style="position:relative;top:5px" height="22" width="22"'.
-             'src="'.SUCURI_URL.'images/ok.png" /> &nbsp; '.
+             'src="'.SUCURI_URL.'inc/images/ok.png" /> &nbsp; '.
              $messageok.'.</h4>';
 
         if($updatemsg != NULL){ echo $updatemsg; }
@@ -1333,7 +1325,7 @@ function sucuriscan_harden_status($status=0, $type='', $messageok='', $messagewa
     {
         echo '<h4>'.
              '<img style="position:relative;top:5px" height="22" width="22"'.
-             'src="'.SUCURI_URL.'images/warn.png" /> &nbsp; '.
+             'src="'.SUCURI_URL.'inc/images/warn.png" /> &nbsp; '.
              $messagewarn. '.</h4>';
 
         if($updatemsg != NULL){ echo $updatemsg; }
