@@ -942,64 +942,19 @@ function sucuriwp_core_integrity_check()
 
     if($cp == 0)
     {
-        echo '<p><img style="position:relative;top:5px" height="22" width="22" '
-             .'src="'.SUCURI_URL.'inc/images/warn.png" /> &nbsp; Your current version ('.$wp_version.') is not the latest. '
-             .'<a class="button-primary" href="update-core.php">Update now!</a> to be able to run the integrity check.</p>';
+        echo '<p><img style="position:relative;top:5px" height="22" width="22" src="'.SUCURI_URL.'inc/images/warn.png" />'
+            .'&nbsp; The current version of your site was detected as <code>'.$wp_version.'</code> which is different to the '
+            .'official latest version. The integrity check can not run using this version number <a href="'.admin_url('update-core.php').'">'
+            .'update now</a> to be able to run the integrity check.</p>';
     }
     else
     {
-        $latest_hashes = @file_get_contents("http://wordpress.sucuri.net/wp_core_latest_hashes.json");
+        $latest_hashes = sucuriscan_check_wp_integrity($wp_version);
         if($latest_hashes){
-            $wp_core_latest_hashes = json_decode($latest_hashes, true);
-
-            $wp_includes_hashes = read_dir_r( ABSPATH . "wp-includes", true);
-            $wp_admin_hashes = read_dir_r( ABSPATH . "wp-admin", true);
-            $wp_top_hashes = read_dir_r( ABSPATH , false);
-
-            $wp_core_hashes = array_merge( $wp_includes_hashes , $wp_admin_hashes );
-            $wp_core_hashes = array_merge( $wp_core_hashes , $wp_top_hashes );
-
-            $added = @array_diff_assoc( $wp_core_hashes, $wp_core_latest_hashes ); //files added
-            $removed = @array_diff_assoc( $wp_core_latest_hashes, $wp_core_hashes ); //files deleted
-            unset($removed['wp_version']); //ignore wp_version key
-            $compcurrent = @array_diff_key( $wp_core_hashes, $added ); //remove all added files from current filelist
-            $complog = @array_diff_key( $wp_core_latest_hashes, $removed );  //remove all deleted files from old file list
-            $modified = array(); //array of modified files
-
-            //compare file hashes and mod dates
-            foreach ( $compcurrent as $currfile => $currattr) {
-
-                if ( array_key_exists( $currfile, $complog ) ) {
-
-                    //if attributes differ added to modified files array
-                    if ( strcmp( $currattr['md5'], $complog[$currfile]['md5'] ) != 0 ) {
-                        $modified[$currfile]['md5'] = $currattr['md5'];
-                    }
-
-                }
-
-            }
-
-            //ignore some junk files
-            if($curlang != "en_US")
-            {
-                //ignore added files
-                unset($added['./licencia.txt']);
-
-                //ignore removed files
-                unset($removed['./license.txt']);
-
-                //ignore modified files
-                unset($modified['./wp-includes/version.php']);
-                unset($modified['./wp-admin/setup-config.php']);
-                unset($modified['./readme.html']);
-                unset($modified['./wp-config-sample.php']);
-            }
-
             sucuriscan_draw_corefiles_status(array(
-                'added'=>$added,
-                'removed'=>$removed,
-                'modified'=>$modified
+                'added'=>$latest_hashes['added'],
+                'removed'=>$latest_hashes['removed'],
+                'modified'=>$latest_hashes['bad']
             ));
         }else{
             sucuriscan_admin_notice('error', 'Error retrieving the wordpress core hashes, try again.');
@@ -1016,14 +971,11 @@ function sucuriwp_core_integrity_check()
 function sucuriscan_draw_corefiles_status($list=array()){
     if( is_array($list) && !empty($list) ): ?>
         <table class="wp-list-table widefat sucuriscan-corefiles">
-            <thead>
-                <tr><th>Core files altered</th></tr>
-            </thead>
             <tbody>
                 <?php
-                foreach($list as $core_file_type=>$core_file_list){
-                    printf('<tr><th>Core File %s: %d</th></tr>', ucwords($core_file_type), sizeof($core_file_list));
-                    foreach($core_file_list as $filepath=>$extrainfo){
+                foreach($list as $diff_type=>$file_list){
+                    printf('<tr><th>Core File %s: %d</th></tr>', ucwords($diff_type), sizeof($file_list));
+                    foreach($file_list as $filepath){
                         printf('<tr><td>%s</td></tr>', $filepath);
                     }
                 }
@@ -1163,6 +1115,80 @@ function sucuriwp_check_themes()
             }
         echo '</div>';
     echo '</div>';
+}
+
+/**
+ * Retrieve a list with the checksums of the files in a specific version of Wordpress.
+ *
+ * @param  integer $version Valid version number of the Wordpress project.
+ * @return object           Associative object with the relative filepath and the checksums of the project files.
+ */
+function sucuriscan_get_official_checksums($version=0){
+    $api_url = sprintf('http://api.wordpress.org/core/checksums/1.0/?version=%s&locale=en_US', $version);
+
+    $request = wp_remote_get($api_url);
+    if( !is_wp_error($request) || wp_remote_retrieve_response_code($request) === 200 ){
+        $json_data = json_decode($request['body']);
+        if( $json_data->checksums !== FALSE ){
+            return $json_data->checksums;
+        }
+    }
+
+    return FALSE;
+}
+
+/**
+ * Check whether the core Wordpress files where modified, removed or if any file
+ * was added to the core folders. This function returns an associative array with
+ * these keys:
+ *
+ * <ul>
+ *   <li>bad: Files with a different checksum according to the official files of the Wordpress version filtered,</li>
+ *   <li>good: Files with the same checksums than the official files,</li>
+ *   <li>removed: Official files which are not present in the local project,</li>
+ *   <li>added: Files present in the local project but not in the official Wordpress packages.</li>
+ * </ul>
+ *
+ * @param  integer $version Valid version number of the Wordpress project.
+ * @return array            Associative array with these keys: bad, good, removed, added.
+ */
+function sucuriscan_check_wp_integrity($version=0){
+    $latest_hashes = sucuriscan_get_official_checksums($version);
+
+    if( !$latest_hashes ){ return FALSE; }
+
+    $output = array( 'bad'=>array(), 'good'=>array(), 'removed'=>array(), 'added'=>array() );
+
+    // Get current filesystem tree.
+    $wp_top_hashes = read_dir_r( ABSPATH , false);
+    $wp_admin_hashes = read_dir_r( ABSPATH . 'wp-admin', true);
+    $wp_includes_hashes = read_dir_r( ABSPATH . 'wp-includes', true);
+    $wp_core_hashes = array_merge( $wp_top_hashes, $wp_admin_hashes, $wp_includes_hashes );
+
+    // Compare remote and local md5sums and search removed files.
+    foreach( $latest_hashes as $filepath=>$remote_checksum ){
+        $full_filepath = sprintf('%s/%s', ABSPATH, $filepath);
+        if( file_exists($full_filepath) ){
+            $local_checksum = @md5_file($full_filepath);
+            if( $local_checksum && $local_checksum == $remote_checksum ){
+                $output['good'][] = $filepath;
+            }else{
+                $output['bad'][] = $filepath;
+            }
+        }else{
+            $output['removed'][] = $filepath;
+        }
+    }
+
+    // Search added files (files not common in a normal wordpress installation).
+    foreach( $wp_core_hashes  as $filepath=>$extra_info ){
+        $filepath = preg_replace('/^\.\/(.*)/', '$1', $filepath);
+        if( !property_exists($latest_hashes, $filepath) ){
+            $output['added'][] = $filepath;
+        }
+    }
+
+    return $output;
 }
 
 /**
