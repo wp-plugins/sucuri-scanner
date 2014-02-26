@@ -2262,7 +2262,7 @@ function sucuriscan_infosys_loggedin(){
         'LoggedInUsers.Total' => 0,
     );
 
-    $logged_in_users = sucuriscan_get_online_users();
+    $logged_in_users = sucuriscan_get_online_users(TRUE);
     if( is_array($logged_in_users) && !empty($logged_in_users) ){
         $template_variables['LoggedInUsers.Total'] = count($logged_in_users);
 
@@ -2288,14 +2288,28 @@ function sucuriscan_infosys_loggedin(){
 /**
  * Get a list of all the registered users that are currently in session.
  *
- * @return array List of registered users currently in session.
+ * @param  boolean $add_current_user Whether the current user should be added to the list or not.
+ * @return array                     List of registered users currently in session.
  */
-function sucuriscan_get_online_users(){
+function sucuriscan_get_online_users($add_current_user=FALSE){
+    $users = array();
+
     if( sucuriscan_is_multisite() ){
-        return get_site_transient('online_users');
+        $users = get_site_transient('online_users');
     }else{
-        return get_transient('online_users');
+        $users = get_transient('online_users');
     }
+
+    // If not online users but current user is logged in, add it to the list.
+    if( empty($users) && $add_current_user ){
+        $current_user = wp_get_current_user();
+        if( $current_user->ID > 0 ){
+            sucuriscan_set_online_user($current_user->user_login, $current_user);
+            return sucuriscan_get_online_users();
+        }
+    }
+
+    return $users;
 }
 
 /**
@@ -2431,8 +2445,7 @@ if( !function_exists('sucuriscan_set_online_user') ){
 /**
  * Retrieve a list with the scheduled tasks configured for the site.
  *
- * @param  array $template_variables The hash for the template system, keys are pseudo-variables.
- * @return array                     A list of pseudo-variables and values that will replace them in the HTML template.
+ * @return array A list of pseudo-variables and values that will replace them in the HTML template.
  */
 function sucuriscan_show_cronjobs(){
     $template_variables = array(
