@@ -2078,6 +2078,7 @@ function sucuriscan_infosys_page(){
     );
 
     $template_variables['LoggedInUsers'] = sucuriscan_infosys_loggedin();
+    $template_variables['Cronjobs'] = sucuriscan_show_cronjobs();
     $template_variables['HTAccessIntegrity'] = sucuriscan_infosys_htaccess();
     $template_variables['WordpressConfig'] = sucuriscan_infosys_wpconfig();
 
@@ -2428,6 +2429,42 @@ if( !function_exists('sucuriscan_set_online_user') ){
 }
 
 /**
+ * Retrieve a list with the scheduled tasks configured for the site.
+ *
+ * @param  array $template_variables The hash for the template system, keys are pseudo-variables.
+ * @return array                     A list of pseudo-variables and values that will replace them in the HTML template.
+ */
+function sucuriscan_show_cronjobs(){
+    $template_variables = array(
+        'Cronjobs.List' => '',
+        'Cronjobs.Total' => 0,
+    );
+
+    $cronjobs = _get_cron_array();
+    $schedules = wp_get_schedules();
+    $date_format = _x('M j, Y - H:i', 'Publish box date format', 'cron-view' );
+
+    foreach( $cronjobs as $timestamp=>$cronhooks ){
+        foreach( (array)$cronhooks as $hook=>$events ){
+            foreach( (array)$events as $key=>$event ){
+                $cronjob_snippet = '';
+                $template_variables['Cronjobs.Total'] += 1;
+                $template_variables['Cronjobs.List'] .= sucuriscan_get_template('infosys-cronjobs.snippet.tpl', array(
+                    'Cronjob.Task' => ucwords(str_replace('_',chr(32),$hook)),
+                    'Cronjob.Schedule' => $event['schedule'],
+                    'Cronjob.Nexttime' => date_i18n($date_format, $timestamp),
+                    'Cronjob.Hook' => $hook,
+                    'Cronjob.Arguments' => implode(', ', $event['args'])
+                ));
+            }
+        }
+    }
+
+    return sucuriscan_get_template('infosys-cronjobs.html.tpl', $template_variables);
+}
+
+
+/**
  * Print the HTML code for the plugin about page with information of the plugin,
  * the scheduled tasks, and some settings from the PHP environment and server.
  *
@@ -2449,7 +2486,6 @@ function sucuriscan_about_page()
     );
 
     $template_variables = sucuriscan_about_information($template_variables);
-    $template_variables = sucuriscan_show_cronjobs($template_variables);
 
     echo sucuriscan_get_template('about.html.tpl', $template_variables);
 }
@@ -2499,38 +2535,6 @@ function sucuriscan_about_information($template_variables=array())
             $tpl_varname = str_replace(chr(32), '', $php_flag_name);
             $php_flag_value = ini_get($php_flag);
             $template_variables[$tpl_varname] = $php_flag_value ? $php_flag_value : 'N/A';
-        }
-    }
-
-    return $template_variables;
-}
-
-/**
- * Retrieve a list with the scheduled tasks configured for the site.
- *
- * @param  array $template_variables The hash for the template system, keys are pseudo-variables.
- * @return array                     A list of pseudo-variables and values that will replace them in the HTML template.
- */
-function sucuriscan_show_cronjobs($template_variables=array())
-{
-    $template_variables['Cronjobs'] = '';
-
-    $cronjobs = _get_cron_array();
-    $schedules = wp_get_schedules();
-    $date_format = _x('M j, Y - H:i', 'Publish box date format', 'cron-view' );
-
-    foreach( $cronjobs as $timestamp=>$cronhooks ){
-        foreach( (array)$cronhooks as $hook=>$events ){
-            foreach( (array)$events as $key=>$event ){
-                $cronjob_snippet = '';
-                $template_variables['Cronjobs'] .= sucuriscan_get_template('about-cronjobs.snippet.tpl', array(
-                    'Cronjob.Task'=>ucwords(str_replace('_',chr(32),$hook)),
-                    'Cronjob.Schedule'=>$event['schedule'],
-                    'Cronjob.Nexttime'=>date_i18n($date_format, $timestamp),
-                    'Cronjob.Hook'=>$hook,
-                    'Cronjob.Arguments'=>implode(', ', $event['args'])
-                ));
-            }
         }
     }
 

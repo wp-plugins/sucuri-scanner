@@ -50,25 +50,6 @@
                 </tbody>
             </table>
 
-            <table class="wp-list-table widefat sucuriscan-wpcron-list sucuri-%%SUCURI.SettingsDisplay%%">
-                <thead>
-                    <tr>
-                        <th colspan="4">Wordpress Cronjobs</th>
-                    </tr>
-                    <tr>
-                        <th>Task</th>
-                        <th>Schedule</th>
-                        <th>Next due (GMT/UTC)</th>
-                        <th>Wordpress Hook</th>
-                        <!-- <th>Hook arguments</th> -->
-                    </tr>
-                </thead>
-
-                <tbody>
-                    %%SUCURI.Cronjobs%%
-                </tbody>
-            </table>
-
             <div id="poststuff">
                 <div class="postbox">
                     <h3>How does it work?</h3>

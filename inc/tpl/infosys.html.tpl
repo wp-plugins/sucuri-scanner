@@ -12,6 +12,8 @@
         <div class="sucuriscan-maincontent">
             %%SUCURI.LoggedInUsers%%
 
+            %%SUCURI.Cronjobs%%
+
             %%SUCURI.HTAccessIntegrity%%
 
             %%SUCURI.WordpressConfig%%
