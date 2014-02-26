@@ -2204,7 +2204,7 @@ function sucuriscan_infosys_wpconfig(){
             // Ignore useless lines and append to the clean string the important lines.
             if( preg_match('/^define\(/', $line) ){
                 $line = str_replace('define(', '', $line);
-                $line = str_replace(');', '', $line);
+                $line = preg_replace('/\);.*/', '', $line);
                 $line_parts = explode(',', $line, 2);
             }
             else if( preg_match('/^\$[a-zA-Z_]+/', $line) ){
