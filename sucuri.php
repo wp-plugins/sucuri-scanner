@@ -7,7 +7,7 @@ Description: The <a href="http://sucuri.net">Sucuri Security</a> - SiteCheck Mal
 You can also scan your site at <a href="http://sitecheck.sucuri.net">SiteCheck.Sucuri.net</a>.
 
 Author: Sucuri, INC
-Version: 1.5.4
+Version: 1.5.5
 Author URI: http://sucuri.net
 */
 
@@ -40,7 +40,7 @@ define('SUCURISCAN','sucuriscan');
 /**
  * Current version of the plugin's code.
  */
-define('SUCURISCAN_VERSION','1.5.4');
+define('SUCURISCAN_VERSION','1.5.5');
 
 /**
  * The local URL where the plugin's files and assets are served.
