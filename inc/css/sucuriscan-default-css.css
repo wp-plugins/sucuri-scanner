@@ -25,6 +25,7 @@
 .sucuri-alert-updated p, .sucuri-alert-error p{margin:.5em 0;padding:2px}
 .sucuri-inline-error{font-weight:bold;color:red}
 .sucuri-list li{list-style:disc;margin:0 0 5px 15px}
+.sucuriscan-maincontent .alternate{background:#f5f5f5}
 .sucuriscan-maincontent hr{border:none;border-top:1px solid #999}
 .sucuriscan-maincontent table td > table{background:#fff}
 .sucuriscan-maincontent table td > table th{padding:4px 8px}
@@ -42,3 +43,5 @@
 .sucuriscan-maincontent .sucuriscan-wpcron-list{margin:20px 0 15px 0}
 .sucuriscan-maincontent .sucuriscan-wpcron-list td+td+td+td{font-family:Monaco, Monspace, Courier;font-weight:bold}
 .sucuriscan-results .icon-ok, .sucuriscan-results .icon-warn, .sucuriscan-results .icon-error{position:relative;top:5px;width:22px;height:22px}
+.sucuriscan-last-logins .sucuriscan-time-ago{}
+.sucuriscan-last-logins .sucuriscan-datetime{font-style:italic;color:#999}

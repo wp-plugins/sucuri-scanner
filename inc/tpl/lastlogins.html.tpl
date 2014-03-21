@@ -15,7 +15,7 @@
                </div>
             </div>
 
-            <table class="wp-list-table widefat">
+            <table class="wp-list-table widefat sucuriscan-last-logins">
                 <thead>
                     <tr>
                         <th colspan="5">
