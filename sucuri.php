@@ -528,7 +528,8 @@ function sucuri_scan_page()
 
     $template_variables = array(
         'PluginURL'=>SUCURI_URL,
-        'Sidebar'=>sucuriscan_get_template('sidebar.html.tpl')
+        'Sidebar'=>sucuriscan_get_template('sidebar.html.tpl'),
+        'HomeURL'=>home_url()
     );
 
     if( isset($_POST['wpsucuri-doscan']) ){
@@ -720,20 +721,18 @@ function sucuriscan_print_scan()
  *
  * @return void
  */
-function sucuriscan_core_integrity_page()
-{
+function sucuriscan_core_integrity_page(){ ?>
 
-    /* WordPress Integrity page. */
+    <div class="wrap">
+        <h2 id="warnings_hook"></h2>
+        <div class="sucuriscan_header">
+            <a href="http://sucuri.net/signup" target="_blank" title="Sucuri Security">
+                <img src="<?php echo SUCURI_URL; ?>/inc/images/logo.png" alt="Sucuri Security" />
+            </a>
+            <h2>Sucuri Security WordPress Plugin (WordPress Integrity)</h2>
+        </div>
 
-    echo '<div class="wrap">';
-        echo '<h2 id="warnings_hook"></h2>';
-        echo '<div class="sucuriscan_header">';
-            echo '<a href="http://sucuri.net/signup" target="_blank" title="Sucuri Security">';
-                echo '<img src="'.SUCURI_URL.'/inc/images/logo.png" alt="Sucuri Security" />';
-            echo '</a>';
-            sucuriscan_pagestop("Sucuri WordPress Integrity");
-        echo '</div>';
-
+        <?php
         if(!current_user_can('manage_options'))
         {
             wp_die(__('You do not have sufficient permissions to access this page: Sucuri Integrity Check') );
@@ -742,12 +741,6 @@ function sucuriscan_core_integrity_page()
 
         <div class="postbox-container" style="width:75%;">
             <div class="sucuriscan-maincontent">
-                <div class="postbox">
-                   <div class="inside">
-                       <h2 align="center">Sucuri WordPress Integrity Checks</h2>
-                   </div>
-                </div>
-
                 <?php
                 if( isset($_POST['wpsucuri-core-integrity']) ){
                     if(!wp_verify_nonce($_POST['sucuriscan_core_integritynonce'], 'sucuriscan_core_integritynonce'))
@@ -1228,16 +1221,18 @@ function sucuriscan_check_wp_integrity($version=0){
  *
  * @return void
  */
-function sucuriscan_hardening_page(){
-    echo '<div class="wrap">';
-        echo '<h2 id="warnings_hook"></h2>';
-        echo '<div class="sucuriscan_header">';
-            echo '<a href="http://sucuri.net/signup" target="_blank" title="Sucuri Security">';
-                echo '<img src="'.SUCURI_URL.'/inc/images/logo.png" alt="Sucuri Security" />';
-            echo '</a>';
-            sucuriscan_pagestop("Sucuri 1-Click Hardening Options");
-        echo '</div>';
+function sucuriscan_hardening_page(){ ?>
 
+    <div class="wrap">
+        <h2 id="warnings_hook"></h2>
+        <div class="sucuriscan_header">
+            <a href="http://sucuri.net/signup" target="_blank" title="Sucuri Security">
+                <img src="<?php echo SUCURI_URL; ?>/inc/images/logo.png" alt="Sucuri Security" />
+            </a>
+            <h2>Sucuri Security WordPress Plugin (1-Click Hardening)</h2>
+        </div>
+
+        <?php
         if(!current_user_can('manage_options'))
         {
             wp_die(__('You do not have sufficient permissions to access this page: Sucuri Hardening') );
@@ -1246,12 +1241,6 @@ function sucuriscan_hardening_page(){
 
         <div class="postbox-container" style="width:75%">
             <div class="sucuriscan-maincontent">
-                <div class="postbox">
-                   <div class="inside">
-                       <h2 align="center">Help secure your WordPress install with <a href="http://sucuri.net/signup">Sucuri</a> 1-Click Hardening Options.</h2>
-                   </div>
-                </div>
-
                 <?php
                 if( isset($_POST['wpsucuri-doharden']) ){
                     if(!wp_verify_nonce($_POST['sucuriscan_wphardeningnonce'], 'sucuriscan_wphardeningnonce'))

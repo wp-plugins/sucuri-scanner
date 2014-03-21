@@ -5,15 +5,23 @@
             <img src="%%SUCURI.PluginURL%%/inc/images/logo.png" alt="Sucuri Security" />
         </a>
         <h2>Sucuri SiteCheck Malware Scanner</h2>
-        <br class="clear"/>
     </div>
 
     <div class="postbox-container" style="width:75%">
         <div class="sucuriscan-maincontent">
-            <div class="postbox">
-               <div class="inside">
-                   <h2 align="center">Scan your site for malware using <a href="http://sitecheck.sucuri.net">Sucuri SiteCheck</a> right in your WordPress dashboard.</h2>
-               </div>
+            <div id="poststuff">
+                <div class="postbox">
+                    <h3>Sucuri SiteCheck</h3>
+                    <div class="inside">
+                        <p>
+                            <a href="http://sitecheck.sucuri.net/" target="_blank">Sucuri SiteCheck</a> scanner will
+                            check your website <code>%%SUCURI.HomeURL%%</code> for known malware, blacklisting status,
+                            website errors, and out-of-date software. <strong>Disclaimer</strong>: Sucuri SiteCheck is
+                            a free &amp; remote scanner. Although we do our best to provide the best results, 100%
+                            accuracy is not realistic, and not guaranteed.
+                        </p>
+                    </div>
+                </div>
             </div>
 
             <form method="post">

@@ -4,16 +4,11 @@
         <a href="http://sucuri.net/signup" target="_blank" title="Sucuri Security">
             <img src="%%SUCURI.SucuriURL%%/inc/images/logo.png" alt="Sucuri Security" />
         </a>
-        <h2>Sucuri Security WordPress Plugin</h2>
+        <h2>Sucuri Security WordPress Plugin (Last Logins)</h2>
     </div>
 
     <div class="postbox-container" style="width:75%;">
         <div class="sucuriscan-maincontent">
-            <div class="postbox">
-               <div class="inside">
-                   <h2 align="center">Sucuri Plugin Last-Logins</h2>
-               </div>
-            </div>
 
             <table class="wp-list-table widefat sucuriscan-last-logins">
                 <thead>

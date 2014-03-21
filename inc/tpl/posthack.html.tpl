@@ -4,17 +4,11 @@
         <a href="http://sucuri.net/signup" target="_blank" title="Sucuri Security">
             <img src="%%SUCURI.SucuriURL%%/inc/images/logo.png" alt="Sucuri Security" />
         </a>
-        <h2>Sucuri Security WordPress Plugin</h2>
+        <h2>Sucuri Security WordPress Plugin (Post-Hack)</h2>
     </div>
 
     <div class="postbox-container" style="width:75%;">
         <div class="sucuriscan-maincontent">
-            <div class="postbox">
-               <div class="inside">
-                   <h2 align="center">Sucuri Plugin Post-Hack</h2>
-               </div>
-            </div>
-
             <div id="poststuff">
                 <div class="postbox">
                     <h3>Update WP-Config Keys</h3>
