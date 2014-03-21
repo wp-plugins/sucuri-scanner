@@ -19,7 +19,7 @@
                 <thead>
                     <tr>
                         <th colspan="4">
-                            User logins (latest 10, newest to oldest)
+                            User logins (latest %%SUCURI.UserListLimit%%, newest to oldest)
                             <a href="%%SUCURI.CurrentURL%%&limit=0" class="button button-primary lastlogins-showall sucuri-%%SUCURI.UserList.ShowAll%%">Show all results</a>
                         </th>
                     </tr>

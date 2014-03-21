@@ -1844,6 +1844,7 @@ function sucuriscan_lastlogins_page()
         'LastLoginsNonce'=>wp_create_nonce('sucuriscan_lastlogins_nonce'),
         'SucuriWPSidebar'=>sucuriscan_wp_sidebar_gen(),
         'UserList'=>'',
+        'UserListLimit'=>SUCURISCAN_LASTLOGINS_USERSLIMIT,
         'CurrentURL'=>site_url().'/wp-admin/admin.php?page='.$_GET['page'],
     );
 
