@@ -528,8 +528,7 @@ function sucuri_scan_page()
 
     $template_variables = array(
         'PluginURL'=>SUCURI_URL,
-        'Sidebar'=>sucuriscan_get_template('sidebar.html.tpl'),
-        'HomeURL'=>home_url()
+        'Sidebar'=>sucuriscan_get_template('sidebar.html.tpl')
     );
 
     if( isset($_POST['wpsucuri-doscan']) ){
@@ -548,6 +547,7 @@ function sucuri_scan_page()
 function sucuriscan_print_scan()
 {
     $website_scanned = home_url();
+    $website_scanned = 'sucuri.net';
     $remote_url = 'http://sitecheck.sucuri.net/scanner/?serialized&clear&fromwp&scan='.$website_scanned;
     $myresults = wp_remote_get($remote_url, array('timeout' => 180));
     ?>

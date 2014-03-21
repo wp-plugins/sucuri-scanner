@@ -45,3 +45,9 @@
 .sucuriscan-results .icon-ok, .sucuriscan-results .icon-warn, .sucuriscan-results .icon-error{position:relative;top:5px;width:22px;height:22px}
 .sucuriscan-last-logins .sucuriscan-time-ago{}
 .sucuriscan-last-logins .sucuriscan-datetime{font-style:italic;color:#999}
+.sucuriscan-scanner-video{width:100%;background:#fff;border:1px solid #ddd}
+.sucuriscan-clearfix:before, .sucuriscan-clearfix:after{display:table;content:' '}
+.sucuriscan-clearfix:after{clear:both}
+.sucuriscan-column-left, .sucuriscan-column-right{width:49%;min-width:initial !important}
+.sucuriscan-column-left{float:left}
+.sucuriscan-column-right{float:right}

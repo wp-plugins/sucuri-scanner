@@ -9,25 +9,31 @@
 
     <div class="postbox-container" style="width:75%">
         <div class="sucuriscan-maincontent">
-            <div id="poststuff">
-                <div class="postbox">
-                    <h3>Sucuri SiteCheck</h3>
-                    <div class="inside">
-                        <p>
-                            <a href="http://sitecheck.sucuri.net/" target="_blank">Sucuri SiteCheck</a> scanner will
-                            check your website <code>%%SUCURI.HomeURL%%</code> for known malware, blacklisting status,
-                            website errors, and out-of-date software. <strong>Disclaimer</strong>: Sucuri SiteCheck is
-                            a free &amp; remote scanner. Although we do our best to provide the best results, 100%
-                            accuracy is not realistic, and not guaranteed.
-                        </p>
+            <div class="sucuriscan-clearfix">
+                <div id="poststuff" class="sucuriscan-column-left">
+                    <div class="postbox">
+                        <h3>Sucuri SiteCheck</h3>
+                        <div class="inside">
+                            <p>
+                                <a href="http://sitecheck.sucuri.net/" target="_blank">Sucuri SiteCheck</a> scanner will
+                                check your website for known malware, blacklisting status, website errors, and out-of-date
+                                software. <strong>Disclaimer</strong>: Sucuri SiteCheck is a free &amp; remote scanner.
+                                Although we do our best to provide the best results, 100% accuracy is not realistic, and
+                                not guaranteed.
+                            </p>
+                        </div>
                     </div>
+
+                    <form method="post">
+                        <input type="hidden" name="wpsucuri-doscan" value="wpsucuri-doscan" />
+                        <input type="submit" name="wpsucuri_doscanrun" value="Scan this site now!" class="button button-primary button-hero load-customize" />
+                    </form>
+                </div>
+
+                <div class="sucuriscan-column-right">
+                    <iframe src="https://www.youtube-nocookie.com/embed/QV3OfHmEq5c?controls=0" height="350" class="sucuriscan-scanner-video"></iframe>
                 </div>
             </div>
-
-            <form method="post">
-                <input type="hidden" name="wpsucuri-doscan" value="wpsucuri-doscan" />
-                <input type="submit" name="wpsucuri_doscanrun" value="Scan this site now!" class="button button-primary button-hero load-customize" />
-            </form>
 
             <p>
                 <strong>If you have any questions about these checks or this plugin, contact us at
