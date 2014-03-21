@@ -1827,13 +1827,16 @@ function sucuriscan_posthack_page()
     }
 
     // Fill the user list for ResetPassword action.
+    $counter = 0;
     $user_list = get_users();
     foreach($user_list as $user){
+        $counter += 1;
         $user_snippet = sucuriscan_get_template('resetpassword.snippet.tpl', array(
             'ResetPassword.UserId'=>$user->ID,
             'ResetPassword.Username'=>$user->user_login,
             'ResetPassword.Displayname'=>$user->display_name,
-            'ResetPassword.Email'=>$user->user_email
+            'ResetPassword.Email'=>$user->user_email,
+            'ResetPassword.CssClass'=>( $counter%2 == 0 ) ? '' : 'alternate'
         ));
         $template_variables['ResetPassword.UserList'] .= $user_snippet;
     }
@@ -2261,11 +2264,14 @@ function sucuriscan_infosys_wpconfig(){
         }
 
         // Pass the WordPress configuration rules to the template and show them.
+        $counter = 0;
         foreach( $wp_config_rules as $var_name=>$var_value ){
+            $counter += 1;
             $template_variables['WordpressConfig.Total'] += 1;
             $template_variables['WordpressConfig.Rules'] .= sucuriscan_get_template('infosys-wpconfig.snippet.tpl', array(
                 'WordpressConfig.VariableName' => $var_name,
                 'WordpressConfig.VariableValue' => htmlentities($var_value),
+                'WordpressConfig.CssClass' => ( $counter%2 == 0 ) ? '' : 'alternate'
             ));
         }
     }
@@ -2289,7 +2295,9 @@ function sucuriscan_infosys_loggedin(){
     if( is_array($logged_in_users) && !empty($logged_in_users) ){
         $template_variables['LoggedInUsers.Total'] = count($logged_in_users);
 
+        $counter = 0;
         foreach( (array)$logged_in_users as $logged_in_user ){
+            $counter += 1;
             $logged_in_user['last_activity_datetime'] = date('d/M/Y H:i', $logged_in_user['last_activity']);
             $logged_in_user['user_registered_datetime'] = date('d/M/Y H:i', strtotime($logged_in_user['user_registered']));
 
@@ -2301,6 +2309,7 @@ function sucuriscan_infosys_loggedin(){
                 'LoggedInUsers.LastActivity' => $logged_in_user['last_activity_datetime'],
                 'LoggedInUsers.Registered' => $logged_in_user['user_registered_datetime'],
                 'LoggedInUsers.RemoveAddr' => $logged_in_user['remote_addr'],
+                'LoggedInUsers.CssClass' => ( $counter%2 == 0 ) ? '' : 'alternate'
             ));
         }
     }
@@ -2479,10 +2488,12 @@ function sucuriscan_show_cronjobs(){
     $cronjobs = _get_cron_array();
     $schedules = wp_get_schedules();
     $date_format = _x('M j, Y - H:i', 'Publish box date format', 'cron-view' );
+    $counter = 0;
 
     foreach( $cronjobs as $timestamp=>$cronhooks ){
         foreach( (array)$cronhooks as $hook=>$events ){
             foreach( (array)$events as $key=>$event ){
+                $counter += 1;
                 $cronjob_snippet = '';
                 $template_variables['Cronjobs.Total'] += 1;
                 $template_variables['Cronjobs.List'] .= sucuriscan_get_template('infosys-cronjobs.snippet.tpl', array(
@@ -2490,7 +2501,8 @@ function sucuriscan_show_cronjobs(){
                     'Cronjob.Schedule' => $event['schedule'],
                     'Cronjob.Nexttime' => date_i18n($date_format, $timestamp),
                     'Cronjob.Hook' => $hook,
-                    'Cronjob.Arguments' => implode(', ', $event['args'])
+                    'Cronjob.Arguments' => implode(', ', $event['args']),
+                    'Cronjob.CssClass' => ( $counter%2 == 0 ) ? '' : 'alternate'
                 ));
             }
         }

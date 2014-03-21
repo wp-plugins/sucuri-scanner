@@ -31,21 +31,21 @@
                 </thead>
 
                 <tbody>
-                    <tr><td>Sucuri Plugin version</td><td>%%SUCURI.PluginVersion%%</td></li>
+                    <tr class="alternate"><td>Sucuri Plugin version</td><td>%%SUCURI.PluginVersion%%</td></li>
                     <tr><td>Sucuri Plugin MD5Sum (sucuri.php)</td><td>%%SUCURI.PluginMD5%%</td></li>
-                    <tr><td>Sucuri Plugin Last-time scan</td><td>%%SUCURI.PluginRuntimeDatetime%%</td></li>
+                    <tr class="alternate"><td>Sucuri Plugin Last-time scan</td><td>%%SUCURI.PluginRuntimeDatetime%%</td></li>
                     <tr><td>Operating System</td><td>%%SUCURI.OperatingSystem%%</td></li>
-                    <tr><td>Server</td><td>%%SUCURI.Server%%</td></li>
+                    <tr class="alternate"><td>Server</td><td>%%SUCURI.Server%%</td></li>
                     <tr><td>Memory usage</td><td>%%SUCURI.MemoryUsage%%</td></li>
-                    <tr><td>MYSQL Version</td><td>%%SUCURI.MySQLVersion%%</td></li>
+                    <tr class="alternate"><td>MYSQL Version</td><td>%%SUCURI.MySQLVersion%%</td></li>
                     <tr><td>SQL Mode</td><td>%%SUCURI.SQLMode%%</td></li>
-                    <tr><td>PHP Version</td><td>%%SUCURI.PHPVersion%%</td></li>
+                    <tr class="alternate"><td>PHP Version</td><td>%%SUCURI.PHPVersion%%</td></li>
                     <tr><td>PHP Safe Mode</td><td>%%SUCURI.SafeMode%%</td></li>
-                    <tr><td>PHP Allow URL fopen</td><td>%%SUCURI.AllowUrlFopen%%</td></li>
+                    <tr class="alternate"><td>PHP Allow URL fopen</td><td>%%SUCURI.AllowUrlFopen%%</td></li>
                     <tr><td>PHP Memory Limit</td><td>%%SUCURI.MemoryLimit%%</td></li>
-                    <tr><td>PHP Max Upload Size</td><td>%%SUCURI.UploadMaxFilesize%%</td></li>
+                    <tr class="alternate"><td>PHP Max Upload Size</td><td>%%SUCURI.UploadMaxFilesize%%</td></li>
                     <tr><td>PHP Max Post Size</td><td>%%SUCURI.PostMaxSize%%</td></li>
-                    <tr><td>PHP Max Script Execute Time</td><td>%%SUCURI.MaxExecutionTime%%</td></li>
+                    <tr class="alternate"><td>PHP Max Script Execute Time</td><td>%%SUCURI.MaxExecutionTime%%</td></li>
                     <tr><td>PHP Max Input Time</td><td>%%SUCURI.MaxInputTime%%</td></li>
                 </tbody>
             </table>

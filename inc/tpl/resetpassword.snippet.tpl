@@ -1,4 +1,4 @@
-<tr>
+<tr class="%%SUCURI.ResetPassword.CssClass%%">
     <th class="check-column">
         <input type="checkbox" name="user_ids[]" value="%%SUCURI.ResetPassword.UserId%%" />
     </th>
