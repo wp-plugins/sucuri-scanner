@@ -70,7 +70,7 @@ define('SUCURISCAN_PLUGIN_FILEPATH', SUCURISCAN_PLUGIN_PATH.'/'.SUCURISCAN_PLUGI
 /**
  * The maximum quantity of entries that will be displayed in the last login page.
  */
-define('SUCURISCAN_LASTLOGINS_USERSLIMIT', 100);
+define('SUCURISCAN_LASTLOGINS_USERSLIMIT', 50);
 
 if( !function_exists('sucuriscan_create_uploaddir') ){
     /**
@@ -547,7 +547,6 @@ function sucuri_scan_page()
 function sucuriscan_print_scan()
 {
     $website_scanned = home_url();
-    $website_scanned = 'sucuri.net';
     $remote_url = 'http://sitecheck.sucuri.net/scanner/?serialized&clear&fromwp&scan='.$website_scanned;
     $myresults = wp_remote_get($remote_url, array('timeout' => 180));
     ?>
