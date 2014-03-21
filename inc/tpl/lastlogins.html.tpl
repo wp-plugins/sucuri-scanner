@@ -18,12 +18,13 @@
             <table class="wp-list-table widefat">
                 <thead>
                     <tr>
-                        <th colspan="4">
+                        <th colspan="5">
                             User logins (latest %%SUCURI.UserListLimit%%, newest to oldest)
                             <a href="%%SUCURI.CurrentURL%%&limit=0" class="button button-primary lastlogins-showall sucuri-%%SUCURI.UserList.ShowAll%%">Show all results</a>
                         </th>
                     </tr>
                     <tr>
+                        <th class="manage-column">No.</th>
                         <th class="manage-column">Username</th>
                         <th class="manage-column">Email</th>
                         <th class="manage-column">IP Address</th>

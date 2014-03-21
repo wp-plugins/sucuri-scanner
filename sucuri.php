@@ -1857,9 +1857,12 @@ function sucuriscan_lastlogins_page()
     $limit = isset($_GET['limit']) ? intval($_GET['limit']) : SUCURISCAN_LASTLOGINS_USERSLIMIT;
     $template_variables['UserList.ShowAll'] = $limit>0 ? 'visible' : 'hidden';
 
+    $counter = 0;
     $user_list = sucuriscan_get_logins($limit);
     foreach($user_list as $user){
+        $counter += 1;
         $user_snippet = sucuriscan_get_template('lastlogins.snippet.tpl', array(
+            'UserList.Number'=>$counter,
             'UserList.UserId'=>intval($user->ID),
             'UserList.Username'=>( !is_null($user->user_login) ? $user->user_login : '<em>Unknown</em>' ),
             'UserList.Email'=>$user->user_email,
