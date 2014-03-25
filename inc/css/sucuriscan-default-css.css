@@ -51,3 +51,7 @@
 .sucuriscan-column-left, .sucuriscan-column-right{width:49%;min-width:initial !important}
 .sucuriscan-column-left{float:left}
 .sucuriscan-column-right{float:right}
+.sucuriscan-hstatus{position:relative;margin:0 -12px;padding:10px 12px;border:1px solid transparent}
+.sucuriscan-hstatus-1{background-color:#dff0d8;color:#3c763d;border-color:#d6e9c6}
+.sucuriscan-hstatus-0{background-color:#f2dede;color:#a94442;border-color:#ebccd1}
+.sucuriscan-hstatus .button-primary{position:absolute;top:5px;right:5px}

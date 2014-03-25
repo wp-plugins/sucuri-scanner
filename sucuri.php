@@ -45,7 +45,7 @@ define('SUCURISCAN_VERSION','1.5.5');
 /**
  * The local URL where the plugin's files and assets are served.
  */
-define('SUCURI_URL',plugin_dir_url( __FILE__ ));
+define('SUCURI_URL', rtrim(plugin_dir_url( __FILE__ ),'/') );
 
 /**
  * The name of the Sucuri plugin main file.
@@ -132,7 +132,7 @@ function sucuriscan_dir_filepath($path = '')
 function sucuriscan_menu()
 {
     add_menu_page('Sucuri Free', 'Sucuri Free', 'manage_options',
-                  'sucuriscan', 'sucuri_scan_page', SUCURI_URL.'inc/images/menu-icon.png');
+                  'sucuriscan', 'sucuri_scan_page', SUCURI_URL.'/inc/images/menu-icon.png');
     add_submenu_page('sucuriscan', 'Sucuri Scanner', 'Sucuri Scanner', 'manage_options',
                      'sucuriscan', 'sucuri_scan_page');
 
@@ -395,7 +395,7 @@ function sucuriscan_new_password($user_id=0)
  * @return string The real ip address of the user in the current request.
  */
 function sucuriscan_get_remoteaddr()
-{$_SERVER['HTTP_X_REAL_IP']='2001:0db8:85a3:0042:1000:8a2e:0370:7334';
+{
     $alternatives = array(
         'HTTP_X_REAL_IP',
         'HTTP_CLIENT_IP',
@@ -963,7 +963,7 @@ function sucuriwp_core_integrity_check()
 
     if($cp == 0)
     {
-        echo '<p><img style="position:relative;top:5px" height="22" width="22" src="'.SUCURI_URL.'inc/images/warn.png" />'
+        echo '<p><img style="position:relative;top:5px" height="22" width="22" src="'.SUCURI_URL.'/inc/images/warn.png" />'
             .'&nbsp; The current version of your site was detected as <code>'.$wp_version.'</code> which is different to the '
             .'official latest version. The integrity check can not run using this version number <a href="'.admin_url('update-core.php').'">'
             .'update now</a> to be able to run the integrity check.</p>';
@@ -1349,35 +1349,19 @@ function sucuriscan_harden_status($status=0, $type='', $messageok='', $messagewa
         echo "<p>$desc</p>";
     }
 
-    if($status == 1)
-    {
-        echo '<h4>'.
-             '<img style="position:relative;top:5px" height="22" width="22"'.
-             'src="'.SUCURI_URL.'inc/images/ok.png" /> &nbsp; '.
-             $messageok.'.</h4>';
-
-        if($updatemsg != NULL){ echo $updatemsg; }
-
-        if($type != NULL)
-        {
-            echo "<input type='submit' name='{$type}_unharden' value='Revert hardening' class='button-secondary' />";
-            echo '<br /><br />';
+    $btn_string = '';
+    if( $type != NULL ){
+        if( $status == 1 ){
+            $btn_string = sprintf('<input type="submit" name="%s_unharden" value="Revert hardening" class="button-secondary" />', $type);
+        } else {
+            $btn_string = sprintf('<input type="submit" name="%s" value="Harden" class="button-primary" />', $type);
         }
     }
-    else
-    {
-        echo '<h4>'.
-             '<img style="position:relative;top:5px" height="22" width="22"'.
-             'src="'.SUCURI_URL.'inc/images/warn.png" /> &nbsp; '.
-             $messagewarn. '.</h4>';
 
-        if($updatemsg != NULL){ echo $updatemsg; }
-
-        if($type != NULL)
-        {
-            echo '<input class="button-primary" type="submit" name="'.$type.'"
-                         value="Harden it!" />';
-        }
+    $message = ( $status == 1 ) ? $messageok : $messagewarn;
+    printf( '<div class="sucuriscan-hstatus sucuriscan-hstatus-%d">%s<span>%s</span></div>', $status, $btn_string, $message );
+    if($updatemsg != NULL){
+        printf( '<p>%s</p>', $updatemsg );
     }
 }
 
@@ -1390,42 +1374,38 @@ function sucuriscan_harden_status($status=0, $type='', $messageok='', $messagewa
 function sucuriscan_harden_version()
 {
     global $wp_version;
-    $cp = 0;
+
     $updates = get_core_updates();
-    if (!is_array($updates))
-    {
+    if(
+        !is_array($updates)
+        || empty($updates)
+        || $updates[0]->response == 'latest'
+    ){
         $cp = 1;
+    } else {
+        $cp = 0;
     }
-    else if(empty($updates))
-    {
-        $cp = 1;
-    }
-    else if($updates[0]->response == 'latest')
-    {
-        $cp = 1;
-    }
+
     if(strcmp($wp_version, "3.7") < 0)
     {
         $cp = 0;
     }
+
     $wp_version = htmlspecialchars($wp_version);
+    $initial_msg = 'Why keep your site updated? WordPress is an open-source
+        project which means that with every update the details of the changes made
+        to the source code are made public, if there were security fixes then
+        someone with malicious intent can use this information to attack any site
+        that has not been upgraded.';
+    $messageok = sprintf('Your WordPress installation (%s) is current.', $wp_version);
+    $messagewarn = sprintf(
+        'Your current version (%s) is not current.<br>
+        <a href="update-core.php" class="button-primary">Update now!</a>',
+        $wp_version
+    );
 
-
-    sucuriscan_wrapper_open("Verify WordPress Version");
-
-
-    sucuriscan_harden_status($cp, NULL,
-                         "WordPress is updated", "WordPress is not updated",
-                         NULL);
-
-    if($cp == 0)
-    {
-        echo "<p>Your current version ($wp_version) is not current.</p><p><a class='button-primary' href='update-core.php'>Update now!</a></p>";
-    }
-    else
-    {
-        echo "<p>Your WordPress installation ($wp_version) is current.</p>";
-    }
+    sucuriscan_wrapper_open('Verify WordPress Version');
+    sucuriscan_harden_status( $cp, NULL, $messageok, $messagewarn, $initial_msg );
     sucuriscan_wrapper_close();
 }
 
@@ -1598,11 +1578,15 @@ function sucuriscan_harden_wpcontent()
     }
 
     sucuriscan_wrapper_open("Restrict wp-content Access");
-    sucuriscan_harden_status($cp, "sucuriscan_harden_wpcontent",
-                         "WP-content directory properly hardened",
-                         "WP-content directory not hardened",
-                         "This option blocks direct PHP access to any file inside wp-content. <p><strong>WARN: <span class='error-message'>Do not enable this option if ".
-                         "your site uses TimThumb or similar scripts.</span> If you enable and you need to disable, please remove the .htaccess from wp-content.</strong></p>", $upmsg);
+    sucuriscan_harden_status(
+        $cp,
+        'sucuriscan_harden_wpcontent',
+        'WP-content directory properly hardened',
+        'WP-content directory not hardened',
+        'This option blocks direct PHP access to any file inside wp-content. If you experience any
+        issue after this with a theme or plugin in your site, like for example images not displaying,
+        remove the <code>.htaccess</code> file located at the <code>/wp-content/</code> directory.',
+        $upmsg);
     sucuriscan_wrapper_close();
 }
 
@@ -1718,20 +1702,22 @@ function sucuriscan_harden_phpversion()
  * @return void
  */
 function sucuriscan_cloudproxy_enabled(){
+    $btn_string = '';
     $enabled = sucuriscan_is_behind_cloudproxy();
+    if( $enabled!==TRUE ){
+        $btn_string = '<a href="http://cloudproxy.sucuri.net/" target="_blank" class="button button-primary">Harden</a>';
+    }
 
     sucuriscan_wrapper_open('Verify if your site is protected by a Web Firewall');
     sucuriscan_harden_status(
         $enabled, NULL,
         'Your website is protected by a Website Firewall (WAF)',
-        'Your website is not protected by a Website Firewall (WAF)',
-        'A WAF is a protection layer for your web site, blocking all sort of attacks (brute force attempts, DDoS, SQL injections, etc) and helping it remain
-         malware and blacklist free. This test checks if your site is using <a href="http://cloudproxy.sucuri.net/" target="_blank">Sucuri\'s CloudProxy WAF</a> to protect your site. ',
+        $btn_string . 'Your website is not protected by a Website Firewall (WAF)',
+        'A WAF is a protection layer for your web site, blocking all sort of attacks (brute force attempts, DDoS,
+        SQL injections, etc) and helping it remain malware and blacklist free. This test checks if your site is
+        using <a href="http://cloudproxy.sucuri.net/" target="_blank">Sucuri\'s CloudProxy WAF</a> to protect your site. ',
         NULL
     );
-    if( $enabled!==TRUE ){
-        echo '<a href="http://cloudproxy.sucuri.net" target="_blank" class="button button-primary">Harden it!</a>';
-    }
     sucuriscan_wrapper_close();
 }
 
