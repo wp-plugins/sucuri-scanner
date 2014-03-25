@@ -395,7 +395,7 @@ function sucuriscan_new_password($user_id=0)
  * @return string The real ip address of the user in the current request.
  */
 function sucuriscan_get_remoteaddr()
-{
+{$_SERVER['HTTP_X_REAL_IP']='2001:0db8:85a3:0042:1000:8a2e:0370:7334';
     $alternatives = array(
         'HTTP_X_REAL_IP',
         'HTTP_CLIENT_IP',
@@ -409,7 +409,7 @@ function sucuriscan_get_remoteaddr()
     foreach($alternatives as $alternative){
         if( !isset($_SERVER[$alternative]) ){ continue; }
 
-        $remote_addr = preg_replace('/[^0-9., ]/', '', $_SERVER[$alternative]);
+        $remote_addr = preg_replace('/[^0-9a-z.,: ]/', '', $_SERVER[$alternative]);
         if($remote_addr) break;
     }
 
