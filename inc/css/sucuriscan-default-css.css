@@ -11,7 +11,7 @@
 #sidebar .sucuriscan-sidebar{border:1px solid #ccc;border-bottom-left-radius:5px;border-bottom-right-radius:5px;border-top-left-radius:5px;border-top-right-radius:5px;margin:0 0 10px;padding:10px 15px}
 #sitecleanup.sucuriscan-sidebar{background-color:#bbe8f5;border-color:#4393ac}
 #sucuri-latest-posts.sucuriscan-sidebar{background-color:#ececec;border-color:#999}
-.sucuriscan-maincontent #poststuff{padding-top:0}
+.sucuriscan-maincontent #poststuff{min-width:initial;padding-top:0}
 .sucuriscan-maincontent .widefat tbody th.check-column{padding:6px 0 3px 0}
 .sucuriscan-maincontent .hardening-box .primary-secondary{margin:0 0 0 10px}
 .sucuriscan-maincontent a.lastlogins-showall{display:inline-block;float:right}
@@ -54,4 +54,4 @@
 .sucuriscan-hstatus{position:relative;margin:0 -12px;padding:10px 12px;border:1px solid transparent}
 .sucuriscan-hstatus-1{background-color:#dff0d8;color:#3c763d;border-color:#d6e9c6}
 .sucuriscan-hstatus-0{background-color:#f2dede;color:#a94442;border-color:#ebccd1}
-.sucuriscan-hstatus .button-primary{position:absolute;top:5px;right:5px}
+.sucuriscan-hstatus .button-primary, .sucuriscan-hstatus .button-secondary{position:absolute;top:5px;right:5px}
