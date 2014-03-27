@@ -17,7 +17,7 @@
                 <li>High Security Website Monitoring</li>
                 <li>Malicious Traffic Filtering</li>
             </ul>
-            <a href="https://login.sucuri.net/signup2/create?CloudProxy" target="_blank" class="button button-primary">Subscribe Now!</a>
+            <a href="http://cloudproxy.sucuri.net/signup" target="_blank" class="button button-primary">Sign up now</a>
             <a href="http://cloudproxy.sucuri.net/" target="_blank" class="button button-primary">Read more</a>
         </div>
     </div>
