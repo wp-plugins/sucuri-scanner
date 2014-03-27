@@ -7,7 +7,7 @@ Description: The <a href="http://sucuri.net">Sucuri Security</a> - SiteCheck Mal
 You can also scan your site at <a href="http://sitecheck.sucuri.net">SiteCheck.Sucuri.net</a>.
 
 Author: Sucuri, INC
-Version: 1.5.5
+Version: 1.5.6
 Author URI: http://sucuri.net
 */
 
@@ -15,12 +15,11 @@ Author URI: http://sucuri.net
 /**
  * Main file to control the plugin.
  *
- * @category  Bootstrap
- * @package   Sucuri Security - SiteCheck Malware Scanner
- * @author    Daniel <dcid@sucuri.net>
+ * @package   Sucuri Plugin - SiteCheck Malware Scanner
+ * @author    Yorman Arias <yorman.arias@sucuri.net>
+ * @author    Daniel Cid   <dcid@sucuri.net>
  * @copyright Since 2010 Sucuri Inc.
  * @license   Released under the GPL - see LICENSE file for details.
- * @version   HG: $Id$
  * @link      https://wordpress.sucuri.net/
  * @since     File available since Release 0.1
  */
@@ -40,7 +39,7 @@ define('SUCURISCAN','sucuriscan');
 /**
  * Current version of the plugin's code.
  */
-define('SUCURISCAN_VERSION','1.5.5');
+define('SUCURISCAN_VERSION','1.5.6');
 
 /**
  * The local URL where the plugin's files and assets are served.
