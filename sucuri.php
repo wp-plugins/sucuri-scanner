@@ -854,6 +854,12 @@ function sucuriscan_print_scan(){
             </div>
         </div>
 
+        <?php if( $malware_warns_exists || $blacklist_warns_exists ): ?>
+            <a href="http://sucuri.net/signup/" target="_blank" class="button button-primary button-hero sucuriscan-cleanup-btn">
+                Get your site protected with Sucuri
+            </a>
+        <?php endif; ?>
+
     <?php endif; ?>
 
 
