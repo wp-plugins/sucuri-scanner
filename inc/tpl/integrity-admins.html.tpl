@@ -1,4 +1,4 @@
-<table class="wp-list-table widefat">
+<table class="wp-list-table widefat sucuriscan-table sucuriscan-table-doubletitle sucuriscan-adminusers">
     <thead>
         <tr>
             <th colspan="4">Administrator Users</th>

@@ -14,7 +14,7 @@
                 <p>%%SUCURI.HTAccess.Message%%</p>
             </div>
 
-            <textarea class="sucuri-full-textarea sucuriscan-monospace %%SUCURI.HTAccess.TextareaVisible%%">%%SUCURI.HTAccess.Content%%</textarea>
+            <textarea class="sucuriscan-full-textarea sucuriscan-monospace %%SUCURI.HTAccess.TextareaVisible%%">%%SUCURI.HTAccess.Content%%</textarea>
 
             <p>
                 <small>Source <a href="http://codex.wordpress.org/htaccess" target="_blank">Codex WordPress HTAccess</a></small>
