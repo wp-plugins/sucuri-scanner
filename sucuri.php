@@ -18,7 +18,7 @@ Author URI: http://sucuri.net
  * @package   Sucuri Plugin - SiteCheck Malware Scanner
  * @author    Yorman Arias <yorman.arias@sucuri.net>
  * @author    Daniel Cid   <dcid@sucuri.net>
- * @copyright Since 2010 Sucuri Inc.
+ * @copyright Since 2010-2014 Sucuri Inc.
  * @license   Released under the GPL - see LICENSE file for details.
  * @link      https://wordpress.sucuri.net/
  * @since     File available since Release 0.1
@@ -98,15 +98,13 @@ if( !function_exists('sucuriscan_create_uploaddir') ){
  * Define which javascript and css files will be loaded in the header of the page.
  * @return void
  */
-function sucuriscan_admin_script_style_registration() { ?>
-    <link rel="stylesheet" href="<?php echo SUCURI_URL; ?>/inc/css/sucuriscan-default-css.css" type="text/css" media="all" />
-    <script type="text/javascript">
-    function sucuriscan_alert_close(id){
-        var element = document.getElementById('sucuri-alert-'+id);
-        element.parentNode.removeChild(element);
-    }
-    </script>
-<?php }
+function sucuriscan_admin_script_style_registration() {
+    wp_register_style( 'sucuriscan', SUCURI_URL . '/inc/css/sucuriscan-default-css.css' );
+    wp_register_script( 'sucuriscan', SUCURI_URL . '/inc/js/sucuriscan-scripts.js' );
+
+    wp_enqueue_style( 'sucuriscan' );
+    wp_enqueue_script( 'sucuriscan' );
+}
 add_action( 'admin_enqueue_scripts', 'sucuriscan_admin_script_style_registration', 1 );
 
 /**
@@ -293,14 +291,21 @@ function sucuriscan_get_template($template='', $params=array(), $type='page'){
     if( $template == 'base' || $type != 'page' ){
         return $template_content;
     } else {
-        return sucuriscan_get_template('base', array(
+        $base_params = array(
+            'PageTitle' => '',
             'PageContent' => $template_content,
             'PageStyleClass' => $template,
             'URL.Hardening' => sucuriscan_get_url('hardening'),
             'URL.CoreIntegrity' => sucuriscan_get_url('core_integrity'),
             'URL.PostHack' => sucuriscan_get_url('posthack'),
             'URL.LastLogins' => sucuriscan_get_url('lastlogins'),
-        ));
+        );
+
+        if( isset($params['PageTitle']) ){
+            $base_params['PageTitle'] = '('.$params['PageTitle'].')';
+        }
+
+        return sucuriscan_get_template('base', $base_params);
     }
 }
 
@@ -646,112 +651,205 @@ function sucuriscan_print_scan(){
         $sucuriscan_css_wpupdate  = $wordpress_updated      ? 'sucuriscan-border-good' : 'sucuriscan-border-bad' ;
         ?>
 
-        <div id="poststuff">
-            <div class="postbox sucuriscan-border <?php _e($sucuriscan_css_malware) ?>">
-                <h3>
-                    <?php if( $malware_warns_exists ): ?>
-                        Site compromised (malware was identified)
-                    <?php else: ?>
-                        Site clean (no malware was identified)
-                    <?php endif; ?>
-                </h3>
+        <div class="sucuriscan-tabs">
+            <ul>
+                <li>
+                    <a href="#" data-tabname="sitecheck-results">SiteCheck Results</a>
+                </li>
+                <li>
+                    <a href="#" data-tabname="website-details">Website Details</a>
+                </li>
+                <li>
+                    <a href="#" data-tabname="blacklist-status">Blacklist Status</a>
+                </li>
+            </ul>
 
-                <div class="inside">
+            <div class="sucuriscan-tab-containers">
 
-                    <?php if( !$malware_warns_exists ): ?>
-                        <span><strong>Malware:</strong> No.</span><br>
-                        <span><strong>Malicious javascript:</strong> No.</span><br>
-                        <span><strong>Malicious iframes:</strong> No.</span><br>
-                        <span><strong>Suspicious redirections (htaccess):</strong> No.</span><br>
-                        <span><strong>Blackhat SEO Spam:</strong> No.</span><br>
-                        <span><strong>Anomaly detection:</strong> Clean.</span><br>
-                    <?php else: ?>
-                        <?php
-                        foreach( $res['MALWARE']['WARN'] as $malres ){
-                            if( !is_array($malres) ){
-                                echo htmlspecialchars($malres);
-                            }else{
-                                $mwdetails = explode("\n", htmlspecialchars($malres[1]));
-                                echo htmlspecialchars($malres[0])."\n<br />". substr($mwdetails[0], 1)."<br />\n";
-                            }
-                        }
-                        ?>
-                    <?php endif; ?>
+                <div id="sucuriscan-sitecheck-results">
+                    <div id="poststuff">
+                        <div class="postbox sucuriscan-border <?php _e($sucuriscan_css_malware) ?>">
+                            <h3>
+                                <?php if( $malware_warns_exists ): ?>
+                                    Site compromised (malware was identified)
+                                <?php else: ?>
+                                    Site clean (no malware was identified)
+                                <?php endif; ?>
+                            </h3>
 
-                    <p>
-                        <i>
-                            More details here: <a href="http://sitecheck.sucuri.net/scanner/?scan=<?php echo $website_scanned; ?>">
-                            http://sitecheck.sucuri.net/scanner/?scan=<?php echo $website_scanned; ?></a>
-                        </i>
-                        <hr />
-                        <i>
-                            If our free scanner did not detect any issue, you may have a more complicated and hidden
-                            problem. You can try our <a href="admin.php?page=sucuriscan_core_integrity">WordPress integrity
-                            checks</a> or sign up with Sucuri <a target="_blank" href="http://sucuri.net/signup">here</a>
-                            for a complete and in depth scan+cleanup (not included in the free checks).
-                        </i>
-                    </p>
+                            <div class="inside">
 
+                                <?php if( !$malware_warns_exists ): ?>
+                                    <span><strong>Malware:</strong> No.</span><br>
+                                    <span><strong>Malicious javascript:</strong> No.</span><br>
+                                    <span><strong>Malicious iframes:</strong> No.</span><br>
+                                    <span><strong>Suspicious redirections (htaccess):</strong> No.</span><br>
+                                    <span><strong>Blackhat SEO Spam:</strong> No.</span><br>
+                                    <span><strong>Anomaly detection:</strong> Clean.</span><br>
+                                <?php else: ?>
+                                    <?php
+                                    foreach( $res['MALWARE']['WARN'] as $malres ){
+                                        if( !is_array($malres) ){
+                                            echo htmlspecialchars($malres);
+                                        }else{
+                                            $mwdetails = explode("\n", htmlspecialchars($malres[1]));
+                                            echo htmlspecialchars($malres[0])."\n<br />". substr($mwdetails[0], 1)."<br />\n";
+                                        }
+                                    }
+                                    ?>
+                                <?php endif; ?>
+
+                                <p>
+                                    <i>
+                                        More details here: <a href="http://sitecheck.sucuri.net/results/<?php _e($website_scanned); ?>">
+                                        http://sitecheck.sucuri.net/results/<?php _e($website_scanned); ?></a>
+                                    </i>
+                                    <hr />
+                                    <i>
+                                        If our free scanner did not detect any issue, you may have a more complicated and hidden
+                                        problem. You can try our <a href="admin.php?page=sucuriscan_core_integrity">WordPress integrity
+                                        checks</a> or sign up with Sucuri <a target="_blank" href="http://sucuri.net/signup">here</a>
+                                        for a complete and in depth scan+cleanup (not included in the free checks).
+                                    </i>
+                                </p>
+
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
+                <div id="sucuriscan-website-details">
+                    <table class="wp-list-table widefat sucuriscan-table">
+                        <thead>
+                            <tr>
+                                <th colspan="2" class="thead-with-button">
+                                    <span>System Information</span>
+                                    <?php if( !$wordpress_updated ): ?>
+                                        <a href="<?php echo admin_url('update-core.php'); ?>" class="button button-primary thead-topright-action">
+                                            Update to <?php _e($updates[0]->version) ?>
+                                        </a>
+                                    <?php endif; ?>
+                                </th>
+                            </tr>
+                        </thead>
 
-            <div class="postbox sucuriscan-border <?php _e($sucuriscan_css_blacklist) ?>">
-                <h3>
-                    <?php if( $blacklist_warns_exists ): ?>
-                        Site blacklisted
-                    <?php else: ?>
-                        Site blacklist-free
-                    <?php endif; ?>
-                </h3>
+                        <tbody>
+                            <!-- List of generic information from the site. -->
+                            <?php
+                            $possible_keys = array(
+                                'DOMAIN' => 'Domain Scanned',
+                                'IP' => 'Site IP Address',
+                                'HOSTING' => 'Hosting Company',
+                                'CMS' => 'CMS Found',
+                            );
+                            $possible_url_keys = array(
+                                'JSLOCAL' => 'List of scripts included',
+                                'JSEXTERNAL' => 'List of external scripts included',
+                                'URL' => 'List of links found',
+                            );
+                            ?>
 
-                <div class="inside">
-                    <?php
-                    foreach(array(
-                        'INFO'=>'CLEAN',
-                        'WARN'=>'WARNING'
-                    ) as $type=>$group_title){
-                        if( isset($res['BLACKLIST'][$type]) ){
-                            foreach($res['BLACKLIST'][$type] as $blres){
-                                $report_site = htmlspecialchars($blres[0]);
-                                $report_url = htmlspecialchars($blres[1]);
-                                echo "<b>{$group_title}: </b>{$report_site} <a href='{$report_url}' target='_blank'>{$report_url}</a><br />";
-                            }
-                        }
-                    }
-                    ?>
+                            <?php foreach( $possible_keys as $result_key=>$result_title ): ?>
+                                <?php if( isset($res['SCAN'][$result_key]) ): ?>
+                                    <?php $result_value = implode(', ', $res['SCAN'][$result_key]); ?>
+                                    <tr>
+                                        <td><?php _e($result_title) ?></td>
+                                        <td><span class="sucuriscan-monospace"><?php _e($result_value) ?></span></td>
+                                    </tr>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+
+                            <tr>
+                                <td>WordPress Version</td>
+                                <td><span class="sucuriscan-monospace"><?php _e($wp_version) ?></span></td>
+                            </tr>
+                            <tr>
+                                <td>PHP Version</td>
+                                <td><span class="sucuriscan-monospace"><?php _e(phpversion()) ?></span></td>
+                            </tr>
+
+                            <!-- List of application details from the site. -->
+                            <tr>
+                                <th colspan="2">Web application details</th>
+                            </tr>
+                            <?php foreach( $res['WEBAPP'] as $webapp_key=>$webapp_details ): ?>
+                                <?php if( is_array($webapp_details) ): ?>
+                                    <?php foreach( $webapp_details as $i=>$details ): ?>
+                                        <?php if( is_array($details) ){ $details = isset($details[0]) ? $details[0] : ''; } ?>
+                                        <tr>
+                                            <td colspan="2">
+                                                <span class="sucuriscan-monospace"><?php _e($details) ?></span>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+
+                            <?php foreach( $res['SYSTEM']['NOTICE'] as $j=>$notice ): ?>
+                                <?php if( is_array($notice) ){ $notice = implode(', ', $notice); } ?>
+                                <tr>
+                                    <td colspan="2">
+                                        <span class="sucuriscan-monospace"><?php _e($notice) ?></span>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+
+                            <?php foreach( $possible_url_keys as $result_url_key=>$result_url_title ): ?>
+
+                                <?php if( isset($res['LINKS'][$result_url_key]) ): ?>
+                                    <tr>
+                                        <th colspan="2">
+                                            <?php printf(
+                                                '%s (%d found)',
+                                                __($result_url_title),
+                                                count($res['LINKS'][$result_url_key])
+                                            ) ?>
+                                        </th>
+                                    </tr>
+
+                                    <?php foreach( $res['LINKS'][$result_url_key] as $url_path ): ?>
+                                        <tr>
+                                            <td colspan="2">
+                                                <span class="sucuriscan-monospace"><?php _e($url_path) ?></span>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
                 </div>
-            </div>
 
+                <div id="sucuriscan-blacklist-status">
+                    <div id="poststuff">
+                        <div class="postbox sucuriscan-border <?php _e($sucuriscan_css_blacklist) ?>">
+                            <h3>
+                                <?php if( $blacklist_warns_exists ): ?>
+                                    Site blacklisted
+                                <?php else: ?>
+                                    Site blacklist-free
+                                <?php endif; ?>
+                            </h3>
 
-            <div class="postbox sucuriscan-border <?php _e($sucuriscan_css_wpupdate) ?>">
-                <h3>
-                    <?php if( $wordpress_updated ): ?>
-                        System info
-                    <?php else: ?>
-                        System info (need to update)
-                    <?php endif; ?>
-                </h3>
-
-                <div class="inside">
-                    <b>Site:</b> <?php echo $res['SCAN']['SITE'][0]; ?> (<?php echo $res['SCAN']['IP'][0]; ?>)<br />
-                    <b>PHP (version installed): </b> <?php echo phpversion(); ?><br />
-                    <b>WordPress (installed):</b> <?php echo $wp_version; ?><br />
-                    <?php if( !$wordpress_updated ): ?>
-                        <b>WordPress (update):</b> <?php echo $updates[0]->version; ?><br />
-                        <a href="<?php echo admin_url('update-core.php'); ?>" class="button button-primary">Update</a>
-                    <?php endif; ?>
-                    <?php
-                    if( isset($res['SYSTEM']['NOTICE']) ){
-                        foreach( $res['SYSTEM']['NOTICE'] as $notres ){
-                            if( is_array($notres) ){
-                                echo htmlspecialchars($notres[0]).chr(32).htmlspecialchars($notres[1]);
-                            }else{
-                                echo htmlspecialchars($notres)."<br />\n";
-                            }
-                        }
-                    }
-                    ?>
+                            <div class="inside">
+                                <?php
+                                foreach(array(
+                                    'INFO'=>'CLEAN',
+                                    'WARN'=>'WARNING'
+                                ) as $type=>$group_title){
+                                    if( isset($res['BLACKLIST'][$type]) ){
+                                        foreach($res['BLACKLIST'][$type] as $blres){
+                                            $report_site = htmlspecialchars($blres[0]);
+                                            $report_url = htmlspecialchars($blres[1]);
+                                            echo "<b>{$group_title}: </b>{$report_site} <a href='{$report_url}' target='_blank'>{$report_url}</a><br />";
+                                        }
+                                    }
+                                }
+                                ?>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -763,6 +861,7 @@ function sucuriscan_print_scan(){
     $_html = ob_get_contents();
     ob_end_clean();
     echo sucuriscan_get_template('base', array(
+        'PageTitle' => '(Results)',
         'PageContent' => $_html,
         'PageStyleClass' => 'scanner-results',
     ));
@@ -822,6 +921,7 @@ function sucuriscan_core_integrity_page(){
     $_html = ob_get_contents();
     ob_end_clean();
     echo sucuriscan_get_template('base', array(
+        'PageTitle' => '(WordPress Integrity)',
         'PageContent' => $_html,
         'PageStyleClass' => 'core-integrity'
     ));
@@ -1303,6 +1403,7 @@ function sucuriscan_hardening_page(){
     $_html = ob_get_contents();
     ob_end_clean();
     echo sucuriscan_get_template('base', array(
+        'PageTitle' => '(1-Click Hardening)',
         'PageContent' => $_html,
         'PageStyleClass' => 'hardening'
     ));
@@ -1753,6 +1854,7 @@ function sucuriscan_posthack_page(){
 
     // Page pseudo-variables initialization.
     $template_variables = array(
+        'PageTitle' => 'Post-Hack',
         'PosthackNonce' => wp_create_nonce('sucuri_posthack_nonce'),
         'WPConfigUpdate.Display' => 'display:none',
         'WPConfigUpdate.NewConfig' => '',
@@ -1863,6 +1965,7 @@ function sucuriscan_lastlogins_page(){
 
     // Page pseudo-variables initialization.
     $template_variables = array(
+        'PageTitle' => 'Last Logins',
         'LastLoginsNonce' => wp_create_nonce('sucuriscan_lastlogins_nonce'),
         'UserList' => '',
         'UserListLimit' => SUCURISCAN_LASTLOGINS_USERSLIMIT,
@@ -2101,6 +2204,7 @@ function sucuriscan_infosys_page(){
 
     // Page pseudo-variables initialization.
     $template_variables = array(
+        'PageTitle' => 'Site Info',
         'ServerInfo' => sucuriscan_server_info(),
         'LoggedInUsers' => sucuriscan_infosys_loggedin(),
         'Cronjobs' => sucuriscan_show_cronjobs(),
@@ -2582,6 +2686,10 @@ function sucuriscan_about_page(){
         wp_die(__('You do not have sufficient permissions to access this page: Sucuri Last-Logins') );
     }
 
-    echo sucuriscan_get_template('about');
+    $template_variables = array(
+    	'PageTitle' => 'About'
+    );
+
+    echo sucuriscan_get_template('about', $template_variables);
 }
 

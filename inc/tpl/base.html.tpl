@@ -7,7 +7,7 @@
         <a href="http://sucuri.net/signup" target="_blank" title="Sucuri Security">
             <img src="%%SUCURI.SucuriURL%%/inc/images/logo.png" alt="Sucuri Security" />
         </a>
-        <h2>Sucuri SiteCheck Malware Scanner</h2>
+        <h2>SiteCheck Scanner %%SUCURI.PageTitle%%</h2>
     </div>
 
     <div class="sucuriscan-maincontent sucuriscan-clearfix">
