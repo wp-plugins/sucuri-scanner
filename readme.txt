@@ -1,7 +1,7 @@
 === Sucuri Security - SiteCheck Malware Scanner ===
-Contributors: dd@sucuri.net, dremeda
+Contributors: dd@sucuri.net
 Donate Link: http://sitecheck.sucuri.net
-Tags: malware, security, scan, spam, virus, sucuri, WordPress,  
+Tags: malware, security, firewall, scan, spam, virus, sucuri, protection
 Requires at least:3.2
 Stable tag:1.5.7
 Tested up to: 3.9
