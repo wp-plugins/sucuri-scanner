@@ -54,6 +54,9 @@
 .sucuriscan-wpconfig-textarea{width:600px;height:525px;background:#f5f5f5;font-size:12px;line-height:1.4em;resize:none;margin:15px 0 0 0;padding:10px}
 .sucuriscan-scanner-results table tr:nth-child(even){background:#f5f5f5}
 .sucuriscan-maincontent .sucuriscan-cleanup-btn{display:block;text-align:center;margin:20px 0 0 0}
+.sucuriscan-about ul{margin-left:20px}
+.sucuriscan-about ul li{list-style:initial}
+.sucuriscan-about li label{font-weight:bold;vertical-align:initial}
 /* Old styles */
 .sucuriscan-maincontent #poststuff{min-width:initial;padding-top:0}
 .sucuriscan-maincontent .widefat tbody th.check-column{padding:6px 0 3px 0}

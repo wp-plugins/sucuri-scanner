@@ -701,8 +701,8 @@ function sucuriscan_print_scan(){
 
                                 <p>
                                     <i>
-                                        More details here: <a href="http://sitecheck.sucuri.net/results/<?php _e($website_scanned); ?>">
-                                        http://sitecheck.sucuri.net/results/<?php _e($website_scanned); ?></a>
+                                        More details here: <a href="http://sitecheck.sucuri.net/results/<?php _e($website_scanned); ?>"
+                                        target="_blank">http://sitecheck.sucuri.net/results/<?php _e($website_scanned); ?></a>
                                     </i>
                                     <hr />
                                     <i>

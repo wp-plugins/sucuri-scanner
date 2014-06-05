@@ -17,32 +17,23 @@
         <h3>How does it work?</h3>
         <div class="inside">
             <ul>
-                <li>Web Application Firewall. Block attacks before they reach your site.</li>
-                <li>Integrity Monitoring. Receive notifications if any of your files are modified.</li>
-                <li>Audit Logs. Keep track of everything that happens inside WordPress, including new users, posts, login failures and successful logins.</li>
-                <li>Activity Reporting</li>
-                <li>1-Click Hardening. Easy-to-use hardening options for your site.</li>
+                <li>
+                    <label>Integrity Monitoring:</label>
+                    <span>Receive notifications if any of your files are modified.</span>
+                </li>
+                <li>
+                    <label>Audit Logs:</label>
+                    <span>Keep track of everything that happens inside WordPress, including new users, posts, login failures and successful logins.</span>
+                </li>
+                <li>
+                    <label>Activity Reporting:</label>
+                    <span>Watch as your visitors go to your site and attackers get blocked.</span>
+                </li>
+                <li>
+                    <label>1-Click Hardening:</label>
+                    <span>Easy-to-use hardening options for your site.</span>
+                </li>
             </ul>
-        </div>
-    </div>
-
-
-    <div class="postbox">
-        <h3>Web Application Firewall (WAF)</h3>
-        <div class="inside">
-            <p>
-            The WAF is a unique feature that is designed to intelligently protect your sites
-            from brute-force attacks like dictionary attacks and other similar unauthorized
-            access attempts. When a bad IP is identified it is blacklisted in your admin
-            dashboard. If it was an unintentional block, you have the ability to white-list
-            access to any IP.
-            </p>
-            <p>
-            The WAF is not tied to your application, it communicates with our servers and
-            allows us to see malicious attacks across the network. When one client gets attacked
-            by one bad IP in Croatia, we are able to push preventive measures to every plugin
-            to protect against that IP.
-            </p>
         </div>
     </div>
 
