@@ -1988,23 +1988,32 @@ function sucuriscan_lastlogins_page(){
 
     $counter = 0;
     $user_list = sucuriscan_get_logins($limit);
-    foreach($user_list as $user){
+    foreach( $user_list as $user ){
         $counter += 1;
-        $user_snippet = sucuriscan_get_snippet('lastlogins', array(
+
+        $user_dataset = array(
             'UserList.Number' => $counter,
-            'UserList.UserId' => intval($user->ID),
-            'UserList.Username' => ( !is_null($user->user_login) ? $user->user_login : '<em>Unknown</em>' ),
-            'UserList.Displayname' => $user->display_name,
-            'UserList.Email' => $user->user_email,
-            'UserList.Registered' => $user->user_registered,
+            'UserList.UserId' => $user->user_id,
+            'UserList.Username' => '<em>Unknown</em>',
+            'UserList.Displayname' => '',
+            'UserList.Email' => '',
+            'UserList.Registered' => '',
             'UserList.RemoteAddr' => $user->user_remoteaddr,
             'UserList.Hostname' => $user->user_hostname,
             'UserList.Datetime' => $user->user_lastlogin,
             'UserList.TimeAgo' => sucuriscan_time_ago($user->user_lastlogin),
-            'UserList.UserURL' => admin_url('user-edit.php?user_id='.$user->ID),
+            'UserList.UserURL' => admin_url('user-edit.php?user_id='.$user->user_id),
             'UserList.CssClass' => ( $counter % 2 == 0 ) ? 'alternate' : ''
-        ));
-        $template_variables['UserList'] .= $user_snippet;
+        );
+
+        if( $user->user_exists ){
+            $user_dataset['UserList.Username'] = $user->user_login;
+            $user_dataset['UserList.Displayname'] = $user->display_name;
+            $user_dataset['UserList.Email'] = $user->user_email;
+            $user_dataset['UserList.Registered'] = $user->user_registered;
+        }
+
+        $template_variables['UserList'] .= sucuriscan_get_snippet('lastlogins', $user_dataset);
     }
 
     echo sucuriscan_get_template('lastlogins', $template_variables);
@@ -2132,11 +2141,18 @@ function sucuriscan_get_logins($limit=10, $user_id=0){
                 }
 
                 /* Get the WP_User object and add extra information from the last-login data */
+                $user_lastlogin['user_exists'] = FALSE;
                 $user_account = get_userdata($user_lastlogin['user_id']);
-                foreach($user_lastlogin as $user_extrainfo_key=>$user_extrainfo_value){
-                    $user_account->data->{$user_extrainfo_key} = $user_extrainfo_value;
+
+                if( $user_account ){
+                    $user_lastlogin['user_exists'] = TRUE;
+
+                    foreach( $user_account->data as $var_name=>$var_value ){
+                        $user_lastlogin[$var_name] = $var_value;
+                    }
                 }
-                $lastlogins[] = $user_account;
+
+                $lastlogins[] = (object)$user_lastlogin;
                 $parsed_lines += 1;
             }
 
