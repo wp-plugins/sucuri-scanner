@@ -104,18 +104,21 @@ if( !function_exists('sucuriscan_create_uploaddir') ){
     add_action('admin_init', 'sucuriscan_create_uploaddir');
 }
 
-/**
- * Define which javascript and css files will be loaded in the header of the page.
- * @return void
- */
-function sucuriscan_admin_script_style_registration() {
-    wp_register_style( 'sucuriscan', SUCURI_URL . '/inc/css/sucuriscan-default-css.css' );
-    wp_register_script( 'sucuriscan', SUCURI_URL . '/inc/js/sucuriscan-scripts.js' );
+if( !function_exists('sucuriscan_admin_script_style_registration') ){
+    /**
+     * Define which javascript and css files will be loaded in the header of the page.
+     * @return void
+     */
+    function sucuriscan_admin_script_style_registration(){
+        wp_register_style( 'sucuriscan', SUCURI_URL . '/inc/css/sucuriscan-default-css.css' );
+        wp_register_script( 'sucuriscan', SUCURI_URL . '/inc/js/sucuriscan-scripts.js' );
 
-    wp_enqueue_style( 'sucuriscan' );
-    wp_enqueue_script( 'sucuriscan' );
+        wp_enqueue_style( 'sucuriscan' );
+        wp_enqueue_script( 'sucuriscan' );
+    }
+
+    add_action( 'admin_enqueue_scripts', 'sucuriscan_admin_script_style_registration', 1 );
 }
-add_action( 'admin_enqueue_scripts', 'sucuriscan_admin_script_style_registration', 1 );
 
 /**
  * Returns the system filepath to the relevant user uploads directory for this
@@ -124,11 +127,12 @@ add_action( 'admin_enqueue_scripts', 'sucuriscan_admin_script_style_registration
  * @param  string $path The relative path that needs to be completed to get the absolute path.
  * @return string       The full filesystem path including the directory specified.
  */
-function sucuriscan_dir_filepath($path = '')
-{
+function sucuriscan_dir_filepath($path = ''){
     $wp_dir_array = wp_upload_dir();
     $wp_dir_array['basedir'] = untrailingslashit($wp_dir_array['basedir']);
-    return($wp_dir_array['basedir']."/sucuri/$path");
+    $wp_filepath = $wp_dir_array['basedir'] . '/sucuri/' . $path;
+
+    return $wp_filepath;
 }
 
 /**
@@ -136,52 +140,43 @@ function sucuriscan_dir_filepath($path = '')
  *
  * @return void
  */
-function sucuriscan_menu()
-{
-    add_menu_page('Sucuri Free', 'Sucuri Free', 'manage_options',
-                  'sucuriscan', 'sucuri_scan_page', SUCURI_URL.'/inc/images/menu-icon.png');
-    add_submenu_page('sucuriscan', 'Sucuri Scanner', 'Sucuri Scanner', 'manage_options',
-                     'sucuriscan', 'sucuri_scan_page');
+function sucuriscan_menu(){
+    // Add main menu link.
+    add_menu_page(
+        'Sucuri Free',
+        'Sucuri Free',
+        'manage_options',
+        'sucuriscan',
+        'sucuriscan_page',
+        SUCURI_URL . '/inc/images/menu-icon.png'
+    );
 
-    add_submenu_page('sucuriscan', '1-Click Hardening', '1-Click Hardening', 'manage_options',
-                     'sucuriscan_hardening', 'sucuriscan_hardening_page');
+    $sub_pages = array(
+        'sucuriscan' => 'Sucuri Scanner',
+        'sucuriscan_hardening' => '1-Click Hardening',
+        'sucuriscan_core_integrity' => 'WordPress Integrity',
+        'sucuriscan_posthack' => 'Post-Hack',
+        'sucuriscan_lastlogins' => 'Last Logins',
+        'sucuriscan_infosys' => 'Site Info',
+        'sucuriscan_about' => 'About',
+    );
 
-    add_submenu_page('sucuriscan', 'WordPress Integrity', 'WordPress Integrity', 'manage_options',
-                     'sucuriscan_core_integrity', 'sucuriscan_core_integrity_page');
+    foreach( $sub_pages as $sub_page_func => $sub_page_title ){
+        $page_func = $sub_page_func . '_page';
 
-    add_submenu_page('sucuriscan', 'Post-Hack', 'Post-Hack', 'manage_options',
-                     'sucuriscan_posthack', 'sucuriscan_posthack_page');
-
-    add_submenu_page('sucuriscan', 'Last Logins', 'Last Logins', 'manage_options',
-                     'sucuriscan_lastlogins', 'sucuriscan_lastlogins_page');
-
-    add_submenu_page('sucuriscan', 'Site Info', 'Site Info', 'manage_options',
-                     'sucuriscan_infosys', 'sucuriscan_infosys_page');
-
-    add_submenu_page('sucuriscan', 'About', 'About', 'manage_options',
-                     'sucuriscan_about', 'sucuriscan_about_page');
+        add_submenu_page(
+            'sucuriscan',
+            $sub_page_title,
+            $sub_page_title,
+            'manage_options',
+            $sub_page_func,
+            $page_func
+        );
+    }
 }
 
 add_action('admin_menu', 'sucuriscan_menu');
 remove_action('wp_head', 'wp_generator');
-
-/**
- * Print the HTML code for the header of each plugin's page.
- *
- * @param  string $sucuri_title Title of the page that will be loaded.
- * @return void
- */
-function sucuriscan_pagestop($sucuri_title = 'Sucuri Plugin')
-{
-    if(!current_user_can('manage_options'))
-    {
-        wp_die(__('You do not have sufficient permissions to access this page: Sucuri Header') );
-    }
-    ?>
-    <h2><?php echo htmlspecialchars($sucuri_title); ?></h2>
-    <br class="clear"/>
-    <?php
-}
 
 /**
  * Send a message to a specific email address.
@@ -193,20 +188,21 @@ function sucuriscan_pagestop($sucuri_title = 'Sucuri Plugin')
  * @param  boolean $debug    TRUE if you want to test the function printing the email before sending it.
  * @return void
  */
-function sucuriscan_send_mail($to='', $subject='', $message='', $data_set=array(), $debug=FALSE)
-{
+function sucuriscan_send_mail($to='', $subject='', $message='', $data_set=array(), $debug=FALSE){
     $headers = array();
     $subject = ucwords(strtolower($subject));
     $wp_domain = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : get_option('siteurl');
+
     if( get_option('sucuri_wp_prettify_mails')!='disabled' ){
         $headers = array( 'Content-type: text/html' );
         $data_set['PrettifyType'] = 'html';
     }
+
     $message = sucuriscan_prettify_mail($subject, $message, $data_set);
 
-    if($debug){
+    if( $debug ){
         die($message);
-    }else{
+    } else {
         wp_mail($to, "Sucuri WP Notification: {$wp_domain} - {$subject}" , $message, $headers);
     }
 }
@@ -218,8 +214,7 @@ function sucuriscan_send_mail($to='', $subject='', $message='', $data_set=array(
  * @param  string $message The message that will be printed in the alert.
  * @return void
  */
-function sucuriscan_admin_notice($type='updated', $message='')
-{
+function sucuriscan_admin_notice($type='updated', $message=''){
     $alert_id = rand(100, 999);
     if( !empty($message) ): ?>
         <div id="sucuri-alert-<?php echo $alert_id; ?>" class="<?php echo $type; ?> sucuri-alert sucuri-alert-<?php echo $type; ?>">
@@ -366,18 +361,21 @@ function sucuriscan_get_url($page=''){
  *
  * @return array A list of the new set of keys generated by WordPress API.
  */
-function sucuriscan_get_new_config_keys()
-{
+function sucuriscan_get_new_config_keys(){
     $request = wp_remote_get('https://api.wordpress.org/secret-key/1.1/salt/');
+
     if( !is_wp_error($request) || wp_remote_retrieve_response_code($request) === 200 ){
         if( preg_match_all("/define\('([A-Z_]+)',[ ]+'(.*)'\);/", $request['body'], $match) ){
             $new_keys = array();
+
             foreach($match[1] as $i=>$value){
                 $new_keys[$value] = $match[2][$i];
             }
+
             return $new_keys;
         }
     }
+
     return FALSE;
 }
 
@@ -592,7 +590,7 @@ function sucuriscan_time_ago($timestamp=0){
  *
  * @return void
  */
-function sucuri_scan_page(){
+function sucuriscan_page(){
     $U_ERROR = NULL;
     if( !current_user_can('manage_options') ){
         wp_die(__('You do not have sufficient permissions to access this page: Sucuri Malware Scanner') );
@@ -2797,17 +2795,17 @@ function sucuriscan_server_info(){
         $plugin_runtime_datetime = file_exists($plugin_runtime_filepath) ? date('r',filemtime($plugin_runtime_filepath)) : 'N/A';
 
         $template_variables = array(
-            'SettingsDisplay'=>'block',
-            'PluginVersion'=>SUCURISCAN_VERSION,
-            'PluginForceUpdate'=>admin_url('admin.php?page=sucurisec_settings&sucuri_force_update=1'),
-            'PluginMD5'=>md5_file(SUCURISCAN_PLUGIN_FILEPATH),
-            'PluginRuntimeDatetime'=>$plugin_runtime_datetime,
-            'OperatingSystem'=>sprintf('%s (%d Bit)', PHP_OS, PHP_INT_SIZE*8),
-            'Server'=>isset($_SERVER['SERVER_SOFTWARE']) ? $_SERVER['SERVER_SOFTWARE'] : 'Unknown',
-            'MemoryUsage'=>$memory_usage,
-            'MySQLVersion'=>$mysql_version,
-            'SQLMode'=>$sql_mode,
-            'PHPVersion'=>PHP_VERSION,
+            'SettingsDisplay' => 'block',
+            'PluginVersion' => SUCURISCAN_VERSION,
+            'PluginForceUpdate' => admin_url('admin.php?page=sucurisec_settings&sucuri_force_update=1'),
+            'PluginMD5' => md5_file(SUCURISCAN_PLUGIN_FILEPATH),
+            'PluginRuntimeDatetime' => $plugin_runtime_datetime,
+            'OperatingSystem' => sprintf('%s (%d Bit)', PHP_OS, PHP_INT_SIZE*8),
+            'Server' => isset($_SERVER['SERVER_SOFTWARE']) ? $_SERVER['SERVER_SOFTWARE'] : 'Unknown',
+            'MemoryUsage' => $memory_usage,
+            'MySQLVersion' => $mysql_version,
+            'SQLMode' => $sql_mode,
+            'PHPVersion' => PHP_VERSION,
         );
 
         $field_names = array(
