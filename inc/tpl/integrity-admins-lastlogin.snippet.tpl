@@ -1,4 +1,5 @@
-<tr>
-    <td>%%SUCURI.AdminUsers.RemoteAddr%%</td>
-    <td>%%SUCURI.AdminUsers.Datetime%%</td>
+
+<tr class="%%SUCURI.AdminUsers.CssClass%%">
+    <td><span class="sucuriscan-monospace">%%SUCURI.AdminUsers.RemoteAddr%%</span></td>
+    <td><span class="sucuriscan-monospace">%%SUCURI.AdminUsers.Datetime%%</span></td>
 </tr>

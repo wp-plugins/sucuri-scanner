@@ -13,6 +13,7 @@ jQuery(document).ready(function($){
     if( $('.sucuriscan-tabs').length ){
         var hidden_class = 'sucuriscan-hidden';
         var active_class = 'sucuriscan-tab-active';
+        var anchor = location.href.split('#')[1];
 
         $('.sucuriscan-tabs > ul a').on('click', function(e){
             e.preventDefault();
@@ -30,6 +31,19 @@ jQuery(document).ready(function($){
         });
 
         $('.sucuriscan-tab-containers > div').addClass(hidden_class);
-        $('.sucuriscan-tabs > ul li:first-child a').trigger('click');
+
+        if( anchor != undefined ){
+            $('.sucuriscan-tabs > ul li a').each(function(i, el){
+                if( $(el).data('tabname') == anchor ){
+                    $(el).trigger('click');
+                }
+            });
+        } else {
+            $('.sucuriscan-tabs > ul li:first-child a').trigger('click');
+        }
     }
+
+    $('#sucuriscan_last_days').on('change', function(){
+        $(this).closest('form').submit();
+    });
 });

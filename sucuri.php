@@ -67,6 +67,16 @@ define('SUCURISCAN_PLUGIN_PATH', WP_PLUGIN_DIR.'/'.SUCURISCAN_PLUGIN_FOLDER);
 define('SUCURISCAN_PLUGIN_FILEPATH', SUCURISCAN_PLUGIN_PATH.'/'.SUCURISCAN_PLUGIN_FILE);
 
 /**
+ * Remote URL where the public Sucuri API service is running.
+ */
+define('SUCURISCAN_API', 'https://wordpress.sucuri.net/');
+
+/**
+ * Latest version of the public Sucuri API.
+ */
+define('SUCURISCAN_API_VERSION', 'v1');
+
+/**
  * The maximum quantity of entries that will be displayed in the last login page.
  */
 define('SUCURISCAN_LASTLOGINS_USERSLIMIT', 50);
@@ -227,21 +237,20 @@ function sucuriscan_admin_notice($type='updated', $message='')
  * @param  array  $data_set Optional parameter to add more information to the notification.
  * @return string           The message formatted in a HTML template.
  */
-function sucuriscan_prettify_mail($subject='', $message='', $data_set=array())
-{
+function sucuriscan_prettify_mail( $subject='', $message='', $data_set=array() ){
     $current_user = wp_get_current_user();
 
     $prettify_type = isset($data_set['PrettifyType']) ? $data_set['PrettifyType'] : 'txt';
     $real_ip = isset($_SERVER['SUCURI_RIP']) ? $_SERVER['SUCURI_RIP'] : $_SERVER['REMOTE_ADDR'];
 
     $mail_variables = array(
-        'TemplateTitle'=>'Sucuri WP Notification',
-        'Subject'=>$subject,
-        'Website'=>get_option('siteurl'),
-        'RemoteAddress'=>$real_ip,
-        'Message'=>$message,
-        'User'=>$current_user->display_name,
-        'Time'=>current_time('mysql')
+        'TemplateTitle' => 'Sucuri WP Notification',
+        'Subject' => $subject,
+        'Website' => get_option('siteurl'),
+        'RemoteAddress' => $real_ip,
+        'Message' => $message,
+        'User' => $current_user->display_name,
+        'Time' => current_time('mysql'),
     );
     foreach($data_set as $var_key=>$var_value){
         $mail_variables[$var_key] = $var_value;
@@ -381,8 +390,7 @@ function sucuriscan_get_new_config_keys()
  *
  * @return false|array Either FALSE in case of error, or an array with the old and new keys.
  */
-function sucuriscan_set_new_config_keys()
-{
+function sucuriscan_set_new_config_keys(){
     $new_wpconfig = '';
     $wp_config_path = ABSPATH.'wp-config.php';
 
@@ -411,13 +419,14 @@ function sucuriscan_set_new_config_keys()
         }
 
         $response = array(
-            'updated'=>is_writable($wp_config_path),
-            'old_keys'=>$old_keys,
-            'old_keys_string'=>$old_keys_string,
-            'new_keys'=>$new_keys,
-            'new_keys_string'=>$new_keys_string,
-            'new_wpconfig'=>$new_wpconfig
+            'updated' => is_writable($wp_config_path),
+            'old_keys' => $old_keys,
+            'old_keys_string' => $old_keys_string,
+            'new_keys' => $new_keys,
+            'new_keys_string' => $new_keys_string,
+            'new_wpconfig' => $new_wpconfig,
         );
+
         if( $response['updated'] ){
             file_put_contents($wp_config_path, $new_wpconfig, LOCK_EX);
         }
@@ -432,8 +441,7 @@ function sucuriscan_set_new_config_keys()
  * @param  integer $user_id The user identifier that will be changed, this must be different than the user in session.
  * @return boolean          Either TRUE or FALSE in case of success or error respectively.
  */
-function sucuriscan_new_password($user_id=0)
-{
+function sucuriscan_new_password($user_id=0){
     $user_id = intval($user_id);
     $current_user = wp_get_current_user();
 
@@ -460,8 +468,7 @@ function sucuriscan_new_password($user_id=0)
  *
  * @return string The real ip address of the user in the current request.
  */
-function sucuriscan_get_remoteaddr()
-{
+function sucuriscan_get_remoteaddr(){
     $alternatives = array(
         'HTTP_X_REAL_IP',
         'HTTP_CLIENT_IP',
@@ -875,6 +882,194 @@ function sucuriscan_print_scan(){
 }
 
 /**
+ * Retrieves a URL using a changeable HTTP method, returning results in an
+ * array. Results include HTTP headers and content.
+ *
+ * @see http://codex.wordpress.org/Function_Reference/wp_remote_post
+ * @see http://codex.wordpress.org/Function_Reference/wp_remote_get
+ *
+ * @param  string $method HTTP method that will be used to send the request.
+ * @param  array  $params Parameters for the request defined in an associative array of key-value.
+ * @return array          Array of results including HTTP headers or WP_Error if the request failed.
+ */
+function sucuriscan_api_call( $method='GET', $params=array() ){
+    global $wp_version;
+
+    $target_url = SUCURISCAN_API;
+    $params[SUCURISCAN_API_VERSION] = 1;
+
+    $req_args = array(
+        'method' => $method,
+        'httpversion' => '1.0',
+        'user-agent' => 'WordPress/' . $wp_version . '; ' . sucuriscan_get_domain(),
+        'blocking' => TRUE,
+        'headers' => array(),
+        'cookies' => array(),
+        'compress' => FALSE,
+        'decompress' => FALSE,
+        'sslverify' => TRUE,
+    );
+
+    if( $method == 'GET' ){
+        $target_url = sprintf( '%s?%s', $target_url, http_build_query($params) );
+        $response = wp_remote_post( $target_url, $req_args );
+    }
+
+    elseif( $method == 'POST' ){
+        $req_args['body'] = $params;
+        $response = wp_remote_post( $target_url, $req_args );
+    }
+
+    if( isset($response) ){
+        if( is_wp_error($response) ){
+            $error_message = $response->get_error_message();
+            sucuriscan_admin_notice( 'error', 'Something went wrong: ' . $error_message );
+        } else {
+            echo 'Response:<pre>';
+            print_r( $response );
+            echo '</pre>';
+        }
+    }
+
+    return FALSE;
+}
+
+/**
+ * Validate email address.
+ *
+ * This use the native PHP function filter_var which is available in PHP >=
+ * 5.2.0 if it is not found in the interpreter this function will sue regular
+ * expressions to check whether the email address passed is valid or not.
+ *
+ * @see http://www.php.net/manual/en/function.filter-var.php
+ *
+ * @param  string $email The string that will be validated as an email address.
+ * @return boolean       TRUE if the email address passed to the function is valid, FALSE if not.
+ */
+function is_valid_email( $email='' ){
+    if( function_exists('filter_var') ){
+        return (bool) filter_var($email, FILTER_VALIDATE_EMAIL);
+    } else {
+        $pattern = '/^([a-z0-9\+_\-]+)(\.[a-z0-9\+_\-]+)*@([a-z0-9\-]+\.)+[a-z]{2,6}$/ix';
+        return (bool) preg_match($pattern, $email);
+    }
+}
+
+/**
+ * Get the clean version of the current domain.
+ *
+ * @return string The domain of the current site.
+ */
+function sucuriscan_get_domain(){
+    $http_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
+    $domain_name =  preg_replace( '/^www\./', '', $http_host );
+
+    return $domain_name;
+}
+
+/**
+ * Get the email address set by the administrator to receive the notifications
+ * sent by the plugin, if the email is missing the WordPress email address is
+ * chosen by default.
+ *
+ * @return string The administrator email address.
+ */
+function sucuriscan_get_site_email(){
+    $email = get_option('admin_email');
+
+    if( is_valid_email($email) ){
+        return $email;
+    }
+
+    return FALSE;
+}
+
+/**
+ * Store the API key locally.
+ *
+ * @param  string  $api_key An unique string of characters to identify this installation.
+ * @return boolean          Either TRUE or FALSE if the key was saved successfully or not respectively.
+ */
+function sucuriscan_set_api_key( $api_key='' ){
+    return (bool) update_option( 'sucuriscan_api_key', $api_key );
+}
+
+/**
+ * Retrieve the API key from the local storage.
+ *
+ * @return string|boolean The API key or FALSE if it does not exists.
+ */
+function sucuriscan_get_api_key(){
+    $api_key = get_option('sucuriscan_api_key');
+
+    if( $api_key && strlen($api_key) > 10 ){
+        return $api_key;
+    }
+
+    return FALSE;
+}
+
+/**
+ * Send a request to the API to register this site.
+ *
+ * @return string API key generated remotely to identify this site.
+ */
+function sucuriscan_register_site(){
+    $response = sucuriscan_api_call( 'POST', array(
+        'e' => sucuriscan_get_site_email(),
+        's' => sucuriscan_get_domain(),
+        'a' => 'register_site',
+        'p' => 'wordpress',
+    ) );
+
+    return $response;
+}
+
+/**
+ * Send a request to the API to store and analize the events of the site. An
+ * event can be anything from a simple request, an internal modification of the
+ * settings or files in the administrator panel, or a notification generated by
+ * this plugin.
+ *
+ * @param  string $event The information gathered through out the normal functioning of the site.
+ * @return string        The response of the API service.
+ */
+function sucuriscan_send_log( $event='' ){
+    if( !empty($event) ){
+        $response = sucuriscan_api_call( 'POST', array(
+            'e' => sucuriscan_get_site_email(),
+            's' => sucuriscan_get_domain(),
+            'k' => sucuriscan_get_api_key(),
+            'a' => 'send_log',
+            'p' => 'wordpress',
+            'm' => $event,
+        ) );
+
+        return $response;
+    }
+
+    return FALSE;
+}
+
+/**
+ * Retrieve the event logs registered by the API service.
+ *
+ * @return string The response of the API service.
+ */
+function sucuriscan_get_logs(){
+    $response = sucuriscan_api_call( 'GET', array(
+        'e' => sucuriscan_get_site_email(),
+        's' => sucuriscan_get_domain(),
+        'k' => sucuriscan_get_api_key(),
+        'a' => 'get_logs',
+        'p' => 'wordpress',
+        'l' => 50,
+    ) );
+
+    return $response;
+}
+
+/**
  * WordPress core integrity page.
  *
  * It checks whether the WordPress core files are the original ones, and the state
@@ -884,151 +1079,21 @@ function sucuriscan_print_scan(){
  * @return void
  */
 function sucuriscan_core_integrity_page(){
-
     if( !current_user_can('manage_options') ){
         wp_die(__('You do not have sufficient permissions to access this page: Sucuri Integrity Check') );
     }
 
-    if( isset($_POST['wpsucuri-core-integrity']) ){
-        if( !wp_verify_nonce($_POST['sucuriscan_core_integritynonce'], 'sucuriscan_core_integritynonce') ){
-            unset($_POST['wpsucuri-core_integrity']);
-        }
-    }
+    $template_variables = array(
+        'PageTitle' => 'WordPress Integrity',
+        'CoreFiles' => sucuriscan_core_files(),
+        'ModifiedFiles' => sucuriscan_modified_files(),
+        'AdminUsers' => sucuriscan_admin_users(),
+        'PluginList' => sucuriscan_plugin_list(),
+        'ThemeList' => sucuriscan_theme_list(),
+    );
 
-    ob_start();
-    ?>
-
-    <div id="poststuff">
-        <?php
-        sucuriscan_core_integrity_function_wrapper(
-            'sucuriwp_core_integrity_check',
-            'Verify Integrity of WordPress Core Files',
-            'This test will check wp-includes, wp-admin, and the top directory files against the latest WordPress
-            hashing database. If any of those files were modified, it is a big sign of a possible compromise.'
-        );
-
-        sucuriscan_core_integrity_wp_content_wrapper();
-
-        sucuriscan_core_integrity_function_wrapper(
-            'sucuriwp_list_admins',
-            'Admin User Dump',
-            'List all administrator users and their latest login time.'
-        );
-
-        sucuriscan_core_integrity_function_wrapper(
-            'sucuriwp_check_addons',
-            'Outdated Addon list',
-            'This test will list any outdated plugins and themes (not active addons may not be shown).'
-        );
-        ?>
-    </div>
-
-    <?php
-    $_html = ob_get_contents();
-    ob_end_clean();
-    echo sucuriscan_get_template('base', array(
-        'PageTitle' => '(WordPress Integrity)',
-        'PageContent' => $_html,
-        'PageStyleClass' => 'core-integrity'
-    ));
-    return;
+    echo sucuriscan_get_template('integrity', $template_variables);
 }
-
-/**
- * Print the HTML code with the form needed to check the integrity of specific
- * parts of the site and administrator panel.
- *
- * @param  string $function_name Name of the function that will be executed on form submission.
- * @param  string $stitle        Title of the HTML panel.
- * @param  string $description   Explanation of the action that will be performed once the form is submitted.
- * @return void
- */
-function sucuriscan_core_integrity_function_wrapper($function_name='', $stitle='', $description=''){ ?>
-    <div class="postbox">
-        <h3><?php _e($stitle); ?></h3>
-
-        <div class="inside">
-            <form method="post">
-                <input type="hidden" name="<?php _e($function_name) ?>nonce" value="<?php echo wp_create_nonce($function_name.'nonce'); ?>" />
-                <input type="hidden" name="<?php _e($function_name) ?>" value="1" />
-                <p><?php _e($description) ?></p>
-                <input class="button-primary" type="submit" name="<?php _e($function_name) ?>" value="Check" />
-            </form>
-
-            <?php
-            if( isset($_POST[$function_name.'nonce']) && isset($_POST[$function_name]) ){
-                if( function_exists($function_name) ){
-                    $function_name();
-                }
-            }
-            ?>
-        </div>
-    </div>
-<?php }
-
-/**
- * List all files inside wp-content that have been modified in the last days.
- *
- * @return void
- */
-function sucuriscan_core_integrity_wp_content_wrapper(){ ?>
-    <div class="postbox">
-        <h3>Latest modified files</h3>
-        <div class="inside">
-            <form method="post">
-                <input type="hidden" name="sucuriwp_content_checknonce" value="<?php echo wp_create_nonce('sucuriwp_content_checknonce'); ?>" />
-                <input type="hidden" name="sucuriwp_content_check" value="sucuriwp_content_check" />
-                <p>
-                    This test will list all files inside wp-content that have been modified in the past
-                    <select name="sucuriwp_content_check_back">
-                        <?php foreach(array( 1,3,7,30 ) as $days): ?>
-                            <?php $selected =
-                                ( isset($_POST['sucuriwp_content_check_back']) && $_POST['sucuriwp_content_check_back']==$days )
-                                ? 'selected="selected"' : ''; ?>
-                            <option value="<?php echo $days; ?>" <?php echo $selected; ?>><?php echo $days; ?></option>
-                        <?php endforeach; ?>
-                    </select> days. (select the number of days first)
-                </p>
-                <input class="button-primary" type="submit" name="sucuriwp_content_check" value="Check">
-            </form>
-
-            <?php if (
-                isset($_POST['sucuriwp_content_checknonce'])
-                // && wp_verify_nonce($_POST['sucuriwp_content_checknonce'], 'sucuriwp_content_checknonce')
-                && isset($_POST['sucuriwp_content_check'])
-            ): ?>
-                <table class="wp-list-table widefat sucuriscan-table sucuriscan-table-doubletitle sucuriscan-lastmodified">
-                    <thead>
-                        <tr>
-                            <th colspan="2">wp_content latest modified files</th>
-                        </tr>
-                        <tr>
-                            <th class="manage-column">Filepath</th>
-                            <th class="manage-column">Modification date/time</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php
-                        $wp_content_hashes = read_dir_r(ABSPATH.'wp-content', true);
-                        $days = htmlspecialchars(trim((int)$_POST['sucuriwp_content_check_back']));
-                        $back_days = current_time( 'timestamp' ) - ( $days * 86400);
-                        $counter = 0;
-
-                        foreach ( $wp_content_hashes as $key => $value) {
-                            if ($value['time'] >= $back_days ){
-                                $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
-                                $date =  date('d-m-Y H:i:s', $value['time']);
-                                printf('<tr class="%s"><td>%s</td><td>%s</td></tr>', $css_class, $key, $date);
-                                $counter += 1;
-                            }
-                        }
-                        ?>
-                    </tbody>
-                </table>
-            <?php endif; ?>
-        </div>
-    </div>
-<?php }
 
 /**
  * Retrieve a list of md5sum and last modification time of all the files in the
@@ -1086,70 +1151,146 @@ function read_dir_r($dir = "./", $recursiv = false){
  *
  * @return void
  */
-function sucuriwp_core_integrity_check(){
-
+function sucuriscan_core_files(){
     global $wp_version;
-
-    $curlang = get_bloginfo("language");
 
     $cp = 0;
     $updates = get_core_updates();
-    if( !is_array($updates) || empty($updates) || $updates[0]->response=='latest' ){
+
+    if(
+        !is_array($updates)
+        || empty($updates)
+        || $updates[0]->response=='latest'
+    ){
         $cp = 1;
     }
-    if(strcmp($wp_version, "3.7") < 0)
-    {
+
+    if( strcmp($wp_version, '3.7') < 0 ){
         $cp = 0;
     }
+
+    $template_variables = array(
+        'WordPress.Version' => $wp_version,
+        'WordPress.UpgradeURL' => admin_url('update-core.php'),
+        'WordPress.UpdateVisibility' => 'hidden',
+        'CoreFiles.Visibility' => 'hidden',
+        'CoreFiles.Added' => '',
+        'CoreFiles.Removed' => '',
+        'CoreFiles.Modified' => '',
+    );
+
     $wp_version = htmlspecialchars($wp_version);
 
-    if($cp == 0)
-    {
-        echo '<p><img style="position:relative;top:5px" height="22" width="22" src="'.SUCURI_URL.'/inc/images/warn.png" />'
-            .'&nbsp; The current version of your site was detected as <code>'.$wp_version.'</code> which is different to the '
-            .'official latest version. The integrity check can not run using this version number <a href="'.admin_url('update-core.php').'">'
-            .'update now</a> to be able to run the integrity check.</p>';
-    }
-    else
-    {
+    if( $cp == 0 ){
+        $template_variables['WordPress.UpdateVisibility'] = 'visible';
+    } else {
         $latest_hashes = sucuriscan_check_wp_integrity($wp_version);
-        if($latest_hashes){
-            sucuriscan_draw_corefiles_status(array(
-                'added'=>$latest_hashes['added'],
-                'removed'=>$latest_hashes['removed'],
-                'modified'=>$latest_hashes['bad']
-            ));
+
+        if( $latest_hashes ){
+            $template_variables['CoreFiles.Visibility'] = 'visible';
+            $list = array(
+                'added' => $latest_hashes['added'],
+                'removed' => $latest_hashes['removed'],
+                'modified' => $latest_hashes['bad']
+            );
+
+            foreach( $list as $list_id=>$file_list ){
+                $i_name = 'CoreFiles.'.ucwords($list_id);
+                $i_name_count = $i_name.'Count';
+                $template_variables[$i_name_count] = sizeof($file_list);
+
+                if( !empty($file_list) ){
+                    $counter = 0;
+
+                    foreach( $file_list as $file_path ){
+                        $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
+                        $template_variables[$i_name] .= sucuriscan_get_snippet('integrity-corefiles', array(
+                            'CoreFiles.CssClass' => $css_class,
+                            'CoreFiles.FilePath' => $file_path
+                        ));
+                        $counter += 1;
+                    }
+                } else {
+                    $template_variables[$i_name] .= sucuriscan_get_snippet('integrity-corefiles', array(
+                        'CoreFiles.CssClass' => '',
+                        'CoreFiles.FilePath' => '<em>Empty list.</em>'
+                    ));
+                }
+            }
         }else{
             sucuriscan_admin_notice('error', 'Error retrieving the wordpress core hashes, try again.');
         }
     }
+
+    return sucuriscan_get_section('integrity-corefiles', $template_variables);
 }
 
 /**
- * List all the WordPress core files modified until now.
+ * List all files inside wp-content that have been modified in the last days.
  *
- * @param  array  $list List of WordPress core files modified.
  * @return void
  */
-function sucuriscan_draw_corefiles_status($list=array()){
-    if( is_array($list) && !empty($list) ): ?>
-        <table class="wp-list-table widefat sucuriscan-table sucuriscan-corefiles">
-            <tbody>
-                <?php
-                foreach( $list as $diff_type=>$file_list ){
-                    $counter = 0;
-                    printf('<tr><th>Core File %s: %d</th></tr>', ucwords($diff_type), sizeof($file_list));
-                    foreach($file_list as $filepath){
-                        $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
-                        printf('<tr class="%s"><td>%s</td></tr>', $css_class, $filepath);
-                        $counter += 1;
-                    }
-                }
-                ?>
-            </tbody>
-        </table>
-    <?php endif; ?>
-<?php }
+function sucuriscan_modified_files(){
+    $noncek = 'sucuriscan_modified_files';
+    $valid_day_ranges = array( 1, 3, 7, 30, 60 );
+    $template_variables = array(
+        'ModifiedFiles.Nonce' => wp_create_nonce($noncek),
+        'ModifiedFiles.List' => '',
+        'ModifiedFiles.SelectOptions' => '',
+        'ModifiedFiles.NoFilesVisibility' => 'visible',
+        'ModifiedFiles.Days' => 0,
+    );
+
+    // Find files modified in the last days.
+    $back_days = 1;
+
+    // Correct the ranges of the search to be between one and sixty days.
+    if( isset($_POST['sucuriscan_last_days']) ){
+        if( !isset($_POST[$noncek]) || !wp_verify_nonce($_POST[$noncek], $noncek) ){
+            wp_die(__('Invalid form submission.') );
+        }
+
+        $back_days = intval($_POST['sucuriscan_last_days']);
+        if    ( $back_days <= 0  ){ $back_days = 1;  }
+        elseif( $back_days >= 60 ){ $back_days = 60; }
+    }
+
+    // Generate the options for the select field of the page form.
+    foreach( $valid_day_ranges as $day ){
+        $selected_option = ($back_days == $day) ? 'selected="selected"' : '';
+        $template_variables['ModifiedFiles.SelectOptions'] .= sprintf(
+            '<option value="%d" %s>%d</option>',
+            $day, $selected_option, $day
+        );
+    }
+
+    // Scan the files of the site.
+    $template_variables['ModifiedFiles.Days'] = $back_days;
+    $wp_content_hashes = read_dir_r( ABSPATH.'wp-content', true );
+    $back_days = current_time('timestamp') - ( $back_days * 86400);
+    $counter = 0;
+
+    foreach( $wp_content_hashes as $file_path=>$file_info ){
+        if( $file_info['time'] >= $back_days ){
+            $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
+            $mod_date = date('d/M/Y H:i:s', $file_info['time']);
+
+            $template_variables['ModifiedFiles.List'] .= sucuriscan_get_snippet('integrity-modifiedfiles', array(
+                'ModifiedFiles.CssClass' => $css_class,
+                'ModifiedFiles.CheckSum' => $file_info['md5'],
+                'ModifiedFiles.FilePath' => $file_path,
+                'ModifiedFiles.DateTime' => $mod_date
+            ));
+            $counter += 1;
+        }
+    }
+
+    if( $counter > 0 ){
+        $template_variables['ModifiedFiles.NoFilesVisibility'] = 'hidden';
+    }
+
+    return sucuriscan_get_section('integrity-modifiedfiles', $template_variables);
+}
 
 /**
  * List all the user administrator accounts.
@@ -1158,13 +1299,10 @@ function sucuriscan_draw_corefiles_status($list=array()){
  *
  * @return void
  */
-function sucuriwp_list_admins(){
-
-    global $wpdb;
-
+function sucuriscan_admin_users(){
     // Page pseudo-variables initialization.
     $template_variables = array(
-        'AdminUsers.UserList'=>''
+        'AdminUsers.List' => ''
     );
 
     $user_query = new WP_User_Query(array( 'role' => 'Administrator' ));
@@ -1174,122 +1312,112 @@ function sucuriwp_list_admins(){
         $admin->lastlogins = sucuriscan_get_logins(5, $admin->ID);
 
         $user_snippet = array(
-            'AdminUsers.Username'=>$admin->user_login,
-            'AdminUsers.Email'=>$admin->user_email,
-            'AdminUsers.LastLogins'=>'',
-            'AdminUsers.UserURL'=>admin_url('user-edit.php?user_id='.$admin->ID)
+            'AdminUsers.Username' => $admin->user_login,
+            'AdminUsers.Email' => $admin->user_email,
+            'AdminUsers.LastLogins' => '',
+            'AdminUsers.UserURL' => admin_url('user-edit.php?user_id='.$admin->ID),
+            'AdminUsers.NoLastLogins' => 'visible',
+            'AdminUsers.NoLastLoginsTable' => 'hidden',
         );
 
         if( !empty($admin->lastlogins) ){
             $user_snippet['AdminUsers.NoLastLogins'] = 'hidden';
             $user_snippet['AdminUsers.NoLastLoginsTable'] = 'visible';
+            $counter = 0;
 
-            foreach($admin->lastlogins as $lastlogin){
+            foreach( $admin->lastlogins as $lastlogin ){
+                $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
                 $user_snippet['AdminUsers.LastLogins'] .= sucuriscan_get_snippet('integrity-admins-lastlogin', array(
-                    'AdminUsers.RemoteAddr'=>$lastlogin->user_remoteaddr,
-                    'AdminUsers.Datetime'=>$lastlogin->user_lastlogin
+                    'AdminUsers.RemoteAddr' => $lastlogin->user_remoteaddr,
+                    'AdminUsers.Datetime' => $lastlogin->user_lastlogin,
+                    'AdminUsers.CssClass' => $css_class,
                 ));
+                $counter += 1;
             }
-        }else{
-            $user_snippet['AdminUsers.NoLastLogins'] = 'visible';
-            $user_snippet['AdminUsers.NoLastLoginsTable'] = 'hidden';
         }
 
-        $template_variables['AdminUsers.UserList'] .= sucuriscan_get_snippet('integrity-admins', $user_snippet);
+        $template_variables['AdminUsers.List'] .= sucuriscan_get_snippet('integrity-admins', $user_snippet);
     }
 
-    echo sucuriscan_get_section('integrity-admins', $template_variables);
+    return sucuriscan_get_section('integrity-admins', $template_variables);
 }
 
 /**
- * Check if any installed plugin and theme has an update available.
+ * Check if any installed plugin an update available.
  *
  * @return void
  */
-function sucuriwp_check_addons(){ ?>
+function sucuriscan_plugin_list(){
+    $template_variables = array(
+        'AddonList.Items' => '',
+        'AddonList.UpToDateVisibility' => 'visible',
+    );
 
-    <table class="wp-list-table widefat sucuriscan-table sucuriscan-table-doubletitle sucuriscan-plugins-update">
-        <tbody>
-            <tr>
-                <th colspan="4">Outdated Plugins</th>
-            </tr>
+    // Check plugins.
+    do_action('wp_update_plugins');
+    wp_update_plugins();
+    $update_plugins = get_site_transient('update_plugins');
+    $plugins_need_update = (bool) !empty($update_plugins->response);
 
-            <?php
-            // Check plugins.
-            do_action('wp_update_plugins');
-            wp_update_plugins();
-            $update_plugins = get_site_transient('update_plugins');
-            $plugins_need_update = (bool) !empty($update_plugins->response);
-            ?>
+    if( $plugins_need_update ){
+        $counter = 0;
+        $template_variables['AddonList.UpToDateVisibility'] = 'hidden';
 
-            <tr>
-                <th>Plugin</th>
-                <th>Installed Version</th>
-                <th>New Version</th>
-                <th>&nbsp;</th>
-            </tr>
+        foreach( $update_plugins->response as $rel_path => $plugin_info ){
+            $plugin_data = get_plugin_data( WP_PLUGIN_DIR . '/' . $rel_path );
+            $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
+            $counter += 1;
 
-            <?php if( $plugins_need_update ): ?>
-                <?php
-                $counter = 0;
-                foreach( $update_plugins->response as $rel_path => $plugin_info ):
-                    $plugin_data = get_plugin_data( WP_PLUGIN_DIR . '/' . $rel_path );
-                    $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
-                    $counter += 1;
-                    ?>
+            $template_variables['AddonList.Items'] .= sucuriscan_get_snippet('integrity-addonlist', array(
+                'AddonList.CssClass' => $css_class,
+                'AddonList.Title' => $plugin_data['Title'],
+                'AddonList.Version' => $plugin_data['Version'],
+                'AddonList.NewVersion' => $plugin_info->new_version,
+                'AddonList.Package' => $plugin_info->package,
+            ));
+        }
+    }
 
-                    <tr class="<?php _e($css_class) ?>">
-                        <td><?php _e($plugin_data['Title']) ?></td>
-                        <td><?php _e($plugin_data['Version']) ?></td>
-                        <td><?php _e($plugin_info->new_version) ?></td>
-                        <td><a href="<?php _e($plugin_info->package) ?>" target="_blank">Download</a></td>
-                    </tr>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <tr>
-                    <td colspan="4">All plugins are up-to-date.</td>
-                </tr>
-            <?php endif; ?>
+    return sucuriscan_get_section('integrity-addonlist', $template_variables);
+}
 
-            <?php
-            // Check themes.
-            do_action('wp_update_themes');
-            wp_update_themes();
-            $update_themes = get_theme_updates();
-            $themes_need_update = (bool) !empty($update_themes);
-            ?>
+/**
+ * Check if any installed theme has an update available.
+ *
+ * @return void
+ */
+function sucuriscan_theme_list(){
+    $template_variables = array(
+        'AddonList.Items' => '',
+        'AddonList.UpToDateVisibility' => 'visible',
+    );
 
-            <tr>
-                <th>Theme</th>
-                <th>Installed Version</th>
-                <th>New Version</th>
-                <th>&nbsp;</th>
-            </tr>
+    // Check themes.
+    do_action('wp_update_themes');
+    wp_update_themes();
+    $update_themes = get_theme_updates();
+    $themes_need_update = (bool) !empty($update_themes);
 
-            <?php if( $themes_need_update ): ?>
-                <?php
-                $counter = 0;
-                foreach( $update_themes as $stylesheet => $theme ):
-                    $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
-                    $counter += 1;
-                    ?>
+    if( $themes_need_update ){
+        $counter = 0;
+        $template_variables['AddonList.UpToDateVisibility'] = 'hidden';
 
-                    <tr class="<?php _e($css_class) ?>">
-                        <td><?php _e($theme->display('Name')) ?></td>
-                        <td><?php _e($theme->display('Version')) ?></td>
-                        <td><?php _e($theme->update['new_version']) ?></td>
-                        <td><a href="<?php _e($theme->update['package']) ?>" target="_blank">Download</a></td>
-                    </tr>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <tr>
-                    <td colspan="4">All themes are up-to-date.</td>
-                </tr>
-            <?php endif; ?>
-        </tbody>
-    </table>
+        foreach( $update_themes as $stylesheet => $theme ){
+            $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
+            $counter += 1;
 
-<?php }
+            $template_variables['AddonList.Items'] .= sucuriscan_get_snippet('integrity-addonlist', array(
+                'AddonList.CssClass' => $css_class,
+                'AddonList.Title' => $theme->display('Name'),
+                'AddonList.Version' => $theme->display('Version'),
+                'AddonList.NewVersion' => $theme->update['new_version'],
+                'AddonList.Package' => $theme->update['package'],
+            ));
+        }
+    }
+
+    return sucuriscan_get_section('integrity-addonlist', $template_variables);
+}
 
 /**
  * Retrieve a list with the checksums of the files in a specific version of WordPress.
@@ -1938,10 +2066,12 @@ function sucuriscan_posthack_page(){
     // Fill the user list for ResetPassword action.
     $counter = 0;
     $user_list = get_users();
+
     foreach($user_list as $user){
-        $counter += 1;
         $user->user_registered_timestamp = strtotime($user->user_registered);
         $user->user_registered_formatted = date('D, M/Y H:i', $user->user_registered_timestamp);
+        $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
+
         $user_snippet = sucuriscan_get_snippet('resetpassword', array(
             'ResetPassword.UserId' => $user->ID,
             'ResetPassword.Username' => $user->user_login,
@@ -1949,9 +2079,11 @@ function sucuriscan_posthack_page(){
             'ResetPassword.Email' => $user->user_email,
             'ResetPassword.Registered' => $user->user_registered_formatted,
             'ResetPassword.Roles' => implode(', ', $user->roles),
-            'ResetPassword.CssClass' => ( $counter%2 == 0 ) ? '' : 'alternate'
+            'ResetPassword.CssClass' => $css_class
         ));
+
         $template_variables['ResetPassword.UserList'] .= $user_snippet;
+        $counter += 1;
     }
 
     echo sucuriscan_get_template('posthack', $template_variables);
@@ -1990,6 +2122,7 @@ function sucuriscan_lastlogins_page(){
     $user_list = sucuriscan_get_logins($limit);
     foreach( $user_list as $user ){
         $counter += 1;
+        $css_class = ( $counter % 2 == 0 ) ? 'alternate' : '';
 
         $user_dataset = array(
             'UserList.Number' => $counter,
@@ -2003,7 +2136,11 @@ function sucuriscan_lastlogins_page(){
             'UserList.Datetime' => $user->user_lastlogin,
             'UserList.TimeAgo' => sucuriscan_time_ago($user->user_lastlogin),
             'UserList.UserURL' => admin_url('user-edit.php?user_id='.$user->user_id),
-            'UserList.CssClass' => ( $counter % 2 == 0 ) ? 'alternate' : ''
+            'UserList.CssClass' => $css_class,
+            'UserList.Username' => '',
+            'UserList.Displayname' => '',
+            'UserList.Email' => '',
+            'UserList.Registered' => '',
         );
 
         if( $user->user_exists ){
@@ -2644,10 +2781,9 @@ function sucuriscan_show_cronjobs(){
 }
 
 /**
- * Gather information from the server, database engine and PHP interpreter.
+ * Gather information from the server, database engine, and PHP interpreter.
  *
- * @param  array $template_variables The hash for the template system, keys are pseudo-variables.
- * @return array                     A list of pseudo-variables and values that will replace them in the HTML template.
+ * @return array A list of pseudo-variables and values that will replace them in the HTML template.
  */
 function sucuriscan_server_info(){
     global $wpdb;

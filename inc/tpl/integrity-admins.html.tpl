@@ -1,8 +1,6 @@
+
 <table class="wp-list-table widefat sucuriscan-table sucuriscan-table-doubletitle sucuriscan-adminusers">
     <thead>
-        <tr>
-            <th colspan="4">Administrator Users</th>
-        </tr>
         <tr>
             <th class="manage-column">Username</th>
             <th class="manage-column">Email</th>
@@ -12,6 +10,6 @@
     </thead>
 
     <tbody>
-        %%SUCURI.AdminUsers.UserList%%
+        %%SUCURI.AdminUsers.List%%
     </tbody>
 </table>
