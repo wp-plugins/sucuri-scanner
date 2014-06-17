@@ -346,7 +346,7 @@ function sucuriscan_check_page_nonce(){
  * @param  boolean $type     Either page, section or snippet indicating the type of template that will be retrieved.
  * @return string            The formatted HTML page after replace all the pseudo-variables.
  */
-function sucuriscan_get_template($template='', $params=array(), $type='page'){
+function sucuriscan_get_template( $template='', $params=array(), $type='page' ){
     switch( $type ){
         case 'page': /* no_break */
         case 'section':
@@ -360,7 +360,6 @@ function sucuriscan_get_template($template='', $params=array(), $type='page'){
     $template_content = '';
     $template_path =  sprintf( $template_path_pattern, WP_PLUGIN_DIR, SUCURISCAN_PLUGIN_FOLDER, $template );
     $params = is_array($params) ? $params : array();
-    $page_nonce = wp_create_nonce('sucuriscan_page_nonce');
 
     if( file_exists($template_path) && is_readable($template_path) ){
         $template_content = file_get_contents($template_path);
@@ -368,39 +367,51 @@ function sucuriscan_get_template($template='', $params=array(), $type='page'){
         $current_page = isset($_GET['page']) ? htmlentities($_GET['page']) : '';
         $params['CurrentURL'] = sprintf( '%s/wp-admin/admin.php?page=%s', site_url(), $current_page );
         $params['SucuriURL'] = SUCURI_URL;
-        $params['PageNonce'] = $page_nonce;
 
-        foreach($params as $tpl_key=>$tpl_value){
-            $template_content = str_replace("%%SUCURI.{$tpl_key}%%", $tpl_value, $template_content);
+        foreach( $params as $tpl_key => $tpl_value ){
+            $tpl_key = '%%SUCURI.' . $tpl_key . '%%';
+            $template_content = str_replace( $tpl_key, $tpl_value, $template_content );
         }
     }
 
     if( $template == 'base' || $type != 'page' ){
         return $template_content;
-    } else {
-        $get_api_css = sucuriscan_get_api_key() ? 'hidden' : 'visible';
-
-        $base_params = array(
-            'PageTitle' => '',
-            'PageNonce' => $page_nonce,
-            'PageContent' => $template_content,
-            'PageStyleClass' => $template,
-            'URL.Home' => sucuriscan_get_url(),
-            'URL.AuditLogs' => sucuriscan_get_url('auditlogs'),
-            'URL.Hardening' => sucuriscan_get_url('hardening'),
-            'URL.CoreIntegrity' => sucuriscan_get_url('core_integrity'),
-            'URL.PostHack' => sucuriscan_get_url('posthack'),
-            'URL.LastLogins' => sucuriscan_get_url('lastlogins'),
-            'URL.Settings' => sucuriscan_get_url('settings'),
-            'GetApiFormVisibility' => $get_api_css,
-        );
-
-        if( isset($params['PageTitle']) ){
-            $base_params['PageTitle'] = '('.$params['PageTitle'].')';
-        }
-
-        return sucuriscan_get_template('base', $base_params);
     }
+
+    return sucuriscan_get_base_template( $template_content, $params );
+}
+
+/**
+ * Generate a HTML code using a template and replacing all the pseudo-variables
+ * by the dynamic variables provided by the developer through one of the parameters
+ * of the function.
+ *
+ * @param  string $html   The HTML content of a template file with its pseudo-variables parsed.
+ * @param  array  $params A hash containing the pseudo-variable name as the key and the value that will replace it.
+ * @return string         The formatted HTML content of the base template.
+ */
+function sucuriscan_get_base_template( $html='', $params=array() ){
+    $params = is_array($params) ? $params : array();
+
+    // Base parameters, required to render all the pages.
+    $params['PageTitle'] = isset($params['PageTitle']) ? '('.$params['PageTitle'].')' : '';
+    $params['PageNonce'] = wp_create_nonce('sucuriscan_page_nonce');
+    $params['PageStyleClass'] = isset($params['PageStyleClass']) ? $params['PageStyleClass'] : 'base';
+    $params['PageContent'] = $html;
+
+    // Global parameters, used through out all the pages.
+    $params['URL.Home'] = sucuriscan_get_url();
+    $params['URL.AuditLogs'] = sucuriscan_get_url('auditlogs');
+    $params['URL.Hardening'] = sucuriscan_get_url('hardening');
+    $params['URL.CoreIntegrity'] = sucuriscan_get_url('core_integrity');
+    $params['URL.PostHack'] = sucuriscan_get_url('posthack');
+    $params['URL.LastLogins'] = sucuriscan_get_url('lastlogins');
+    $params['URL.Settings'] = sucuriscan_get_url('settings');
+    $params['GetApiFormVisibility'] = sucuriscan_get_api_key() ? 'hidden' : 'visible';
+    $params['CleanDomain'] = sucuriscan_get_domain();
+    $params['AdminEmail'] = sucuriscan_get_site_email();
+
+    return sucuriscan_get_template( 'base', $params );
 }
 
 /**
@@ -1158,13 +1169,22 @@ function sucuriscan_page(){
         wp_die(__('You do not have sufficient permissions to access this page: Sucuri Malware Scanner') );
     }
 
+    if( !sucuriscan_get_api_key() ){
+        sucuriscan_error(
+            'Site not fully activated yet. Please generate the free API
+            to enable audit logging, integrity checking and email alerts.'
+        );
+    }
+
     // Execute the SiteCheck scanning on this site.
     if( isset($_POST['wpsucuri-doscan']) ){
         sucuriscan_print_scan();
         return(1);
     }
 
-    echo sucuriscan_get_template('initial-page');
+    echo sucuriscan_get_template('initial-page', array(
+        'PageStyleClass' => 'initial-page',
+    ));
 }
 
 /**
@@ -1434,8 +1454,8 @@ function sucuriscan_print_scan(){
     <?php
     $_html = ob_get_contents();
     ob_end_clean();
-    echo sucuriscan_get_template('base', array(
-        'PageTitle' => '(Results)',
+    echo sucuriscan_get_base_template($_html, array(
+        'PageTitle' => 'Results',
         'PageContent' => $_html,
         'PageStyleClass' => 'scanner-results',
     ));
@@ -1627,15 +1647,26 @@ function sucuriscan_get_logs( $api_key='' ){
     if( sucuriscan_handle_response($response) ){
         $response['body']->output_data = array();
         $log_pattern = '/^([0-9-: ]+) (.*) : (.*)/';
+        $extra_pattern = '/(.+ \(multiple entries\):) (.+)/';
 
         foreach( $response['body']->output as $log ){
             if( preg_match($log_pattern, $log, $log_match) ){
-                $response['body']->output_data[] = array(
+                $log_data = array(
                     'datetime' => $log_match[1],
                     'timestamp' => strtotime($log_match[1]),
                     'account' => $log_match[2],
                     'message' => $log_match[3],
+                    'extra' => FALSE,
+                    'extra_total' => 0,
                 );
+
+                if( preg_match($extra_pattern, $log_data['message'], $log_extra) ){
+                    $log_data['message'] = $log_extra[1];
+                    $log_data['extra'] = explode(',', $log_extra[2]);
+                    $log_data['extra_total'] = count($log_data['extra']);
+                }
+
+                $response['body']->output_data[] = $log_data;
             }
         }
 
@@ -1781,7 +1812,13 @@ function sucuriscan_report_event( $severity=0, $location='', $message='' ){
     elseif( $severity > 5 ){ $severity = 5; }
 
     // Identify current user in session.
-    if( $user instanceof WP_User ){
+    if(
+        $user instanceof WP_User
+        && isset($user->display_name)
+        && isset($user->user_login)
+        && empty($user->display_name)
+        && empty($user->user_login)
+    ){
         $username = sprintf( '%s (%s)', $user->display_name, $user->user_login );
     }
 
@@ -2287,7 +2324,7 @@ function sucuriscan_auditlogs_page(){
     );
 
     if( $audit_logs ){
-        $counter = 0;
+        $counter_i = 0;
         $total_items = count($audit_logs->output_data);
 
         $template_variables['AuditLogs.Count'] = $total_items;
@@ -2298,17 +2335,29 @@ function sucuriscan_auditlogs_page(){
         }
 
         foreach( $audit_logs->output_data as $audit_log ){
-            if( $counter > $max_per_page && !$show_all ){ break; }
+            if( $counter_i > $max_per_page && !$show_all ){ break; }
 
-            $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
-
-            $template_variables['AuditLogs.List'] .= sucuriscan_get_snippet('auditlogs', array(
+            $css_class = ( $counter_i % 2 == 0 ) ? '' : 'alternate';
+            $snippet_data = array(
                 'AuditLog.CssClass' => $css_class,
                 'AuditLog.DateTime' => date( 'd/M/Y H:i:s', $audit_log['timestamp'] ),
                 'AuditLog.Account' => $audit_log['account'],
                 'AuditLog.Message' => $audit_log['message'],
-            ));
-            $counter += 1;
+                'AuditLog.Extra' => '',
+            );
+
+            // Print every extra information item in a separate table.
+            if( $audit_log['extra'] ){
+                $snippet_data['AuditLog.Extra'] .= '<ul class="sucuriscan-list-as-table sucuriscan-list-as-table-scrollable">';
+                foreach( $audit_log['extra'] as $log_extra ){
+                    $snippet_data['AuditLog.Extra'] .= '<li>' . $log_extra . '</li>';
+                }
+                $snippet_data['AuditLog.Extra'] .= '</ul>';
+                $snippet_data['AuditLog.Extra'] .= '<small>For Mac users, this is an scrollable container</small>';
+            }
+
+            $template_variables['AuditLogs.List'] .= sucuriscan_get_snippet('auditlogs', $snippet_data);
+            $counter_i += 1;
         }
     }
 
@@ -2358,8 +2407,8 @@ function sucuriscan_hardening_page(){
     <?php
     $_html = ob_get_contents();
     ob_end_clean();
-    echo sucuriscan_get_template('base', array(
-        'PageTitle' => '(1-Click Hardening)',
+    echo sucuriscan_get_base_template($_html, array(
+        'PageTitle' => '1-Click Hardening',
         'PageContent' => $_html,
         'PageStyleClass' => 'hardening'
     ));
@@ -4181,8 +4230,9 @@ function sucuriscan_settings_page(){
     }
 
     $template_variables = array(
+        'PageTitle' => 'Settings',
         'APIKey' => $api_key,
-        'APIKey.RemoveVisibility' => ( $api_key ? 'visible' : 'hidden' ),
+        'APIKey.RemoveVisibility' => 'hidden',
         'ScanningFrequency' => ( $scan_freq ? $scan_freq : 'Undefined' ),
         'ScanningFrequencyOptions' => $scan_freq_options,
         'ScanningInterface' => ( $scan_interface ? $scan_interface : 'Undefined' ),

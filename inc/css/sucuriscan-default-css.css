@@ -35,6 +35,10 @@
 .widefat td.td-with-button{text-align:right;padding:3px 10px}
 .widefat td.td-with-button button{min-width:75px}
 .widefat td.td-with-button select{height:initial;line-height:initial;vertical-align:top;margin:0;padding:2px 0 3px 0}
+.sucuriscan-list-as-table{border:1px solid #e5e5e5}
+.sucuriscan-list-as-table li{line-height:30px;margin:0;padding:0 10px}
+.sucuriscan-list-as-table li:nth-child(odd){background:#f5f5f5}
+.sucuriscan-list-as-table-scrollable{height:300px;overflow:hidden;overflow-y:scroll}
 /* Table Top-Right Buttons */
 .sucuriscan-maincontent .thead-with-button span{display:inline-block;line-height:28px}
 .sucuriscan-maincontent .thead-with-button .input-text{line-height:26px}
@@ -64,8 +68,10 @@
 .sucuriscan-maincontent .sucuriscan-tab-containers > div > table{margin-top:0}
 .sucuriscan-maincontent .sucuriscan-tab-containers > div > #poststuff{margin-top:0}
 /* Get API Form */
-.sucuriscan-getapi-form{float:right;margin-bottom:0}
-.sucuriscan-getapi-form button.button-primary{height:initial;font-size:14px;line-height:38px;padding:0 20px}
+.sucuriscan-getapi-div{background:#fff;margin:0 0 20px 0;border:1px solid #e5e5e5;border-radius:3px}
+.sucuriscan-getapi-div p{margin:0;padding:10px}
+.sucuriscan-getapi-form{}
+.sucuriscan-getapi-form button.button-primary{width:100%;height:initial;line-height:30px;margin:0 0 -1px 0;padding:0;border-radius:0 0 3px 3px}
 /* Initial Page Styles */
 .sucuriscan-initial-page{}
 .sucuriscan-initial-page a{text-decoration:none}
@@ -98,6 +104,7 @@
 .sucuriscan-maincontent .sucuriscan-modifiedfiles .sucuriscan-ellipsis{width:100px}
 .sucuriscan-maincontent .sucuriscan-full-textarea{width:100%;height:400px;line-height:normal;resize:vertical;padding:10px}
 .sucuriscan-maincontent .sucuriscan-auditlogs{margin-top:0}
+.sucuriscan-maincontent .sucuriscan-auditlogs td small{font-style:italic}
 .sucuriscan-maincontent .sucuriscan-auditlogs .sucuriscan-maxper-page{text-align:right}
 .sucuriscan-maincontent .sucuriscan-settings{margin-top:0}
 .sucuriscan-maincontent .sucuriscan-settings-notifications{margin-top:20px}
@@ -105,7 +112,7 @@
 /* Responsive Styles */
 @media (max-width: 620px) {
     .sucuriscan-tabs > ul li, .sucuriscan-tabs > ul li > a{display:block}
-    .sucuriscan-getapi-form{display:none}
+    .sucuriscan-getapi-form button.button-primary{line-height:40px}
 }
 @media (max-width: 768px) {
     .sucuriscan-wrap .sucuriscan-leftside,
