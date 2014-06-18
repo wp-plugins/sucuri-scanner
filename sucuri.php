@@ -154,8 +154,8 @@ function sucuriscan_dir_filepath($path = ''){
 function sucuriscan_menu(){
     // Add main menu link.
     add_menu_page(
-        'Sucuri Free',
-        'Sucuri Free',
+        'Sucuri Security',
+        'Sucuri Security',
         'manage_options',
         'sucuriscan',
         'sucuriscan_page',
@@ -169,9 +169,8 @@ function sucuriscan_menu(){
         'sucuriscan_core_integrity' => 'WordPress Integrity',
         'sucuriscan_posthack' => 'Post-Hack',
         'sucuriscan_lastlogins' => 'Last Logins',
-        'sucuriscan_infosys' => 'Site Info',
         'sucuriscan_settings' => 'Settings',
-        'sucuriscan_about' => 'About',
+        'sucuriscan_infosys' => 'Site Info',
     );
 
     foreach( $sub_pages as $sub_page_func => $sub_page_title ){
@@ -228,7 +227,7 @@ function sucuriscan_send_mail( $to='', $subject='', $message='', $data_set=array
     $subject = ucwords(strtolower($subject));
     $wp_domain = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : get_option('siteurl');
 
-    if( get_option('sucuriscan_prettify_mails') == 'enabled' ){
+    if( sucuriscan_get_option('sucuriscan_prettify_mails') == 'enabled' ){
         $headers = array( 'Content-type: text/html' );
         $data_set['PrettifyType'] = 'pretty';
     }
@@ -337,6 +336,26 @@ function sucuriscan_check_page_nonce(){
 }
 
 /**
+ * Replace all pseudo-variables from a string of characters.
+ *
+ * @param  string $content The content of a template file which contains pseudo-variables.
+ * @param  array  $params  List of pseudo-variables that will be replaced in the template.
+ * @return string          The content of the template with the pseudo-variables replated.
+ */
+function sucuriscan_replace_pseudovars( $content='', $params=array() ){
+    if( is_array($params) ){
+        foreach( $params as $tpl_key => $tpl_value ){
+            $tpl_key = '%%SUCURI.' . $tpl_key . '%%';
+            $content = str_replace( $tpl_key, $tpl_value, $content );
+        }
+
+        return $content;
+    }
+
+    return FALSE;
+}
+
+/**
  * Generate a HTML code using a template and replacing all the pseudo-variables
  * by the dynamic variables provided by the developer through one of the parameters
  * of the function.
@@ -368,10 +387,16 @@ function sucuriscan_get_template( $template='', $params=array(), $type='page' ){
         $params['CurrentURL'] = sprintf( '%s/wp-admin/admin.php?page=%s', site_url(), $current_page );
         $params['SucuriURL'] = SUCURI_URL;
 
-        foreach( $params as $tpl_key => $tpl_value ){
-            $tpl_key = '%%SUCURI.' . $tpl_key . '%%';
-            $template_content = str_replace( $tpl_key, $tpl_value, $template_content );
+        // Replace the global pseudo-variables in the section/snippets templates.
+        if(
+            $template == 'base'
+            && isset($params['PageContent'])
+            && preg_match('/%%SUCURI\.(.+)%%/', $params['PageContent'])
+        ){
+            $params['PageContent'] = sucuriscan_replace_pseudovars( $params['PageContent'], $params );
         }
+
+        $template_content = sucuriscan_replace_pseudovars( $template_content, $params );
     }
 
     if( $template == 'base' || $type != 'page' ){
@@ -584,6 +609,10 @@ function sucuriscan_get_remoteaddr(){
 
         $remote_addr = preg_replace('/[^0-9a-z.,: ]/', '', $_SERVER[$alternative]);
         if($remote_addr) break;
+    }
+
+    if( $remote_addr == '::1' ){
+        $remote_addr = '127.0.0.1';
     }
 
     return $remote_addr;
@@ -843,6 +872,11 @@ function sucuriscan_get_default_options( $settings='' ){
         'sucuriscan_scan_interface' => 'spl',
         'sucuriscan_runtime' => 0,
         'sucuriscan_lastlogin_redirection' => 'enabled',
+        'sucuriscan_prettify_mails' => 'enabled',
+        'sucuriscan_notify_success_login' => 'enabled',
+        'sucuriscan_notify_failed_login' => 'enabled',
+        'sucuriscan_notify_post_publication' => 'enabled',
+        'sucuriscan_notify_theme_editor' => 'enabled',
     );
 
     if( is_array($settings) ){
@@ -1802,7 +1836,7 @@ function sucuriscan_filesystem_scan( $force_scan=FALSE ){
  */
 function sucuriscan_report_event( $severity=0, $location='', $message='' ){
     $user = wp_get_current_user();
-    $username = 'Unknown user';
+    $username = FALSE;
     $current_time = date( 'Y-m-d H:i:s' );
     $remote_ip = sucuriscan_get_remoteaddr();
 
@@ -1819,7 +1853,7 @@ function sucuriscan_report_event( $severity=0, $location='', $message='' ){
         && empty($user->display_name)
         && empty($user->user_login)
     ){
-        $username = sprintf( '%s (%s)', $user->display_name, $user->user_login );
+        $username = sprintf( ' %s (%s),', $user->display_name, $user->user_login );
     }
 
     // Convert the severity number into a readable string.
@@ -1835,7 +1869,7 @@ function sucuriscan_report_event( $severity=0, $location='', $message='' ){
 
     $message = str_replace( array("\n", "\r"), array('', ''), $message );
     $event_sent = sucuriscan_send_log(sprintf(
-        '%s: %s, %s; %s',
+        '%s:%s %s; %s',
         $severity_name, $username, $remote_ip, $message
     ));
 
@@ -1853,7 +1887,7 @@ function sucuriscan_report_event( $severity=0, $location='', $message='' ){
  */
 function sucuriscan_notify_event( $event='', $content='' ){
     $event_name = 'sucuriscan_notify_' . $event;
-    $notify = get_option($event_name);
+    $notify = sucuriscan_get_option($event_name);
     $email = sucuriscan_get_option('admin_email');
 
     if( $notify == 'enabled' ){
@@ -2348,12 +2382,13 @@ function sucuriscan_auditlogs_page(){
 
             // Print every extra information item in a separate table.
             if( $audit_log['extra'] ){
-                $snippet_data['AuditLog.Extra'] .= '<ul class="sucuriscan-list-as-table sucuriscan-list-as-table-scrollable">';
+                $css_scrollable = $audit_log['extra_total'] > 10 ? 'sucuriscan-list-as-table-scrollable' : '';
+                $snippet_data['AuditLog.Extra'] .= '<ul class="sucuriscan-list-as-table ' . $css_scrollable . '">';
                 foreach( $audit_log['extra'] as $log_extra ){
                     $snippet_data['AuditLog.Extra'] .= '<li>' . $log_extra . '</li>';
                 }
                 $snippet_data['AuditLog.Extra'] .= '</ul>';
-                $snippet_data['AuditLog.Extra'] .= '<small>For Mac users, this is an scrollable container</small>';
+                $snippet_data['AuditLog.Extra'] .= '<small>For Mac users, this is a scrollable container</small>';
             }
 
             $template_variables['AuditLogs.List'] .= sucuriscan_get_snippet('auditlogs', $snippet_data);
@@ -3432,10 +3467,6 @@ function sucuriscan_lastlogins_page(){
             'UserList.TimeAgo' => sucuriscan_time_ago($user->user_lastlogin),
             'UserList.UserURL' => admin_url('user-edit.php?user_id='.$user->user_id),
             'UserList.CssClass' => $css_class,
-            'UserList.Username' => '',
-            'UserList.Displayname' => '',
-            'UserList.Email' => '',
-            'UserList.Registered' => '',
         );
 
         if( $user->user_exists ){
@@ -4141,22 +4172,22 @@ function sucuriscan_server_info(){
  * @var array
  */
 $sucuriscan_notify_options = array(
-    'sucuriscan_notify_user_registration' => 'Enable new user registration alerts',
-    'sucuriscan_notify_success_login' => 'Enable successful logins alerts',
-    'sucuriscan_notify_failed_login' => 'Enable failed logins alerts',
-    'sucuriscan_notify_post_publication' => 'Enable new site content alerts',
-    'sucuriscan_notify_theme_editor' => 'Enable when any file is modified via the editor alerts',
-    'sucuriscan_notify_website_updated' => 'Enable email notifications when your website is updated',
-    'sucuriscan_notify_settings_updated' => 'Enable email notifications when your website settings are updated',
-    'sucuriscan_notify_theme_switched' => 'Enable email notifications when the website theme is switched',
-    'sucuriscan_notify_plugin_change' => 'Enable Sucuri plugin changes alerts',
-    'sucuriscan_notify_plugin_activated' => 'Enable email notifications when a plugin is activated',
-    'sucuriscan_notify_plugin_deactivated' => 'Enable email notifications when a plugin is deactivated',
-    'sucuriscan_notify_plugin_updated' => 'Enable email notifications when a plugin is updated',
-    'sucuriscan_notify_plugin_installed' => 'Enable email notifications when a plugin is installed',
-    'sucuriscan_notify_plugin_deleted' => 'Enable email notifications when a plugin is deleted',
-    'sucuriscan_prettify_mails' => 'Enable HTML notifications (uncheck if you want to receive notifications in text plain)',
-    'sucuriscan_lastlogin_redirection' => 'Allow redirection after login to report the last-login information (uncheck if you have custom redirection rules)',
+    'sucuriscan_notify_user_registration' => 'Enable email alerts for new user registration',
+    'sucuriscan_notify_success_login' => 'Enable email alerts for successful logins',
+    'sucuriscan_notify_failed_login' => 'Enable email alerts for failed logins',
+    'sucuriscan_notify_post_publication' => 'Enable email alerts for new site content',
+    'sucuriscan_notify_theme_editor' => 'Enable email alerts when a file is modified via the theme/plugin editor',
+    'sucuriscan_notify_website_updated' => 'Enable email alerts when your website is updated',
+    'sucuriscan_notify_settings_updated' => 'Enable email alerts when your website settings are updated',
+    'sucuriscan_notify_theme_switched' => 'Enable email alerts when the website theme is switched',
+    'sucuriscan_notify_plugin_change' => 'Enable email alerts for Sucuri plugin changes',
+    'sucuriscan_notify_plugin_activated' => 'Enable email alerts when a plugin is activated',
+    'sucuriscan_notify_plugin_deactivated' => 'Enable email alerts when a plugin is deactivated',
+    'sucuriscan_notify_plugin_updated' => 'Enable email alerts when a plugin is updated',
+    'sucuriscan_notify_plugin_installed' => 'Enable email alerts when a plugin is installed',
+    'sucuriscan_notify_plugin_deleted' => 'Enable email alerts when a plugin is deleted',
+    'sucuriscan_prettify_mails' => 'Enable email alerts in HTML (uncheck to get email in text/plain)',
+    'sucuriscan_lastlogin_redirection' => 'Allow redirection after login to report the last-login information',
 );
 
 $sucuriscan_schedule_allowed = array(
@@ -4346,24 +4377,5 @@ function sucuriscan_settings_form_submissions(){
 
     }
 
-}
-
-/**
- * Print the HTML code for the plugin about page with information of the plugin,
- * the scheduled tasks, and some settings from the PHP environment and server.
- *
- * @return void
- */
-function sucuriscan_about_page(){
-
-    if( !current_user_can('manage_options') ){
-        wp_die(__('You do not have sufficient permissions to access this page: Sucuri Last-Logins') );
-    }
-
-    $template_variables = array(
-    	'PageTitle' => 'About'
-    );
-
-    echo sucuriscan_get_template('about', $template_variables);
 }
 

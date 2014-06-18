@@ -29,6 +29,22 @@
 
 
     <div class="postbox">
+        <h3>Audit Logs</h3>
+        <div class="inside sucuriscan-clearfix">
+            <div class="sucuriscan-column-left">
+                <p>
+                    Check what was changed in your site, detect suspicious behavior and monitor the
+                    files of your project scanning your site using scheduled tasks.
+                </p>
+            </div>
+            <div class="sucuriscan-column-right">
+                <a href="%%SUCURI.URL.AuditLogs%%" class="button button-primary button-hero">Check Audit Logs</a>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="postbox">
         <h3>1-Click Hardening</h3>
         <div class="inside sucuriscan-clearfix">
             <div class="sucuriscan-column-left">
