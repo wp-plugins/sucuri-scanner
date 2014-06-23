@@ -20,7 +20,8 @@
 .sucuriscan-wrap .sucuriscan-leftside{width:68%;float:left}
 .sucuriscan-wrap .sucuriscan-sidebar{width:30%;float:right}
 .sucuriscan-wrap #warnings_hook{line-height:initial;padding:0}
-.sucuriscan-wrap .nav-tab-wrapper{padding-top:20px}
+.sucuriscan-wrap .sucuriscan-navbar{padding-top:20px;padding-left:6px}
+.sucuriscan-wrap .sucuriscan-navbar .nav-tab{margin-right:0}
 .sucuriscan-header, .sucuriscan-footer{position:relative;min-width:255px;background:#333;margin:0;padding:10px;border-radius:4px}
 .sucuriscan-footer .sucuriscan-help{color:#fff;float:right;text-align:right}
 .sucuriscan-footer .sucuriscan-help p{line-height:38px;margin:0 10px 0 0;padding:0}
@@ -133,6 +134,11 @@
     .sucuriscan-wrap .sucuriscan-leftside, .sucuriscan-wrap .sucuriscan-sidebar{width:100%}
     .sucuriscan-wrap .sucuriscan-sidebar{margin-top:20px}
     .sucuriscan-wrap .sucuriscan-footer .sucuriscan-logo{display:table;margin:0 auto}
+}
+@media (max-width: 920px) {
+    .sucuriscan-wrap .sucuriscan-navbar{padding-left:0;padding-right:0}
+    .sucuriscan-wrap .sucuriscan-navbar .nav-tab{display:block}
+    .sucuriscan-wrap .sucuriscan-navbar .nav-tab:last-child{border-bottom:1px solid #ccc}
 }
 @media (max-width: 1200px) {
     .sucuriscan-wrap .sucuriscan-initial-page .sucuriscan-column-left,

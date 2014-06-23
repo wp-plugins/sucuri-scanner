@@ -175,6 +175,8 @@ function sucuriscan_pages( $for_navbar=FALSE ){
 
     if( $for_navbar ){
         $pages['sucuriscan'] = 'Dashboard';
+        $pages['sucuriscan_hardening'] = 'Hardening';
+        $pages['sucuriscan_core_integrity'] = 'Integrity';
     }
 
     return $pages;

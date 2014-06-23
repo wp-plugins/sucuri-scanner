@@ -10,7 +10,7 @@
         <h2>SiteCheck Scanner %%SUCURI.PageTitle%%</h2>
     </div>
 
-    <h2 class="nav-tab-wrapper">
+    <h2 class="nav-tab-wrapper sucuriscan-navbar">
         %%SUCURI.Navbar%%
     </h2>
 
