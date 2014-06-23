@@ -92,6 +92,16 @@ define('SUCURISCAN_AUDITLOGS_PER_PAGE', 50);
  */
 define('SUCURISCAN_MINIMUM_RUNTIME', 10800);
 
+/**
+ * Check whether the current site is working as a multi-site instance.
+ *
+ * @return boolean Either TRUE or FALSE in case WordPress is being used as a multi-site instance.
+ */
+function sucuriscan_is_multisite(){
+    if( function_exists('is_multisite') && is_multisite() ){ return TRUE; }
+    return FALSE;
+}
+
 if( !function_exists('sucuriscan_create_uploaddir') ){
     /**
      * Create a folder in the WordPress upload directory where the plugin will
@@ -147,6 +157,31 @@ function sucuriscan_dir_filepath($path = ''){
 }
 
 /**
+ * List an associative array with the sub-pages of this plugin.
+ *
+ * @param  boolean $for_navbar Either TRUE or FALSE indicanting that the first page will be named Dashboard.
+ * @return array               List of pages and sub-pages of this plugin.
+ */
+function sucuriscan_pages( $for_navbar=FALSE ){
+    $pages = array(
+        'sucuriscan' => 'Sucuri Scanner',
+        'sucuriscan_auditlogs' => 'Audit Logs',
+        'sucuriscan_hardening' => '1-Click Hardening',
+        'sucuriscan_core_integrity' => 'WordPress Integrity',
+        'sucuriscan_posthack' => 'Post-Hack',
+        'sucuriscan_lastlogins' => 'Last Logins',
+        'sucuriscan_settings' => 'Settings',
+        'sucuriscan_infosys' => 'Site Info',
+    );
+
+    if( $for_navbar ){
+        $pages['sucuriscan'] = 'Dashboard';
+    }
+
+    return $pages;
+}
+
+/**
  * Generate the menu and submenus for the plugin in the admin interface.
  *
  * @return void
@@ -162,16 +197,7 @@ function sucuriscan_menu(){
         SUCURI_URL . '/inc/images/menu-icon.png'
     );
 
-    $sub_pages = array(
-        'sucuriscan' => 'Sucuri Scanner',
-        'sucuriscan_auditlogs' => 'Audit Logs',
-        'sucuriscan_hardening' => '1-Click Hardening',
-        'sucuriscan_core_integrity' => 'WordPress Integrity',
-        'sucuriscan_posthack' => 'Post-Hack',
-        'sucuriscan_lastlogins' => 'Last Logins',
-        'sucuriscan_settings' => 'Settings',
-        'sucuriscan_infosys' => 'Site Info',
-    );
+    $sub_pages = sucuriscan_pages();
 
     foreach( $sub_pages as $sub_page_func => $sub_page_title ){
         $page_func = $sub_page_func . '_page';
@@ -187,9 +213,22 @@ function sucuriscan_menu(){
     }
 }
 
+/**
+ * Display a notice message with instructions to continue the setup of the
+ * plugin, this includes the generation of the API key and other steps that need
+ * to be done to fully activate this plugin.
+ *
+ * @return void
+ */
+function sucuriscan_plugin_setup_notice(){
+}
+
 add_action('admin_menu', 'sucuriscan_menu');
 add_action('sucuriscan_scheduled_scan', 'sucuriscan_filesystem_scan');
 remove_action('wp_head', 'wp_generator');
+
+$sucuriscan_admin_notice_name = sucuriscan_is_multisite() ? 'network_admin_notices' : 'admin_notices';
+add_action( $sucuriscan_admin_notice_name, 'sucuriscan_plugin_setup_notice' );
 
 /**
  * Validate email address.
@@ -356,6 +395,51 @@ function sucuriscan_replace_pseudovars( $content='', $params=array() ){
 }
 
 /**
+ * Complement the list of pseudo-variables that will be used in the base
+ * template files, this will also generate the navigation bar and detect which
+ * items in it are selected by the current page.
+ *
+ * @param  array  $params A hash containing the pseudo-variable name as the key and the value that will replace it.
+ * @return array          A complementary list of pseudo-variables for the template files.
+ */
+function sucuriscan_links_and_navbar( $params=array() ){
+    $params = is_array($params) ? $params : array();
+    $sub_pages = sucuriscan_pages(TRUE);
+
+    $params['Navbar'] = '';
+    $params['CurrentPageFunc'] = isset($_GET['page']) ? $_GET['page'] : '';
+
+    foreach( $sub_pages as $sub_page_func => $sub_page_title ){
+        $func_parts = explode( '_', $sub_page_func, 2 );
+
+        if( isset($func_parts[1]) ){
+            $unique_name = $func_parts[1];
+            $pseudo_var = 'URL.' . ucwords($unique_name);
+        } else {
+            $unique_name = '';
+            $pseudo_var = 'URL.Home';
+        }
+
+        $params[$pseudo_var] = sucuriscan_get_url($unique_name);
+
+        $navbar_item_css_class = 'nav-tab';
+
+        if( $params['CurrentPageFunc'] == $sub_page_func ){
+            $navbar_item_css_class .= chr(32) . 'nav-tab-active';
+        }
+
+        $params['Navbar'] .= sprintf(
+            '<a class="%s" href="%s">%s</a>' . "\n",
+            $navbar_item_css_class,
+            $params[$pseudo_var],
+            $sub_page_title
+        );
+    }
+
+    return $params;
+}
+
+/**
  * Generate a HTML code using a template and replacing all the pseudo-variables
  * by the dynamic variables provided by the developer through one of the parameters
  * of the function.
@@ -425,13 +509,7 @@ function sucuriscan_get_base_template( $html='', $params=array() ){
     $params['PageContent'] = $html;
 
     // Global parameters, used through out all the pages.
-    $params['URL.Home'] = sucuriscan_get_url();
-    $params['URL.AuditLogs'] = sucuriscan_get_url('auditlogs');
-    $params['URL.Hardening'] = sucuriscan_get_url('hardening');
-    $params['URL.CoreIntegrity'] = sucuriscan_get_url('core_integrity');
-    $params['URL.PostHack'] = sucuriscan_get_url('posthack');
-    $params['URL.LastLogins'] = sucuriscan_get_url('lastlogins');
-    $params['URL.Settings'] = sucuriscan_get_url('settings');
+    $params = sucuriscan_links_and_navbar($params);
     $params['GetApiFormVisibility'] = sucuriscan_get_api_key() ? 'hidden' : 'visible';
     $params['CleanDomain'] = sucuriscan_get_domain();
     $params['AdminEmail'] = sucuriscan_get_site_email();
@@ -655,16 +733,6 @@ function sucuriscan_get_wpversion(){
     }
 
     return md5_file(ABSPATH . WPINC . '/class-wp.php');
-}
-
-/**
- * Check whether the current site is working as a multi-site instance.
- *
- * @return boolean Either TRUE or FALSE in case WordPress is being used as a multi-site instance.
- */
-function sucuriscan_is_multisite(){
-    if( function_exists('is_multisite') && is_multisite() ){ return TRUE; }
-    return FALSE;
 }
 
 /**

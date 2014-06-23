@@ -17,6 +17,7 @@
 .sucuriscan-wrap .sucuriscan-leftside{width:68%;float:left}
 .sucuriscan-wrap .sucuriscan-sidebar{width:30%;float:right}
 .sucuriscan-wrap #warnings_hook{line-height:initial;padding:0}
+.sucuriscan-wrap .nav-tab-wrapper{padding-top:20px}
 .sucuriscan-header, .sucuriscan-footer{position:relative;min-width:255px;background:#333;margin:0;padding:10px;border-radius:4px}
 .sucuriscan-footer .sucuriscan-help{color:#fff;float:right;text-align:right}
 .sucuriscan-footer .sucuriscan-help p{line-height:38px;margin:0 10px 0 0;padding:0}

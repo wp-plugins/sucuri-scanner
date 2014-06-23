@@ -10,6 +10,10 @@
         <h2>SiteCheck Scanner %%SUCURI.PageTitle%%</h2>
     </div>
 
+    <h2 class="nav-tab-wrapper">
+        %%SUCURI.Navbar%%
+    </h2>
+
     <div class="sucuriscan-maincontent sucuriscan-clearfix">
 
         <div class="sucuriscan-leftside sucuriscan-%%SUCURI.PageStyleClass%%">
