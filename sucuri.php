@@ -213,22 +213,9 @@ function sucuriscan_menu(){
     }
 }
 
-/**
- * Display a notice message with instructions to continue the setup of the
- * plugin, this includes the generation of the API key and other steps that need
- * to be done to fully activate this plugin.
- *
- * @return void
- */
-function sucuriscan_plugin_setup_notice(){
-}
-
 add_action('admin_menu', 'sucuriscan_menu');
 add_action('sucuriscan_scheduled_scan', 'sucuriscan_filesystem_scan');
 remove_action('wp_head', 'wp_generator');
-
-$sucuriscan_admin_notice_name = sucuriscan_is_multisite() ? 'network_admin_notices' : 'admin_notices';
-add_action( $sucuriscan_admin_notice_name, 'sucuriscan_plugin_setup_notice' );
 
 /**
  * Validate email address.
@@ -490,6 +477,23 @@ function sucuriscan_get_template( $template='', $params=array(), $type='page' ){
     return sucuriscan_get_base_template( $template_content, $params );
 }
 
+function sucuriscan_shared_params( $params=array() ){
+    $params = is_array($params) ? $params : array();
+
+    // Base parameters, required to render all the pages.
+    $params = sucuriscan_links_and_navbar($params);
+
+    // Global parameters, used through out all the pages.
+    $params['PageTitle'] = isset($params['PageTitle']) ? '('.$params['PageTitle'].')' : '';
+    $params['PageNonce'] = wp_create_nonce('sucuriscan_page_nonce');
+    $params['PageStyleClass'] = isset($params['PageStyleClass']) ? $params['PageStyleClass'] : 'base';
+    $params['GetApiFormVisibility'] = sucuriscan_get_api_key() ? 'hidden' : 'visible';
+    $params['CleanDomain'] = sucuriscan_get_domain();
+    $params['AdminEmail'] = sucuriscan_get_site_email();
+
+    return $params;
+}
+
 /**
  * Generate a HTML code using a template and replacing all the pseudo-variables
  * by the dynamic variables provided by the developer through one of the parameters
@@ -502,17 +506,8 @@ function sucuriscan_get_template( $template='', $params=array(), $type='page' ){
 function sucuriscan_get_base_template( $html='', $params=array() ){
     $params = is_array($params) ? $params : array();
 
-    // Base parameters, required to render all the pages.
-    $params['PageTitle'] = isset($params['PageTitle']) ? '('.$params['PageTitle'].')' : '';
-    $params['PageNonce'] = wp_create_nonce('sucuriscan_page_nonce');
-    $params['PageStyleClass'] = isset($params['PageStyleClass']) ? $params['PageStyleClass'] : 'base';
+    $params = sucuriscan_shared_params($params);
     $params['PageContent'] = $html;
-
-    // Global parameters, used through out all the pages.
-    $params = sucuriscan_links_and_navbar($params);
-    $params['GetApiFormVisibility'] = sucuriscan_get_api_key() ? 'hidden' : 'visible';
-    $params['CleanDomain'] = sucuriscan_get_domain();
-    $params['AdminEmail'] = sucuriscan_get_site_email();
 
     return sucuriscan_get_template( 'base', $params );
 }
@@ -527,6 +522,8 @@ function sucuriscan_get_base_template( $html='', $params=array() ){
  * @return string           The formatted HTML page after replace all the pseudo-variables.
  */
 function sucuriscan_get_section($template='', $params=array()){
+    $params = sucuriscan_shared_params($params);
+
     return sucuriscan_get_template( $template, $params, 'section' );
 }
 
@@ -1009,6 +1006,24 @@ function sucuriscan_what_options_were_changed( $request=array() ){
     return $options_changed;
 }
 
+if( !function_exists('sucuriscan_plugin_setup_notice') ){
+    /**
+     * Display a notice message with instructions to continue the setup of the
+     * plugin, this includes the generation of the API key and other steps that need
+     * to be done to fully activate this plugin.
+     *
+     * @return void
+     */
+    function sucuriscan_plugin_setup_notice(){
+        echo sucuriscan_get_section('setup_notice');
+    }
+
+    if( !sucuriscan_get_api_key() ){
+        $sucuriscan_admin_notice_name = sucuriscan_is_multisite() ? 'network_admin_notices' : 'admin_notices';
+        add_action( $sucuriscan_admin_notice_name, 'sucuriscan_plugin_setup_notice' );
+    }
+}
+
 /**
  * Class to process files and folders.
  *
@@ -1269,13 +1284,6 @@ class SucuriScanFileInfo{
 function sucuriscan_page(){
     if( !current_user_can('manage_options') ){
         wp_die(__('You do not have sufficient permissions to access this page: Sucuri Malware Scanner') );
-    }
-
-    if( !sucuriscan_get_api_key() ){
-        sucuriscan_error(
-            'Site not fully activated yet. Please generate the free API
-            to enable audit logging, integrity checking and email alerts.'
-        );
     }
 
     // Execute the SiteCheck scanning on this site.

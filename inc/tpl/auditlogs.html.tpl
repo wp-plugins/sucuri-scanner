@@ -24,7 +24,7 @@
                 <div class="sucuriscan-maxper-page">
                     Showing <b>%%SUCURI.AuditLogs.MaxPerPage%%</b> out of <b>%%SUCURI.AuditLogs.Count%%</b>
                     &nbsp;-&nbsp;
-                    <a href="%%SUCURI.URL.AuditLogs%%&show_all=1">Show all</a>
+                    <a href="%%SUCURI.URL.Auditlogs%%&show_all=1">Show all</a>
                 </div>
             </td>
         </tr>

@@ -38,7 +38,7 @@
                 </p>
             </div>
             <div class="sucuriscan-column-right">
-                <a href="%%SUCURI.URL.AuditLogs%%" class="button button-primary button-hero">Check Audit Logs</a>
+                <a href="%%SUCURI.URL.Auditlogs%%" class="button button-primary button-hero">Check Audit Logs</a>
             </div>
         </div>
     </div>
@@ -72,7 +72,7 @@
                 </p>
             </div>
             <div class="sucuriscan-column-right">
-                <a href="%%SUCURI.URL.CoreIntegrity%%" class="button button-primary button-hero">Check site integrity now</a>
+                <a href="%%SUCURI.URL.Core_integrity%%" class="button button-primary button-hero">Check site integrity now</a>
             </div>
         </div>
     </div>
@@ -89,7 +89,7 @@
                 </p>
             </div>
             <div class="sucuriscan-column-right">
-                <a href="%%SUCURI.URL.PostHack%%" class="button button-primary button-hero">Run Post-Hack resets</a>
+                <a href="%%SUCURI.URL.Posthack%%" class="button button-primary button-hero">Run Post-Hack resets</a>
             </div>
         </div>
     </div>
@@ -105,7 +105,7 @@
                 </p>
             </div>
             <div class="sucuriscan-column-right">
-                <a href="%%SUCURI.URL.LastLogins%%" class="button button-primary button-hero">View Last Logins</a>
+                <a href="%%SUCURI.URL.Lastlogins%%" class="button button-primary button-hero">View Last Logins</a>
             </div>
         </div>
     </div>

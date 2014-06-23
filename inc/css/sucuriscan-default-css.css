@@ -11,6 +11,9 @@
 .sucuriscan-hidden{display:none !important}
 .sucuriscan-monospace{font-family:Monospace, Courier}
 .sucuriscan-ellipsis{overflow:hidden;display:inline-block;white-space:nowrap;text-overflow:ellipsis}
+.sucuriscan-column-left, .sucuriscan-column-right{width:49%;min-width:initial !important}
+.sucuriscan-column-left{float:left}
+.sucuriscan-column-right{float:right}
 /* Interface Wrapper */
 .sucuriscan-wrap{margin-top:20px}
 .sucuriscan-wrap .sucuriscan-maincontent{margin:20px 0}
@@ -26,6 +29,13 @@
 .sucuriscan-wrap .sucuriscan-logo img{display:block}
 .sucuriscan-wrap .sucuriscan-header h2, .sucuriscan-wrap .sucuriscan-footer h2{color:#fff;line-height:38px;margin-left:10px;text-shadow:#000 0 1px 0}
 .sucuriscan-leftside #poststuff .postbox:last-child{margin-bottom:0}
+/* Page Setup Notice */
+.wrap div.sucuriscan-setup-notice{background:#ddd;margin:0;padding:0;border:1px solid #bbb;border-radius:3px;-webkit-box-shadow:none;box-shadow:none}
+.wrap div.sucuriscan-setup-notice .sucuriscan-column-left, .wrap div.sucuriscan-setup-notice .sucuriscan-column-right{width:initial}
+.wrap div.sucuriscan-setup-notice .sucuriscan-setup-image, .wrap div.sucuriscan-setup-notice .sucuriscan-setup-image img{border-radius:3px 0 0 3px}
+.wrap div.sucuriscan-setup-notice .sucuriscan-setup-image{background:#333;margin:-1px 0 -1px -1px;padding:7px 10px;border-right:1px solid #bbb}
+.wrap div.sucuriscan-setup-notice .sucuriscan-setup-form{padding:4px;padding-left:0}
+.wrap div.sucuriscan-setup-notice p{font-size:14px;line-height:20px;margin:0 0 0 10px;padding:7px 0}
 /* Table Styles */
 .sucuriscan-maincontent .sucuriscan-table{margin-top:12px}
 .sucuriscan-maincontent .sucuriscan-table tr > th{background:#f1f1f1;background-image:-webkit-gradient(linear,left bottom,left top,from(#ececec),to(#f9f9f9));background-image:-webkit-linear-gradient(bottom,#ececec,#f9f9f9);background-image:-moz-linear-gradient(bottom,#ececec,#f9f9f9);background-image:-o-linear-gradient(bottom,#ececec,#f9f9f9);background-image:linear-gradient(to top,#ececec,#f9f9f9);border-top:1px solid #e5e5e5;border-bottom:1px solid #e5e5e5}
@@ -140,6 +150,3 @@
 .sucuriscan-maincontent hr{border:none;border-top:1px solid #999}
 .sucuriscan-maincontent table td > table{background:#fff}
 .sucuriscan-maincontent table td > table th{padding:4px 8px}
-.sucuriscan-column-left, .sucuriscan-column-right{width:49%;min-width:initial !important}
-.sucuriscan-column-left{float:left}
-.sucuriscan-column-right{float:right}
