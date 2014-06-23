@@ -1649,15 +1649,17 @@ function sucuriscan_send_log( $event='', $api_key='' ){
             $api_key = sucuriscan_get_api_key();
         }
 
-        $response = sucuriscan_api_call( 'POST', array(
-            'k' => $api_key,
-            'a' => 'send_log',
-            'p' => 'wordpress',
-            'm' => $event,
-        ) );
+        if( $api_key ){
+            $response = sucuriscan_api_call( 'POST', array(
+                'k' => $api_key,
+                'a' => 'send_log',
+                'p' => 'wordpress',
+                'm' => $event,
+            ) );
 
-        if( sucuriscan_handle_response($response) ){
-            return TRUE;
+            if( sucuriscan_handle_response($response) ){
+                return TRUE;
+            }
         }
     }
 
@@ -1726,15 +1728,17 @@ function sucuriscan_send_hashes( $hashes='', $api_key='' ){
             $api_key = sucuriscan_get_api_key();
         }
 
-        $response = sucuriscan_api_call( 'POST', array(
-            'k' => $api_key,
-            'a' => 'send_hashes',
-            'p' => 'wordpress',
-            'h' => $hashes,
-        ) );
+        if( $api_key ){
+            $response = sucuriscan_api_call( 'POST', array(
+                'k' => $api_key,
+                'a' => 'send_hashes',
+                'p' => 'wordpress',
+                'h' => $hashes,
+            ) );
 
-        if( sucuriscan_handle_response($response) ){
-            return TRUE;
+            if( sucuriscan_handle_response($response) ){
+                return TRUE;
+            }
         }
     }
 
