@@ -2,6 +2,9 @@
 <div class="sucuriscan-tabs">
     <ul>
         <li>
+            <a href="#" data-tabname="audit-logs">Audit Logs</a>
+        </li>
+        <li>
             <a href="#" data-tabname="core-files">Core Files</a>
         </li>
         <li>
@@ -19,6 +22,10 @@
     </ul>
 
     <div class="sucuriscan-tab-containers">
+        <div id="sucuriscan-audit-logs">
+            %%SUCURI.AuditLogs%%
+        </div>
+
         <div id="sucuriscan-core-files">
             %%SUCURI.CoreFiles%%
         </div>

@@ -165,7 +165,6 @@ function sucuriscan_dir_filepath($path = ''){
 function sucuriscan_pages( $for_navbar=FALSE ){
     $pages = array(
         'sucuriscan' => 'Sucuri Scanner',
-        'sucuriscan_auditlogs' => 'Audit Logs',
         'sucuriscan_hardening' => '1-Click Hardening',
         'sucuriscan_core_integrity' => 'WordPress Integrity',
         'sucuriscan_posthack' => 'Post-Hack',
@@ -2416,70 +2415,6 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
 }
 
 /**
- * Print a HTML code with the content of the logs audited by the remote Sucuri
- * API service, this page is part of the monitoring tool.
- *
- * @return void
- */
-function sucuriscan_auditlogs_page(){
-
-    $api_key = sucuriscan_get_api_key();
-    $max_per_page = SUCURISCAN_AUDITLOGS_PER_PAGE;
-    $audit_logs = $api_key ? sucuriscan_get_logs($api_key) : FALSE;
-    $show_all = isset($_GET['show_all']) ? TRUE : FALSE;
-
-    $template_variables = array(
-        'PageTitle' => 'Audit Logs',
-        'AuditLogs.List' => '',
-        'AuditLogs.Count' => 0,
-        'AuditLogs.NoItemsVisibility' => 'visible',
-        'AuditLogs.MaxItemsVisibility' => 'hidden',
-        'AuditLogs.MaxPerPage' => $max_per_page,
-    );
-
-    if( $audit_logs ){
-        $counter_i = 0;
-        $total_items = count($audit_logs->output_data);
-
-        $template_variables['AuditLogs.Count'] = $total_items;
-        $template_variables['AuditLogs.NoItemsVisibility'] = 'hidden';
-
-        if( $total_items > $max_per_page && !$show_all ){
-            $template_variables['AuditLogs.MaxItemsVisibility'] = 'visible';
-        }
-
-        foreach( $audit_logs->output_data as $audit_log ){
-            if( $counter_i > $max_per_page && !$show_all ){ break; }
-
-            $css_class = ( $counter_i % 2 == 0 ) ? '' : 'alternate';
-            $snippet_data = array(
-                'AuditLog.CssClass' => $css_class,
-                'AuditLog.DateTime' => date( 'd/M/Y H:i:s', $audit_log['timestamp'] ),
-                'AuditLog.Account' => $audit_log['account'],
-                'AuditLog.Message' => $audit_log['message'],
-                'AuditLog.Extra' => '',
-            );
-
-            // Print every extra information item in a separate table.
-            if( $audit_log['extra'] ){
-                $css_scrollable = $audit_log['extra_total'] > 10 ? 'sucuriscan-list-as-table-scrollable' : '';
-                $snippet_data['AuditLog.Extra'] .= '<ul class="sucuriscan-list-as-table ' . $css_scrollable . '">';
-                foreach( $audit_log['extra'] as $log_extra ){
-                    $snippet_data['AuditLog.Extra'] .= '<li>' . $log_extra . '</li>';
-                }
-                $snippet_data['AuditLog.Extra'] .= '</ul>';
-                $snippet_data['AuditLog.Extra'] .= '<small>For Mac users, this is a scrollable container</small>';
-            }
-
-            $template_variables['AuditLogs.List'] .= sucuriscan_get_snippet('auditlogs', $snippet_data);
-            $counter_i += 1;
-        }
-    }
-
-    echo sucuriscan_get_template('auditlogs', $template_variables);
-}
-
-/**
  * Sucuri one-click hardening page.
  *
  * It loads all the functions defined in /lib/hardening.php and shows the forms
@@ -2977,6 +2912,7 @@ function sucuriscan_core_integrity_page(){
 
     $template_variables = array(
         'PageTitle' => 'WordPress Integrity',
+        'AuditLogs' => sucuriscan_auditlogs(),
         'CoreFiles' => sucuriscan_core_files(),
         'ModifiedFiles' => sucuriscan_modified_files(),
         'AdminUsers' => sucuriscan_admin_users(),
@@ -3034,6 +2970,70 @@ function read_dir_r($dir = "./", $recursiv = false){
 
     closedir($dir_handler);
     return $files_info;
+}
+
+/**
+ * Print a HTML code with the content of the logs audited by the remote Sucuri
+ * API service, this page is part of the monitoring tool.
+ *
+ * @return void
+ */
+function sucuriscan_auditlogs(){
+
+    $api_key = sucuriscan_get_api_key();
+    $max_per_page = SUCURISCAN_AUDITLOGS_PER_PAGE;
+    $audit_logs = $api_key ? sucuriscan_get_logs($api_key) : FALSE;
+    $show_all = isset($_GET['show_all']) ? TRUE : FALSE;
+
+    $template_variables = array(
+        'PageTitle' => 'Audit Logs',
+        'AuditLogs.List' => '',
+        'AuditLogs.Count' => 0,
+        'AuditLogs.NoItemsVisibility' => 'visible',
+        'AuditLogs.MaxItemsVisibility' => 'hidden',
+        'AuditLogs.MaxPerPage' => $max_per_page,
+    );
+
+    if( $audit_logs ){
+        $counter_i = 0;
+        $total_items = count($audit_logs->output_data);
+
+        $template_variables['AuditLogs.Count'] = $total_items;
+        $template_variables['AuditLogs.NoItemsVisibility'] = 'hidden';
+
+        if( $total_items > $max_per_page && !$show_all ){
+            $template_variables['AuditLogs.MaxItemsVisibility'] = 'visible';
+        }
+
+        foreach( $audit_logs->output_data as $audit_log ){
+            if( $counter_i > $max_per_page && !$show_all ){ break; }
+
+            $css_class = ( $counter_i % 2 == 0 ) ? '' : 'alternate';
+            $snippet_data = array(
+                'AuditLog.CssClass' => $css_class,
+                'AuditLog.DateTime' => date( 'd/M/Y H:i:s', $audit_log['timestamp'] ),
+                'AuditLog.Account' => $audit_log['account'],
+                'AuditLog.Message' => $audit_log['message'],
+                'AuditLog.Extra' => '',
+            );
+
+            // Print every extra information item in a separate table.
+            if( $audit_log['extra'] ){
+                $css_scrollable = $audit_log['extra_total'] > 10 ? 'sucuriscan-list-as-table-scrollable' : '';
+                $snippet_data['AuditLog.Extra'] .= '<ul class="sucuriscan-list-as-table ' . $css_scrollable . '">';
+                foreach( $audit_log['extra'] as $log_extra ){
+                    $snippet_data['AuditLog.Extra'] .= '<li>' . $log_extra . '</li>';
+                }
+                $snippet_data['AuditLog.Extra'] .= '</ul>';
+                $snippet_data['AuditLog.Extra'] .= '<small>For Mac users, this is a scrollable container</small>';
+            }
+
+            $template_variables['AuditLogs.List'] .= sucuriscan_get_snippet('integrity-auditlogs', $snippet_data);
+            $counter_i += 1;
+        }
+    }
+
+    return sucuriscan_get_section('integrity-auditlogs', $template_variables);
 }
 
 /**
