@@ -1,5 +1,5 @@
 
-<table class="wp-list-table widefat sucuriscan-table sucuriscan-table-doubletitle sucuriscan-last-logins">
+<table class="wp-list-table widefat sucuriscan-table sucuriscan-table-double-title sucuriscan-last-logins">
     <thead>
         <tr>
             <th colspan="6" class="thead-with-button">

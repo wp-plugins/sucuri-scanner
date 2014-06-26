@@ -5,7 +5,7 @@
  */
 
 function sucuriscan_alert_close(id){
-    var element = document.getElementById('sucuri-alert-'+id);
+    var element = document.getElementById('sucuriscan-alert-'+id);
     element.parentNode.removeChild(element);
 }
 

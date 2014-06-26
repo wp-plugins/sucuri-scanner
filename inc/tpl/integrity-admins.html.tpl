@@ -1,5 +1,5 @@
 
-<table class="wp-list-table widefat sucuriscan-table sucuriscan-table-doubletitle sucuriscan-adminusers">
+<table class="wp-list-table widefat sucuriscan-table sucuriscan-table-double-title sucuriscan-adminusers">
     <thead>
         <tr>
             <th class="manage-column">Username</th>

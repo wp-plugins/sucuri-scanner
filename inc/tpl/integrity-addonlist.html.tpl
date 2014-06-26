@@ -1,5 +1,5 @@
 
-<table class="wp-list-table widefat sucuriscan-table sucuriscan-table-doubletitle sucuriscan-addonlist">
+<table class="wp-list-table widefat sucuriscan-table sucuriscan-table-double-title sucuriscan-addonlist">
     <tbody>
         <tr>
             <th>Addon</th>

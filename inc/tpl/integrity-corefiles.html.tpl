@@ -16,7 +16,7 @@
 </div>
 
 
-<table class="wp-list-table widefat sucuriscan-table sucuriscan-table-doubletitle sucuriscan-corefiles sucuriscan-%%SUCURI.CoreFiles.Visibility%%">
+<table class="wp-list-table widefat sucuriscan-table sucuriscan-table-double-title sucuriscan-corefiles sucuriscan-%%SUCURI.CoreFiles.Visibility%%">
     <tbody>
         <tr><th>Core files added (%%SUCURI.CoreFiles.AddedCount%%)</th></tr>
 

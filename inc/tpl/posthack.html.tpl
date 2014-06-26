@@ -4,8 +4,8 @@
         <h3>Update WP-Config Keys</h3>
         <div class="inside">
             <form method="post">
-                <input type="hidden" name="sucuri_posthack_nonce" value="%%SUCURI.PosthackNonce%%" />
-                <input type="hidden" name="sucuri_posthack_action" value="update_wpconfig" />
+                <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                <input type="hidden" name="sucuriscan_update_wpconfig" value="1" />
 
                 <p>
                     Use this button to update the security keys stored in the <code>wp-config.php</code>
@@ -15,8 +15,8 @@
 
                 <p>
                     <label>
-                        <input type="hidden" name="sucuri_update_wpconfig" value="0" />
-                        <input type="checkbox" name="sucuri_update_wpconfig" value="1" />
+                        <input type="hidden" name="sucuriscan_process_form" value="0" />
+                        <input type="checkbox" name="sucuriscan_process_form" value="1" />
                         <span>I understand that this operation can not be reverted.</span>
                     </label>
                 </p>
@@ -24,7 +24,7 @@
                 <input type="submit" value="Update WP-Config Keys" class="button button-primary" />
             </form>
 
-            <div style="%%SUCURI.WPConfigUpdate.Display%%" class="sucuriscan_wpconfig_keys_updated">
+            <div class="sucuriscan_wpconfig_keys_updated sucuriscan-%%SUCURI.WPConfigUpdate.Visibility%%">
                 <textarea>%%SUCURI.WPConfigUpdate.NewConfig%%</textarea>
             </div>
         </div>
@@ -34,8 +34,8 @@
         <h3>Reset user password</h3>
         <div class="inside">
             <form method="post">
-                <input type="hidden" name="sucuri_posthack_nonce" value="%%SUCURI.PosthackNonce%%" />
-                <input type="hidden" name="sucuri_posthack_action" value="reset_password" />
+                <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                <input type="hidden" name="sucuriscan_reset_password" value="1" />
 
                 <p>
                     Use this button to reset the current password for some specific users or for all
@@ -65,8 +65,8 @@
 
                 <p>
                     <label>
-                        <input type="hidden" name="sucuri_reset_password" value="0" />
-                        <input type="checkbox" name="sucuri_reset_password" value="1" />
+                        <input type="hidden" name="sucuriscan_process_form" value="0" />
+                        <input type="checkbox" name="sucuriscan_process_form" value="1" />
                         <span>I understand that this operation can not be reverted.</span>
                     </label>
                 </p>
