@@ -18,8 +18,8 @@
 /* Interface Wrapper */
 .sucuriscan-wrap{margin-top:20px}
 .sucuriscan-wrap .sucuriscan-maincontent{margin:20px 0}
-.sucuriscan-wrap .sucuriscan-leftside{width:68%;float:left}
-.sucuriscan-wrap .sucuriscan-sidebar{width:30%;float:right}
+.sucuriscan-wrap .sucuriscan-leftside{width:73.5%;float:left}
+.sucuriscan-wrap .sucuriscan-sidebar{width:25%;float:right}
 .sucuriscan-wrap #warnings_hook{line-height:initial;padding:0}
 .sucuriscan-wrap .sucuriscan-navbar{padding-top:20px;padding-left:6px}
 .sucuriscan-wrap .sucuriscan-navbar .nav-tab{margin-right:0}
@@ -63,7 +63,7 @@
 .sucuriscan-maincontent .thead-topright-action{display:inline-block;float:right}
 /* Sidebar Styles */
 .sucuriscan-sidebar .sucuriscan-ad{border:1px solid #ccc;margin:0 0 20px 0;padding:20px;border-radius:4px}
-.sucuriscan-sidebar .sucuriscan-ad h2{padding:0}
+.sucuriscan-sidebar .sucuriscan-ad h2{font-size:18px;line-height:normal;padding:0}
 .sucuriscan-sidebar .sucuriscan-ad p:last-child{margin-bottom:0}
 .sucuriscan-sidebar .sucuriscan-ad:nth-child(odd){background-color:#bbe8f5;border-color:#4393ac}
 .sucuriscan-sidebar .sucuriscan-ad:nth-child(even){background-color:#ececec;border-color:#999}
