@@ -222,6 +222,7 @@ function sucuriscan_dir_filepath($path = ''){
 function sucuriscan_pages( $for_navbar=FALSE ){
     $pages = array(
         'sucuriscan' => 'Dashboard',
+        'sucuriscan_scanner' => 'Malware Scan',
         'sucuriscan_monitoring' => 'Firewall (WAF)',
         'sucuriscan_hardening' => 'Hardening',
         'sucuriscan_posthack' => 'Post-Hack',
@@ -1372,7 +1373,7 @@ class SucuriScanFileInfo{
  *
  * @return void
  */
-function sucuriscan_print_scan(){
+function sucuriscan_scanner_page(){
     $clean_domain = sucuriscan_get_domain();
     $remote_url = 'http://sitecheck.sucuri.net/scanner/?serialized&clear&fromwp&scan='.$clean_domain;
     $scan_results = wp_remote_get($remote_url, array('timeout' => 180));
@@ -1422,7 +1423,7 @@ function sucuriscan_print_scan(){
         <div class="sucuriscan-tabs">
             <ul>
                 <li>
-                    <a href="#" data-tabname="sitecheck-results">SiteCheck Results</a>
+                    <a href="#" data-tabname="sitecheck-results">Scanner Results</a>
                 </li>
                 <li>
                     <a href="#" data-tabname="website-details">Website Details</a>
@@ -1635,7 +1636,7 @@ function sucuriscan_print_scan(){
     $_html = ob_get_contents();
     ob_end_clean();
     echo sucuriscan_get_base_template($_html, array(
-        'PageTitle' => 'Results',
+        'PageTitle' => 'Malware Scan',
         'PageContent' => $_html,
         'PageStyleClass' => 'scanner-results',
     ));
@@ -3150,7 +3151,7 @@ function sucuriscan_hardening_page(){
     $_html = ob_get_contents();
     ob_end_clean();
     echo sucuriscan_get_base_template($_html, array(
-        'PageTitle' => '1-Click Hardening',
+        'PageTitle' => 'Hardening',
         'PageContent' => $_html,
         'PageStyleClass' => 'hardening'
     ));
