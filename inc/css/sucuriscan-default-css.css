@@ -85,16 +85,6 @@ div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:1
 .sucuriscan-getapi-div p{margin:0;padding:10px}
 .sucuriscan-getapi-form{}
 .sucuriscan-getapi-form button.button-primary{width:100%;height:initial;line-height:30px;margin:0 0 -1px 0;padding:0;border-radius:0 0 3px 3px}
-/* Initial Page Styles */
-.sucuriscan-initial-page{}
-.sucuriscan-initial-page a{text-decoration:none}
-.sucuriscan-initial-page .sucuriscan-column-left{width:70%}
-.sucuriscan-initial-page .sucuriscan-column-right{width:29%;text-align:right}
-.sucuriscan-initial-page #poststuff .inside, .sucuriscan-initial-page #poststuff .inside p{font-size:16px;margin:0;padding:0}
-.sucuriscan-initial-page #poststuff .inside{padding:20px}
-.sucuriscan-initial-page #poststuff .button.button-hero{width:202px;text-align:center;padding:0}
-.sucuriscan-initial-page .sucuriscan-disclaimer{padding:20px;padding-top:0}
-.sucuriscan-initial-page .sucuriscan-disclaimer p{font-size:10px;margin:0}
 /* Scanner Results */
 .sucuriscan-maincontent .sucuriscan-border{border-left:4px solid #ddd}
 .sucuriscan-maincontent .sucuriscan-border-good{border-left-color:#7ad03a}
@@ -162,11 +152,6 @@ div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:1
     .sucuriscan-wrap .sucuriscan-navbar{padding-left:0;padding-right:0}
     .sucuriscan-wrap .sucuriscan-navbar .nav-tab{display:block}
     .sucuriscan-wrap .sucuriscan-navbar .nav-tab:last-child{border-bottom:1px solid #ccc}
-}
-@media (max-width: 1200px) {
-    .sucuriscan-wrap .sucuriscan-initial-page .sucuriscan-column-left,
-    .sucuriscan-wrap .sucuriscan-initial-page .sucuriscan-column-right{width:100%;float:none}
-    .sucuriscan-wrap .sucuriscan-initial-page #poststuff .button.button-hero{width:100%;margin-top:20px}
 }
 /* Old styles */
 .sucuriscan-maincontent #poststuff{min-width:initial;padding-top:0}

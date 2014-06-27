@@ -223,18 +223,12 @@ function sucuriscan_pages( $for_navbar=FALSE ){
     $pages = array(
         'sucuriscan' => 'Dashboard',
         'sucuriscan_monitoring' => 'Monitoring',
-        'sucuriscan_hardening' => '1-Click Hardening',
-        'sucuriscan_core_integrity' => 'WordPress Integrity',
+        'sucuriscan_hardening' => 'Hardening',
         'sucuriscan_posthack' => 'Post-Hack',
         'sucuriscan_lastlogins' => 'Last Logins',
         'sucuriscan_settings' => 'Settings',
         'sucuriscan_infosys' => 'Site Info',
     );
-
-    if( $for_navbar ){
-        $pages['sucuriscan_hardening'] = 'Hardening';
-        $pages['sucuriscan_core_integrity'] = 'Integrity';
-    }
 
     return $pages;
 }
@@ -1374,28 +1368,6 @@ class SucuriScanFileInfo{
 }
 
 /**
- * Print a HTML code with a form from where the administrator can check the state
- * of this site through Sucuri SiteCheck.
- *
- * @return void
- */
-function sucuriscan_page(){
-    if( !current_user_can('manage_options') ){
-        wp_die(__('You do not have sufficient permissions to access this page: Sucuri Malware Scanner') );
-    }
-
-    // Execute the SiteCheck scanning on this site.
-    if( isset($_POST['wpsucuri-doscan']) ){
-        sucuriscan_print_scan();
-        return(1);
-    }
-
-    echo sucuriscan_get_template('initial-page', array(
-        'PageStyleClass' => 'initial-page',
-    ));
-}
-
-/**
  * Display the result of site scan made through SiteCheck.
  *
  * @return void
@@ -1503,7 +1475,7 @@ function sucuriscan_print_scan(){
                                     <hr />
                                     <i>
                                         If our free scanner did not detect any issue, you may have a more complicated and hidden
-                                        problem. You can try our <a href="admin.php?page=sucuriscan_core_integrity">WordPress integrity
+                                        problem. You can try our <a href="admin.php?page=sucuriscan_integrity">WordPress integrity
                                         checks</a> or sign up with Sucuri <a target="_blank" href="http://sucuri.net/signup">here</a>
                                         for a complete and in depth scan+cleanup (not included in the free checks).
                                     </i>
@@ -1961,6 +1933,8 @@ function sucuriscan_get_logs(){
                     'extra' => FALSE,
                     'extra_total' => 0,
                 );
+
+                $log_data['message'] = str_replace( ', new size', '; new size', $log_data['message'] );
 
                 if( preg_match($extra_pattern, $log_data['message'], $log_extra) ){
                     $log_data['message'] = $log_extra[1];
@@ -3590,13 +3564,13 @@ function sucuriscan_cloudproxy_enabled(){
  *
  * @return void
  */
-function sucuriscan_core_integrity_page(){
+function sucuriscan_page(){
     if( !current_user_can('manage_options') ){
         wp_die(__('You do not have sufficient permissions to access this page: Sucuri Integrity Check') );
     }
 
     $template_variables = array(
-        'PageTitle' => 'WordPress Integrity',
+        'PageTitle' => 'Integrity',
         'AuditLogs' => sucuriscan_auditlogs(),
         'CoreFiles' => sucuriscan_core_files(),
         'ModifiedFiles' => sucuriscan_modified_files(),
