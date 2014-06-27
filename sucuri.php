@@ -222,7 +222,7 @@ function sucuriscan_dir_filepath($path = ''){
 function sucuriscan_pages( $for_navbar=FALSE ){
     $pages = array(
         'sucuriscan' => 'Dashboard',
-        'sucuriscan_monitoring' => 'Monitoring',
+        'sucuriscan_monitoring' => 'Firewall (WAF)',
         'sucuriscan_hardening' => 'Hardening',
         'sucuriscan_posthack' => 'Post-Hack',
         'sucuriscan_lastlogins' => 'Last Logins',
@@ -2664,7 +2664,7 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
  */
 function sucuriscan_monitoring_page(){
     if( !current_user_can('manage_options') ){
-        wp_die(__('You do not have sufficient permissions to access this page: CloudProxy Monitoring') );
+        wp_die(__('You do not have sufficient permissions to access this page: Firewall (WAF)') );
     }
 
     // Process all form submissions.
@@ -2675,7 +2675,7 @@ function sucuriscan_monitoring_page(){
 
     // Page pseudo-variables initialization.
     $template_variables = array(
-        'PageTitle' => 'CloudProxy Monitoring',
+        'PageTitle' => 'Firewall WAF',
         'Monitoring.InstructionsVisibility' => 'visible',
         'Monitoring.Settings' => sucuriscan_monitoring_settings($api_key),
         'Monitoring.Logs' => sucuriscan_monitoring_logs($api_key),
@@ -3570,13 +3570,10 @@ function sucuriscan_page(){
     }
 
     $template_variables = array(
-        'PageTitle' => 'Integrity',
         'AuditLogs' => sucuriscan_auditlogs(),
         'CoreFiles' => sucuriscan_core_files(),
         'ModifiedFiles' => sucuriscan_modified_files(),
         'AdminUsers' => sucuriscan_admin_users(),
-        'PluginList' => sucuriscan_plugin_list(),
-        'ThemeList' => sucuriscan_theme_list(),
     );
 
     echo sucuriscan_get_template('integrity', $template_variables);
@@ -3890,83 +3887,6 @@ function sucuriscan_admin_users(){
     }
 
     return sucuriscan_get_section('integrity-admins', $template_variables);
-}
-
-/**
- * Check if any installed plugin an update available.
- *
- * @return void
- */
-function sucuriscan_plugin_list(){
-    $template_variables = array(
-        'AddonList.Items' => '',
-        'AddonList.UpToDateVisibility' => 'visible',
-    );
-
-    // Check plugins.
-    do_action('wp_update_plugins');
-    wp_update_plugins();
-    $update_plugins = get_site_transient('update_plugins');
-    $plugins_need_update = (bool) !empty($update_plugins->response);
-
-    if( $plugins_need_update ){
-        $counter = 0;
-        $template_variables['AddonList.UpToDateVisibility'] = 'hidden';
-
-        foreach( $update_plugins->response as $rel_path => $plugin_info ){
-            $plugin_data = get_plugin_data( WP_PLUGIN_DIR . '/' . $rel_path );
-            $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
-            $counter += 1;
-
-            $template_variables['AddonList.Items'] .= sucuriscan_get_snippet('integrity-addonlist', array(
-                'AddonList.CssClass' => $css_class,
-                'AddonList.Title' => $plugin_data['Title'],
-                'AddonList.Version' => $plugin_data['Version'],
-                'AddonList.NewVersion' => $plugin_info->new_version,
-                'AddonList.Package' => $plugin_info->package,
-            ));
-        }
-    }
-
-    return sucuriscan_get_section('integrity-addonlist', $template_variables);
-}
-
-/**
- * Check if any installed theme has an update available.
- *
- * @return void
- */
-function sucuriscan_theme_list(){
-    $template_variables = array(
-        'AddonList.Items' => '',
-        'AddonList.UpToDateVisibility' => 'visible',
-    );
-
-    // Check themes.
-    do_action('wp_update_themes');
-    wp_update_themes();
-    $update_themes = get_theme_updates();
-    $themes_need_update = (bool) !empty($update_themes);
-
-    if( $themes_need_update ){
-        $counter = 0;
-        $template_variables['AddonList.UpToDateVisibility'] = 'hidden';
-
-        foreach( $update_themes as $stylesheet => $theme ){
-            $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
-            $counter += 1;
-
-            $template_variables['AddonList.Items'] .= sucuriscan_get_snippet('integrity-addonlist', array(
-                'AddonList.CssClass' => $css_class,
-                'AddonList.Title' => $theme->display('Name'),
-                'AddonList.Version' => $theme->display('Version'),
-                'AddonList.NewVersion' => $theme->update['new_version'],
-                'AddonList.Package' => $theme->update['package'],
-            ));
-        }
-    }
-
-    return sucuriscan_get_section('integrity-addonlist', $template_variables);
 }
 
 /**

@@ -37,10 +37,10 @@
     <div class="sucuriscan-tabs">
         <ul>
             <li>
-                <a href="#" data-tabname="monitoring-settings">Account Settings</a>
+                <a href="#" data-tabname="monitoring-settings">Firewall (WAF) Settings</a>
             </li>
             <li>
-                <a href="#" data-tabname="monitoring-logs">Monitoring Logs</a>
+                <a href="#" data-tabname="monitoring-logs">Firewall (WAF) Logs</a>
             </li>
         </ul>
 
