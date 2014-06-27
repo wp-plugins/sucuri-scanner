@@ -1,5 +1,5 @@
 
-<table class="wp-list-table widefat sucuri-loggedin-users">
+<table class="wp-list-table widefat sucuriscan-loggedin-users">
     <thead>
         <tr>
             <th colspan="6">Logged in Users (%%SUCURI.LoggedInUsers.Total%% users)</th>
@@ -13,6 +13,7 @@
             <th>&nbsp;</th>
         </tr>
     </thead>
+
     <tbody>
         %%SUCURI.LoggedInUsers.List%%
     </tbody>

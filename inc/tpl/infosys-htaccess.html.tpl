@@ -1,7 +1,8 @@
 
-<div id="poststuff" class="sucuri-infosys-htaccess">
+<div id="poststuff" class="sucuriscan-infosys-htaccess">
     <div class="postbox">
         <h3>HTAccess Integrity</h3>
+
         <div class="inside">
             <p>
                 The <code>.htaccess</code> is a distributed configuration file, and is how Apache handles
@@ -10,7 +11,7 @@
                 modifies this file to be able to handle pretty permalinks.
             </p>
 
-            <div class="sucuri-alert-%%SUCURI.HTAccess.MessageType%% %%SUCURI.HTAccess.MessageVisible%%">
+            <div class="sucuriscan-alert-%%SUCURI.HTAccess.MessageType%% %%SUCURI.HTAccess.MessageVisible%%">
                 <p>%%SUCURI.HTAccess.Message%%</p>
             </div>
 

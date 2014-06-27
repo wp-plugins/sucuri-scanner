@@ -3574,7 +3574,6 @@ function sucuriscan_page(){
         'AuditLogs' => sucuriscan_auditlogs(),
         'CoreFiles' => sucuriscan_core_files(),
         'ModifiedFiles' => sucuriscan_modified_files(),
-        'AdminUsers' => sucuriscan_admin_users(),
     );
 
     echo sucuriscan_get_template('integrity', $template_variables);
@@ -3841,56 +3840,6 @@ function sucuriscan_modified_files(){
 }
 
 /**
- * List all the user administrator accounts.
- *
- * @see http://codex.wordpress.org/Class_Reference/WP_User_Query
- *
- * @return void
- */
-function sucuriscan_admin_users(){
-    // Page pseudo-variables initialization.
-    $template_variables = array(
-        'AdminUsers.List' => ''
-    );
-
-    $user_query = new WP_User_Query(array( 'role' => 'Administrator' ));
-    $admins = $user_query->get_results();
-
-    foreach( (array)$admins as $admin ){
-        $admin->lastlogins = sucuriscan_get_logins(5, $admin->ID);
-
-        $user_snippet = array(
-            'AdminUsers.Username' => $admin->user_login,
-            'AdminUsers.Email' => $admin->user_email,
-            'AdminUsers.LastLogins' => '',
-            'AdminUsers.UserURL' => admin_url('user-edit.php?user_id='.$admin->ID),
-            'AdminUsers.NoLastLogins' => 'visible',
-            'AdminUsers.NoLastLoginsTable' => 'hidden',
-        );
-
-        if( !empty($admin->lastlogins) ){
-            $user_snippet['AdminUsers.NoLastLogins'] = 'hidden';
-            $user_snippet['AdminUsers.NoLastLoginsTable'] = 'visible';
-            $counter = 0;
-
-            foreach( $admin->lastlogins as $lastlogin ){
-                $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
-                $user_snippet['AdminUsers.LastLogins'] .= sucuriscan_get_snippet('integrity-admins-lastlogin', array(
-                    'AdminUsers.RemoteAddr' => $lastlogin->user_remoteaddr,
-                    'AdminUsers.Datetime' => $lastlogin->user_lastlogin,
-                    'AdminUsers.CssClass' => $css_class,
-                ));
-                $counter += 1;
-            }
-        }
-
-        $template_variables['AdminUsers.List'] .= sucuriscan_get_snippet('integrity-admins', $user_snippet);
-    }
-
-    return sucuriscan_get_section('integrity-admins', $template_variables);
-}
-
-/**
  * Retrieve a list with the checksums of the files in a specific version of WordPress.
  *
  * @param  integer $version Valid version number of the WordPress project.
@@ -4081,7 +4030,7 @@ function sucuriscan_posthack_page(){
  *
  * This page will contains information of all the logins of the registered users.
  *
- * @return void
+ * @return string Last-logings for the administrator accounts.
  */
 function sucuriscan_lastlogins_page(){
     if( !current_user_can('manage_options') ){
@@ -4092,6 +4041,74 @@ function sucuriscan_lastlogins_page(){
     $template_variables = array(
         'PageTitle' => 'Last Logins',
         'LastLoginsNonce' => wp_create_nonce('sucuriscan_lastlogins_nonce'),
+        'LastLogins.Admins' => sucuriscan_lastlogins_admins(),
+        'LastLogins.AllUsers' => sucuriscan_lastlogins_all(),
+        'UserList' => '',
+        'UserListLimit' => SUCURISCAN_LASTLOGINS_USERSLIMIT,
+    );
+
+    echo sucuriscan_get_template('lastlogins', $template_variables);
+}
+
+/**
+ * List all the user administrator accounts.
+ *
+ * @see http://codex.wordpress.org/Class_Reference/WP_User_Query
+ *
+ * @return void
+ */
+function sucuriscan_lastlogins_admins(){
+    // Page pseudo-variables initialization.
+    $template_variables = array(
+        'AdminUsers.List' => ''
+    );
+
+    $user_query = new WP_User_Query(array( 'role' => 'Administrator' ));
+    $admins = $user_query->get_results();
+
+    foreach( (array)$admins as $admin ){
+        $admin->lastlogins = sucuriscan_get_logins(5, $admin->ID);
+
+        $user_snippet = array(
+            'AdminUsers.Username' => $admin->user_login,
+            'AdminUsers.Email' => $admin->user_email,
+            'AdminUsers.LastLogins' => '',
+            'AdminUsers.UserURL' => admin_url('user-edit.php?user_id='.$admin->ID),
+            'AdminUsers.NoLastLogins' => 'visible',
+            'AdminUsers.NoLastLoginsTable' => 'hidden',
+        );
+
+        if( !empty($admin->lastlogins) ){
+            $user_snippet['AdminUsers.NoLastLogins'] = 'hidden';
+            $user_snippet['AdminUsers.NoLastLoginsTable'] = 'visible';
+            $counter = 0;
+
+            foreach( $admin->lastlogins as $lastlogin ){
+                $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
+                $user_snippet['AdminUsers.LastLogins'] .= sucuriscan_get_snippet('lastlogins-admins-lastlogin', array(
+                    'AdminUsers.RemoteAddr' => $lastlogin->user_remoteaddr,
+                    'AdminUsers.Datetime' => $lastlogin->user_lastlogin,
+                    'AdminUsers.CssClass' => $css_class,
+                ));
+                $counter += 1;
+            }
+        }
+
+        $template_variables['AdminUsers.List'] .= sucuriscan_get_snippet('lastlogins-admins', $user_snippet);
+    }
+
+    return sucuriscan_get_section('lastlogins-admins', $template_variables);
+}
+
+/**
+ * List the last-logins for all user accounts in the site.
+ *
+ * This page will contains information of all the logins of the registered users.
+ *
+ * @return string Last-logings for all user accounts.
+ */
+function sucuriscan_lastlogins_all(){
+    $template_variables = array(
         'UserList' => '',
         'UserListLimit' => SUCURISCAN_LASTLOGINS_USERSLIMIT,
     );
@@ -4105,6 +4122,7 @@ function sucuriscan_lastlogins_page(){
 
     $counter = 0;
     $user_list = sucuriscan_get_logins($limit);
+
     foreach( $user_list as $user ){
         $counter += 1;
         $css_class = ( $counter % 2 == 0 ) ? 'alternate' : '';
@@ -4131,10 +4149,10 @@ function sucuriscan_lastlogins_page(){
             $user_dataset['UserList.Registered'] = $user->user_registered;
         }
 
-        $template_variables['UserList'] .= sucuriscan_get_snippet('lastlogins', $user_dataset);
+        $template_variables['UserList'] .= sucuriscan_get_snippet('lastlogins-all', $user_dataset);
     }
 
-    echo sucuriscan_get_template('lastlogins', $template_variables);
+    return sucuriscan_get_section('lastlogins-all', $template_variables);
 }
 
 /**
@@ -4235,15 +4253,17 @@ if( !function_exists('sucuri_set_lastlogin') ){
  * @param  integer $user_id Optional user identifier to filter the results.
  * @return array            The list of all the user logins through the time until now.
  */
-function sucuriscan_get_logins($limit=10, $user_id=0){
+function sucuriscan_get_logins( $limit=10, $user_id=0 ){
     $lastlogins = array();
     $datastore_filepath = sucuriscan_lastlogins_datastore_is_readable();
 
-    if($datastore_filepath){
+    if( $datastore_filepath ){
         $parsed_lines = 0;
         $lastlogins_lines = array_reverse(file($datastore_filepath));
-        foreach($lastlogins_lines as $line){
+
+        foreach( $lastlogins_lines as $line ){
             $line = str_replace("\n", '', $line);
+
             if( preg_match('/^a:/', $line) ){
                 $user_lastlogin = unserialize($line);
 
@@ -4784,7 +4804,6 @@ function sucuriscan_server_info(){
         $plugin_runtime_datetime = file_exists($plugin_runtime_filepath) ? date('r',filemtime($plugin_runtime_filepath)) : 'N/A';
 
         $template_variables = array(
-            'SettingsDisplay' => 'block',
             'PluginVersion' => SUCURISCAN_VERSION,
             'PluginMD5' => md5_file(SUCURISCAN_PLUGIN_FILEPATH),
             'PluginRuntimeDatetime' => $plugin_runtime_datetime,

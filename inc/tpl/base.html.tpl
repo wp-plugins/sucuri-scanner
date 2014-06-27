@@ -47,7 +47,7 @@
 
             <div class="sucuriscan-ad">
                 <h2>Preventive website security in the cloud!</h2>
-                <ul class="sucuri-list">
+                <ul class="sucuriscan-list">
                     <li>Web Application Firewall (WAF) Protection</li>
                     <li>Virtual Website Patching</li>
                     <li>Cloud Intrusion Prevention System (IPS)</li>

@@ -1,5 +1,5 @@
 
-<table class="wp-list-table widefat sucuri-%%SUCURI.SettingsDisplay%%">
+<table class="wp-list-table widefat sucuriscan-server-info">
     <tbody>
         <tr class="alternate">
             <td>Sucuri Plugin version</td>

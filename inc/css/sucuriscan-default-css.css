@@ -15,6 +15,7 @@
 .sucuriscan-column-left, .sucuriscan-column-right{width:49%;min-width:initial !important}
 .sucuriscan-column-left{float:left}
 .sucuriscan-column-right{float:right}
+.sucuriscan-list li{list-style:disc;margin:0 0 5px 15px}
 /* Interface Wrapper */
 .sucuriscan-wrap{margin-top:20px}
 .sucuriscan-wrap .sucuriscan-maincontent{margin:20px 0}
@@ -159,7 +160,6 @@ div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:1
 .sucuriscan-maincontent .hardening-box .primary-secondary{margin:0 0 0 10px}
 .sucuriscan-maincontent a.lastlogins-showall{display:inline-block;float:right}
 .sucuri-inline-error{font-weight:bold;color:red}
-.sucuri-list li{list-style:disc;margin:0 0 5px 15px}
 .sucuriscan-maincontent .alternate{background:#f5f5f5}
 .sucuriscan-maincontent hr{border:none;border-top:1px solid #999}
 .sucuriscan-maincontent table td > table{background:#fff}

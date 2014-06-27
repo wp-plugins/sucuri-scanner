@@ -1,5 +1,5 @@
 
-<table class="wp-list-table widefat sucuri-wpconfig-rules">
+<table class="wp-list-table widefat sucuriscan-wpconfig-rules">
     <thead>
         <th colspan="7" class="thead-with-button">
             <span>WP-Config Variables</span>
@@ -12,6 +12,7 @@
             <th>Value</th>
         </tr>
     </thead>
+
     <tbody>
         %%SUCURI.WordpressConfig.Rules%%
     </tbody>
