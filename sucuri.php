@@ -80,8 +80,7 @@ define('SUCURISCAN_API_VERSION', 'v1');
 /**
  * Remote URL where the CloudProxy API service is running.
  */
-// define('SUCURISCAN_CLOUDPROXY_API', 'https://waf.sucuri.net/api');
-define('SUCURISCAN_CLOUDPROXY_API', 'https://cloudproxydev1.sucuri.net/api');
+define('SUCURISCAN_CLOUDPROXY_API', 'https://waf.sucuri.net/api');
 
 /**
  * Latest version of the CloudProxy API.
@@ -2872,6 +2871,8 @@ function sucuriscan_monitoring_logs( $api_key='' ){
         'AuditLogs.DateDays' => sucuriscan_monitoring_dates('days'),
     );
 
+    $date = date('Y-m-d');
+
     if( $api_key ){
         // Retrieve the date filter from the request (if any).
         if( isset($_GET['date']) ){
@@ -2891,11 +2892,6 @@ function sucuriscan_monitoring_logs( $api_key='' ){
             );
         }
 
-        else{
-            $date = date('Y-m-d');
-        }
-
-        $template_variables['AuditLogs.TargetDate'] = htmlentities($date);
         $logs_data = sucuriscan_cloudproxy_logs( $api_key, $date );
 
         if( $logs_data ){
@@ -2906,6 +2902,8 @@ function sucuriscan_monitoring_logs( $api_key='' ){
             $template_variables['AuditLogs.DenialTypeOptions'] = sucuriscan_monitoring_denial_types($logs_data->access_logs);
         }
     }
+
+    $template_variables['AuditLogs.TargetDate'] = htmlentities($date);
 
     return sucuriscan_get_section( 'monitoring-logs', $template_variables );
 }
@@ -3778,7 +3776,7 @@ function sucuriscan_core_files(){
                 $template_variables['CoreFiles.BadVisibility'] = 'visible';
             }
         } else {
-            sucuriscan_error( 'Error retrieving the wordpress core hashes, try again.' );
+            sucuriscan_error( 'Error retrieving the WordPress core hashes, try again.' );
         }
     }
 
@@ -3791,7 +3789,7 @@ function sucuriscan_core_files(){
  * @param  integer $version Valid version number of the WordPress project.
  * @return object           Associative object with the relative filepath and the checksums of the project files.
  */
-function sucuriscan_get_official_checksums($version=0){
+function sucuriscan_get_official_checksums( $version=0 ){
     $api_url = sprintf('http://api.wordpress.org/core/checksums/1.0/?version=%s&locale=en_US', $version);
     $request = wp_remote_get($api_url);
 
@@ -3821,7 +3819,7 @@ function sucuriscan_get_official_checksums($version=0){
  * @param  integer $version Valid version number of the WordPress project.
  * @return array            Associative array with these keys: modified, stable, removed, added.
  */
-function sucuriscan_check_wp_integrity($version=0){
+function sucuriscan_check_wp_integrity( $version=0 ){
     $latest_hashes = sucuriscan_get_official_checksums($version);
 
     if( !$latest_hashes ){ return FALSE; }
@@ -3839,8 +3837,8 @@ function sucuriscan_check_wp_integrity($version=0){
     $wp_includes_hashes = read_dir_r( ABSPATH . 'wp-includes', true);
     $wp_core_hashes = array_merge( $wp_top_hashes, $wp_admin_hashes, $wp_includes_hashes );
 
-    // Compare remote and local md5sums and search removed files.
-    foreach( $latest_hashes as $filepath=>$remote_checksum ){
+    // Compare remote and local checksums and search removed files.
+    foreach( $latest_hashes as $filepath => $remote_checksum ){
         $full_filepath = sprintf('%s/%s', ABSPATH, $filepath);
 
         if( file_exists($full_filepath) ){
@@ -3857,7 +3855,7 @@ function sucuriscan_check_wp_integrity($version=0){
     }
 
     // Search added files (files not common in a normal wordpress installation).
-    foreach( $wp_core_hashes  as $filepath=>$extra_info ){
+    foreach( $wp_core_hashes as $filepath => $extra_info ){
         $filepath = preg_replace('/^\.\/(.*)/', '$1', $filepath);
 
         if( !property_exists($latest_hashes, $filepath) ){
