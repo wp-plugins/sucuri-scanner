@@ -69,7 +69,6 @@ define('SUCURISCAN_PLUGIN_FILEPATH', SUCURISCAN_PLUGIN_PATH.'/'.SUCURISCAN_PLUGI
 /**
  * Remote URL where the public Sucuri API service is running.
  */
-// define('SUCURISCAN_API', 'https://wordpress.sucuri.net/');
 define('SUCURISCAN_API', 'https://wordpress.sucuri.net/api/');
 
 /**
@@ -101,6 +100,343 @@ define('SUCURISCAN_AUDITLOGS_PER_PAGE', 50);
  * The minimum quantity of seconds to wait before each filesystem scan.
  */
 define('SUCURISCAN_MINIMUM_RUNTIME', 10800);
+
+/**
+ * Class to process files and folders.
+ *
+ * Here are implemented the functions needed to open, scan, read, create files
+ * and folders using the built-in PHP class SplFileInfo. The SplFileInfo class
+ * offers a high-level object oriented interface to information for an individual
+ * file.
+ */
+class SucuriScanFileInfo{
+
+    public $ignore_files = TRUE;
+    public $ignore_directories = TRUE;
+
+    /**
+     * Class constructor.
+     */
+    public function __construct(){
+    }
+
+    /**
+     * Retrieve a long text string with signatures of all the files contained
+     * in the main and subdirectories of the folder specified, also the filesize
+     * and md5sum of that file. Some folders and files will be ignored depending
+     * on some rules defined by the developer.
+     *
+     * @param  string $directory Parent directory where the filesystem scan will start.
+     * @param  string $scan_with Set the tool used to scan the filesystem, SplFileInfo by default.
+     * @return array             List of files in the main and subdirectories of the folder specified.
+     */
+    public function get_directory_tree_md5($directory='', $scan_with='spl'){
+        $project_signatures = '';
+        $abs_path = rtrim( ABSPATH, '/' );
+        $files = $this->get_directory_tree($directory, $scan_with);
+        sort($files);
+
+        foreach( $files as $filepath){
+            $filepath = str_replace( $abs_path, $abs_path . '/', $filepath );
+            $project_signatures .= sprintf(
+                "%s%s%s%s\n",
+                md5_file($filepath),
+                filesize($filepath),
+                chr(32),
+                $filepath
+            );
+        }
+
+        return $project_signatures;
+    }
+
+    /**
+     * Retrieve a list with all the files contained in the main and subdirectories
+     * of the folder specified. Some folders and files will be ignored depending
+     * on some rules defined by the developer.
+     *
+     * @param  string $directory Parent directory where the filesystem scan will start.
+     * @param  string $scan_with Set the tool used to scan the filesystem, SplFileInfo by default.
+     * @return array             List of files in the main and subdirectories of the folder specified.
+     */
+    public function get_directory_tree($directory='', $scan_with='spl'){
+        if( file_exists($directory) && is_dir($directory) ){
+            $tree = array();
+
+            switch( $scan_with ){
+                case 'spl':
+                    if( $this->is_spl_available() ){
+                        $tree = $this->get_directory_tree_with_spl($directory);
+                    }else{
+                        $tree = $this->get_directory_tree($directory, 'opendir');
+                    }
+                    break;
+
+                case 'glob':
+                    $tree = $this->get_directory_tree_with_glob($directory);
+                    break;
+
+                case 'opendir':
+                    $tree = $this->get_directory_tree_with_opendir($directory);
+                    break;
+
+                default:
+                    $tree = $this->get_directory_tree($directory, 'spl');
+                    break;
+            }
+
+            return $tree;
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Check whether the built-in class SplFileObject is available in the system
+     * or not, it is required to have PHP >= 5.1.0. The SplFileObject class offers
+     * an object oriented interface for a file.
+     *
+     * @link http://www.php.net/manual/en/class.splfileobject.php
+     *
+     * @return boolean Whether the PHP class "SplFileObject" is available or not.
+     */
+    private function is_spl_available(){
+        return (bool) class_exists('SplFileObject');
+    }
+
+    /**
+     * Retrieve a list with all the files contained in the main and subdirectories
+     * of the folder specified. Some folders and files will be ignored depending
+     * on some rules defined by the developer.
+     *
+     * @link http://www.php.net/manual/en/class.recursivedirectoryiterator.php
+     * @see  RecursiveDirectoryIterator extends FilesystemIterator
+     * @see  FilesystemIterator         extends DirectoryIterator
+     * @see  DirectoryIterator          extends SplFileInfo
+     * @see  SplFileInfo
+     *
+     * @param  string $directory Parent directory where the filesystem scan will start.
+     * @return array             List of files in the main and subdirectories of the folder specified.
+     */
+    private function get_directory_tree_with_spl($directory=''){
+        $files = array();
+        $filepath = realpath($directory);
+
+        if( !class_exists('FilesystemIterator') ){
+            return $this->get_directory_tree($directory, 'opendir');
+        }
+
+        $flags = FilesystemIterator::KEY_AS_PATHNAME
+            | FilesystemIterator::CURRENT_AS_FILEINFO
+            | FilesystemIterator::SKIP_DOTS
+            | FilesystemIterator::UNIX_PATHS;
+        $objects = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($filepath, $flags),
+            RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach( $objects as $filepath=>$fileinfo ){
+            $directory = dirname($filepath);
+            $filename = $fileinfo->getFilename();
+
+            if( $this->ignore_folderpath($directory, $filename) ){ continue; }
+            if( $this->ignore_filepath($directory, $filename) ){ continue; }
+
+            $files[] = $filepath;
+        }
+
+        return $files;
+    }
+
+    /**
+     * Retrieve a list with all the files contained in the main and subdirectories
+     * of the folder specified. Some folders and files will be ignored depending
+     * on some rules defined by the developer.
+     *
+     * @param  string $directory Parent directory where the filesystem scan will start.
+     * @return array             List of files in the main and subdirectories of the folder specified.
+     */
+    private function get_directory_tree_with_glob($directory=''){
+        $files = array();
+
+        $directory_pattern = sprintf( '%s/*', rtrim($directory,'/') );
+        $files_found = glob($directory_pattern);
+
+        if( is_array($files_found) ){
+            foreach( $files_found as $filepath ){
+                $filepath = realpath($filepath);
+                $directory = dirname($filepath);
+                $filename = array_pop(explode('/', $filepath));
+
+                if( is_dir($filepath) ){
+                    if( $this->ignore_folderpath($directory, $filename) ){ continue; }
+                    $sub_files = $this->get_directory_tree_with_opendir($filepath);
+                    $files = array_merge($files, $sub_files);
+                }else{
+                    if( $this->ignore_filepath($directory, $filename) ){ continue; }
+                    $files[] = $filepath;
+                }
+            }
+        }
+
+        return $files;
+    }
+
+    /**
+     * Retrieve a list with all the files contained in the main and subdirectories
+     * of the folder specified. Some folders and files will be ignored depending
+     * on some rules defined by the developer.
+     *
+     * @param  string $directory Parent directory where the filesystem scan will start.
+     * @return array             List of files in the main and subdirectories of the folder specified.
+     */
+    private function get_directory_tree_with_opendir($directory=''){
+        $dh = @opendir($directory);
+        if( !$dh ){ return FALSE; }
+
+        $files = array();
+        while( ($filename = readdir($dh)) !== FALSE ){
+            $filepath = realpath($directory.'/'.$filename);
+
+            if( is_dir($filepath) ){
+                if( $this->ignore_folderpath($directory, $filename) ){ continue; }
+                $sub_files = $this->get_directory_tree_with_opendir($filepath);
+                $files = array_merge($files, $sub_files);
+            }else{
+                if( $this->ignore_filepath($directory, $filename) ){ continue; }
+                $files[] = $filepath;
+            }
+        }
+
+        closedir($dh);
+        return $files;
+    }
+
+    /**
+     * Skip some specific directories and filepaths from the filesystem scan.
+     *
+     * @param  string  $directory Directory where the scanner is located at the moment.
+     * @param  string  $filename  Name of the folder or file being scanned at the moment.
+     * @return boolean            Either TRUE or FALSE representing that the scan should ignore this folder or not.
+     */
+    private function ignore_folderpath($directory='', $filename=''){
+        if( $this->ignore_directories ){
+            $filepath = realpath($directory.'/'.$filename);
+
+            // Ignoring current and parent folders.
+            if( $filename == '.' || $filename == '..' ){ return TRUE; }
+
+            if( $filename == 'sucuri' || strpos($filepath, '/sucuri/') !== FALSE ){ return TRUE; }
+
+            if( is_dir($filepath) ){
+                if( ($filename == 'cache') && (strpos($directory, 'wp-content') !== FALSE) ){ return TRUE; }
+
+                if( ($filename == 'w3tc') && (strpos($filepath, 'wp-content/w3tc') !== FALSE) ){ return TRUE; }
+            }
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Skip some specific files from the filesystem scan.
+     *
+     * @param  string  $directory Directory where the scanner is located at the moment.
+     * @param  string  $filename  Name of the folder or file being scanned at the moment.
+     * @return boolean            Either TRUE or FALSE representing that the scan should ignore this filename or not.
+     */
+    private function ignore_filepath($directory='', $filename=''){
+        if( !$this->ignore_files ){ return FALSE; }
+
+        // Ignoring backup files from our clean ups.
+        if( strpos($filename, '_sucuribackup.') !== FALSE ){ return TRUE; }
+
+        // Any file maching one of these rules WILL NOT be ignored.
+        if(
+            ( strpos($filename, '.php')      !== FALSE) ||
+            ( strpos($filename, '.htm')      !== FALSE) ||
+            ( strpos($filename, '.js')       !== FALSE) ||
+            ( strcmp($filename, '.htaccess') == 0     ) ||
+            ( strcmp($filename, 'php.ini')   == 0     )
+        ){ return FALSE; }
+
+        return TRUE;
+    }
+
+    /**
+     * Retrieve a list of unique directory paths.
+     *
+     * @param  array $dir_tree A list of files under a directory.
+     * @return array           A list of unique directory paths.
+     */
+    public function get_diretories_only( $dir_tree=array() ){
+        $dirs = array();
+
+        if( is_string($dir_tree) ){
+            $dir_tree = $this->get_directory_tree($dir_tree);
+        }
+
+        foreach( $dir_tree as $filepath ){
+            $dir_path = dirname($filepath);
+
+            if( !in_array($dir_path, $dirs) ){
+                $dirs[] = $dir_path;
+            }
+        }
+
+        return $dirs;
+    }
+
+    /**
+     * Remove a directory recursively.
+     *
+     * @param  string  $directory Path of the existing directory that will be removed.
+     * @return boolean            TRUE if all the files and folder inside the directory were removed.
+     */
+    public function remove_directory_tree( $directory='' ){
+        $all_removed = TRUE;
+        $dir_tree = $this->get_directory_tree($directory);
+
+        if( $dir_tree ){
+            $dirs_only = array();
+
+            foreach( $dir_tree as $filepath ){
+                if( is_file($filepath) ){
+                    $removed = @unlink($filepath);
+
+                    if( !$removed ){
+                        $all_removed = FALSE;
+                    }
+                }
+
+                elseif( is_dir($filepath) ){
+                    $dirs_only[] = $filepath;
+                }
+            }
+
+            if( !function_exists('sucuriscan_strlen_diff') ){
+                /**
+                 * Evaluates the difference between the length of two strings.
+                 *
+                 * @param  string  $a First string of characters that will be measured.
+                 * @param  string  $b Second string of characters that will be measured.
+                 * @return integer    The difference in length between the two strings.
+                 */
+                function sucuriscan_strlen_diff( $a='', $b='' ){
+                    return strlen($b) - strlen($a);
+                }
+            }
+
+            usort($dirs_only, 'sucuriscan_strlen_diff');
+
+            foreach( $dirs_only as $dir_path ){
+                @rmdir($dir_path);
+            }
+        }
+
+        return $all_removed;
+    }
+}
 
 /**
  * Check whether the current site is working as a multi-site instance.
@@ -263,6 +599,41 @@ function sucuriscan_menu(){
             $page_func
         );
     }
+}
+
+if( !function_exists('sucuriscan_handle_old_plugin') ){
+    /**
+     * Remove the old Sucuri plugins considering that with the new version (after
+     * 1.6.0) all the functionality of the others will be merged here, this will
+     * remove duplicated functionality, duplicated bugs and/or duplicated
+     * maintenance reports allowing us to focus in one unique project.
+     *
+     * @return void
+     */
+    function sucuriscan_handle_old_plugin(){
+        $sucuri_fileinfo = new SucuriScanFileInfo();
+        $sucuri_fileinfo->ignore_files = FALSE;
+        $sucuri_fileinfo->ignore_directories = FALSE;
+
+        $plugins = array(
+            'sucuri-wp-plugin/sucuri.php',
+            'sucuri-cloudproxy-waf/cloudproxy.php',
+        );
+
+        foreach( $plugins as $plugin ){
+            $plugin_directory = dirname( WP_PLUGIN_DIR . '/' . $plugin );
+
+            if( file_exists($plugin_directory) ){
+                if( is_plugin_active($plugin) ){
+                    deactivate_plugins($plugin);
+                }
+
+                $plugin_removed = $sucuri_fileinfo->remove_directory_tree($plugin_directory);
+            }
+        }
+    }
+
+    add_action('admin_init', 'sucuriscan_handle_old_plugin');
 }
 
 /**
@@ -1113,257 +1484,6 @@ if( !function_exists('sucuriscan_plugin_setup_notice') ){
     if( !sucuriscan_wordpress_apikey() ){
         $sucuriscan_admin_notice_name = sucuriscan_is_multisite() ? 'network_admin_notices' : 'admin_notices';
         add_action( $sucuriscan_admin_notice_name, 'sucuriscan_plugin_setup_notice' );
-    }
-}
-
-/**
- * Class to process files and folders.
- *
- * Here are implemented the functions needed to open, scan, read, create files
- * and folders using the built-in PHP class SplFileInfo. The SplFileInfo class
- * offers a high-level object oriented interface to information for an individual
- * file.
- */
-class SucuriScanFileInfo{
-    /**
-     * Class constructor.
-     */
-    public function __construct(){
-    }
-
-    /**
-     * Retrieve a long text string with signatures of all the files contained
-     * in the main and subdirectories of the folder specified, also the filesize
-     * and md5sum of that file. Some folders and files will be ignored depending
-     * on some rules defined by the developer.
-     *
-     * @param  string $directory Parent directory where the filesystem scan will start.
-     * @param  string $scan_with Set the tool used to scan the filesystem, SplFileInfo by default.
-     * @return array             List of files in the main and subdirectories of the folder specified.
-     */
-    public function get_directory_tree_md5($directory='', $scan_with='spl'){
-        $project_signatures = '';
-        $abs_path = rtrim( ABSPATH, '/' );
-        $files = $this->get_directory_tree($directory, $scan_with);
-        sort($files);
-
-        foreach( $files as $filepath){
-            $filepath = str_replace( $abs_path, $abs_path . '/', $filepath );
-            $project_signatures .= sprintf(
-                "%s%s%s%s\n",
-                md5_file($filepath),
-                filesize($filepath),
-                chr(32),
-                $filepath
-            );
-        }
-
-        return $project_signatures;
-    }
-
-    /**
-     * Retrieve a list with all the files contained in the main and subdirectories
-     * of the folder specified. Some folders and files will be ignored depending
-     * on some rules defined by the developer.
-     *
-     * @param  string $directory Parent directory where the filesystem scan will start.
-     * @param  string $scan_with Set the tool used to scan the filesystem, SplFileInfo by default.
-     * @return array             List of files in the main and subdirectories of the folder specified.
-     */
-    public function get_directory_tree($directory='', $scan_with='spl'){
-        $tree = array();
-
-        switch( $scan_with ){
-            case 'spl':
-                if( $this->is_spl_available() ){
-                    $tree = $this->get_directory_tree_with_spl($directory);
-                }else{
-                    $tree = $this->get_directory_tree($directory, 'opendir');
-                }
-                break;
-
-            case 'glob':
-                $tree = $this->get_directory_tree_with_glob($directory);
-                break;
-
-            case 'opendir':
-                $tree = $this->get_directory_tree_with_opendir($directory);
-                break;
-
-            default:
-                $tree = $this->get_directory_tree($directory, 'spl');
-                break;
-        }
-
-        return $tree;
-    }
-
-    /**
-     * Check whether the built-in class SplFileObject is available in the system
-     * or not, it is required to have PHP >= 5.1.0. The SplFileObject class offers
-     * an object oriented interface for a file.
-     *
-     * @link http://www.php.net/manual/en/class.splfileobject.php
-     *
-     * @return boolean Whether the PHP class "SplFileObject" is available or not.
-     */
-    private function is_spl_available(){
-        return (bool) class_exists('SplFileObject');
-    }
-
-    /**
-     * Retrieve a list with all the files contained in the main and subdirectories
-     * of the folder specified. Some folders and files will be ignored depending
-     * on some rules defined by the developer.
-     *
-     * @link http://www.php.net/manual/en/class.recursivedirectoryiterator.php
-     * @see  RecursiveDirectoryIterator extends FilesystemIterator
-     * @see  FilesystemIterator         extends DirectoryIterator
-     * @see  DirectoryIterator          extends SplFileInfo
-     * @see  SplFileInfo
-     *
-     * @param  string $directory Parent directory where the filesystem scan will start.
-     * @return array             List of files in the main and subdirectories of the folder specified.
-     */
-    private function get_directory_tree_with_spl($directory=''){
-        $files = array();
-        $filepath = realpath($directory);
-
-        if( !class_exists('FilesystemIterator') ){
-            return $this->get_directory_tree($directory, 'opendir');
-        }
-
-        $flags = FilesystemIterator::KEY_AS_PATHNAME
-            | FilesystemIterator::CURRENT_AS_FILEINFO
-            | FilesystemIterator::SKIP_DOTS
-            | FilesystemIterator::UNIX_PATHS;
-        $objects = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($filepath, $flags),
-            RecursiveIteratorIterator::SELF_FIRST
-        );
-
-        foreach( $objects as $filepath=>$fileinfo ){
-            $directory = dirname($filepath);
-            $filename = $fileinfo->getFilename();
-
-            if( $this->ignore_folderpath($directory, $filename) ){ continue; }
-            if( $this->ignore_filepath($directory, $filename) ){ continue; }
-
-            $files[] = $filepath;
-        }
-
-        return $files;
-    }
-
-    /**
-     * Retrieve a list with all the files contained in the main and subdirectories
-     * of the folder specified. Some folders and files will be ignored depending
-     * on some rules defined by the developer.
-     *
-     * @param  string $directory Parent directory where the filesystem scan will start.
-     * @return array             List of files in the main and subdirectories of the folder specified.
-     */
-    private function get_directory_tree_with_glob($directory=''){
-        $files = array();
-
-        $directory_pattern = sprintf( '%s/*', rtrim($directory,'/') );
-        $files_found = glob($directory_pattern);
-
-        if( is_array($files_found) ){
-            foreach( $files_found as $filepath ){
-                $filepath = realpath($filepath);
-                $directory = dirname($filepath);
-                $filename = array_pop(explode('/', $filepath));
-
-                if( is_dir($filepath) ){
-                    if( $this->ignore_folderpath($directory, $filename) ){ continue; }
-                    $sub_files = $this->get_directory_tree_with_opendir($filepath);
-                    $files = array_merge($files, $sub_files);
-                }else{
-                    if( $this->ignore_filepath($directory, $filename) ){ continue; }
-                    $files[] = $filepath;
-                }
-            }
-        }
-
-        return $files;
-    }
-
-    /**
-     * Retrieve a list with all the files contained in the main and subdirectories
-     * of the folder specified. Some folders and files will be ignored depending
-     * on some rules defined by the developer.
-     *
-     * @param  string $directory Parent directory where the filesystem scan will start.
-     * @return array             List of files in the main and subdirectories of the folder specified.
-     */
-    private function get_directory_tree_with_opendir($directory=''){
-        $dh = @opendir($directory);
-        if( !$dh ){ return FALSE; }
-
-        $files = array();
-        while( ($filename = readdir($dh)) !== FALSE ){
-            $filepath = realpath($directory.'/'.$filename);
-
-            if( is_dir($filepath) ){
-                if( $this->ignore_folderpath($directory, $filename) ){ continue; }
-                $sub_files = $this->get_directory_tree_with_opendir($filepath);
-                $files = array_merge($files, $sub_files);
-            }else{
-                if( $this->ignore_filepath($directory, $filename) ){ continue; }
-                $files[] = $filepath;
-            }
-        }
-
-        closedir($dh);
-        return $files;
-    }
-
-    /**
-     * Skip some specific directories and filepaths from the filesystem scan.
-     *
-     * @param  string  $directory Directory where the scanner is located at the moment.
-     * @param  string  $filename  Name of the folder or file being scanned at the moment.
-     * @return boolean            Either TRUE or FALSE representing that the scan should ignore this folder or not.
-     */
-    private function ignore_folderpath($directory='', $filename=''){
-        $filepath = realpath($directory.'/'.$filename);
-
-        // Ignoring current and parent folders.
-        if( $filename == '.' || $filename == '..' ){ return TRUE; }
-
-        if( $filename == 'sucuri' || strpos($filepath, '/sucuri/') !== FALSE ){ return TRUE; }
-
-        if( is_dir($filepath) ){
-            if( ($filename == 'cache') && (strpos($directory, 'wp-content') !== FALSE) ){ return TRUE; }
-
-            if( ($filename == 'w3tc') && (strpos($filepath, 'wp-content/w3tc') !== FALSE) ){ return TRUE; }
-        }
-
-        return FALSE;
-    }
-
-    /**
-     * Skip some specific files from the filesystem scan.
-     *
-     * @param  string  $directory Directory where the scanner is located at the moment.
-     * @param  string  $filename  Name of the folder or file being scanned at the moment.
-     * @return boolean            Either TRUE or FALSE representing that the scan should ignore this filename or not.
-     */
-    private function ignore_filepath($directory='', $filename=''){
-        // Ignoring backup files from our clean ups.
-        if( strpos($filename, '_sucuribackup.') !== FALSE ){ return TRUE; }
-
-        // Any file maching one of these rules WILL NOT be ignored.
-        if(
-            ( strpos($filename, '.php')      !== FALSE) ||
-            ( strpos($filename, '.htm')      !== FALSE) ||
-            ( strpos($filename, '.js')       !== FALSE) ||
-            ( strcmp($filename, '.htaccess') == 0     ) ||
-            ( strcmp($filename, 'php.ini')   == 0     )
-        ){ return FALSE; }
-
-        return TRUE;
     }
 }
 
