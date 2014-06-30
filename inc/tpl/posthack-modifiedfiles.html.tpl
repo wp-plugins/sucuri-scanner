@@ -6,7 +6,7 @@
                 <span>Modified files <em>(inside the content directory)</em></span>
 
                 <form action="%%SUCURI.CurrentURL%%#modified-files" method="post" class="thead-topright-action">
-                    <input type="hidden" name="sucuriscan_modified_files" value="%%SUCURI.ModifiedFiles.Nonce%%" />
+                    <input type="hidden" name="sucuriscan_modified_files" value="%%SUCURI.PageNonce%%" />
                     <label>
                         Modified in the last
                         <select name="sucuriscan_last_days" id="sucuriscan_last_days">

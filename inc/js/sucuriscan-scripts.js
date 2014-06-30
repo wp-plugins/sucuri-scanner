@@ -43,6 +43,21 @@ jQuery(document).ready(function($){
         }
     }
 
+    $('#sucuriscan-corefiles-show').on('click', function(e){
+        e.preventDefault();
+
+        var this_button = $(this);
+        var action = this_button.data('action');
+
+        if( action == 'show' ){
+            $('.sucuriscan-corefiles tbody > tr').removeClass('sucuriscan-hidden');
+            this_button.html('Hide files').data('action', 'hide');
+        } else {
+            $('.sucuriscan-corefiles tbody > tr').addClass('sucuriscan-hidden');
+            this_button.html('Show files').data('action', 'show');
+        }
+    });
+
     $('#sucuriscan_last_days').on('change', function(){
         $(this).closest('form').submit();
     });

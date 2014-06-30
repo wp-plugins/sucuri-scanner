@@ -3571,9 +3571,9 @@ function sucuriscan_page(){
     }
 
     $template_variables = array(
+        'WordpressVersion' => sucuriscan_wordpress_outdated(),
         'AuditLogs' => sucuriscan_auditlogs(),
         'CoreFiles' => sucuriscan_core_files(),
-        'ModifiedFiles' => sucuriscan_modified_files(),
     );
 
     echo sucuriscan_get_template('integrity', $template_variables);
@@ -3692,13 +3692,11 @@ function sucuriscan_auditlogs(){
 }
 
 /**
- * Compare the md5sum of the core files in the current site with the hashes hosted
- * remotely in Sucuri servers. These hashes are updated every time a new version
- * of WordPress is released.
+ * Check whether the WordPress version is outdated or not.
  *
- * @return void
+ * @return string Panel with a warning advising that WordPress is outdated.
  */
-function sucuriscan_core_files(){
+function sucuriscan_wordpress_outdated(){
     global $wp_version;
 
     $cp = 0;
@@ -3720,49 +3718,62 @@ function sucuriscan_core_files(){
         'WordPress.Version' => $wp_version,
         'WordPress.UpgradeURL' => admin_url('update-core.php'),
         'WordPress.UpdateVisibility' => 'hidden',
-        'CoreFiles.Visibility' => 'hidden',
-        'CoreFiles.Added' => '',
-        'CoreFiles.Removed' => '',
-        'CoreFiles.Modified' => '',
     );
 
     $wp_version = htmlspecialchars($wp_version);
 
     if( $cp == 0 ){
         $template_variables['WordPress.UpdateVisibility'] = 'visible';
-    } else {
+    }
+
+    return sucuriscan_get_section('integrity-wpoutdate', $template_variables);
+}
+
+/**
+ * Compare the md5sum of the core files in the current site with the hashes hosted
+ * remotely in Sucuri servers. These hashes are updated every time a new version
+ * of WordPress is released.
+ *
+ * @return void
+ */
+function sucuriscan_core_files(){
+    global $wp_version;
+
+    $template_variables = array(
+        'CoreFiles.List' => '',
+        'CoreFiles.ListCount' => 0,
+        'CoreFiles.Visibility' => 'hidden',
+    );
+
+    if( $wp_version ){
         $latest_hashes = sucuriscan_check_wp_integrity($wp_version);
 
         if( $latest_hashes ){
-            $template_variables['CoreFiles.Visibility'] = 'visible';
-            $list = array(
-                'added' => $latest_hashes['added'],
-                'removed' => $latest_hashes['removed'],
-                'modified' => $latest_hashes['bad']
-            );
+            $counter = 0;
 
-            foreach( $list as $list_id=>$file_list ){
-                $i_name = 'CoreFiles.'.ucwords($list_id);
-                $i_name_count = $i_name.'Count';
-                $template_variables[$i_name_count] = sizeof($file_list);
-
-                if( !empty($file_list) ){
-                    $counter = 0;
-
-                    foreach( $file_list as $file_path ){
-                        $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
-                        $template_variables[$i_name] .= sucuriscan_get_snippet('integrity-corefiles', array(
-                            'CoreFiles.CssClass' => $css_class,
-                            'CoreFiles.FilePath' => $file_path
-                        ));
-                        $counter += 1;
-                    }
-                } else {
-                    $template_variables[$i_name] .= sucuriscan_get_snippet('integrity-corefiles', array(
-                        'CoreFiles.CssClass' => '',
-                        'CoreFiles.FilePath' => '<em>Empty list.</em>'
-                    ));
+            foreach( $latest_hashes as $list_type => $file_list ){
+                if(
+                    $list_type == 'stable'
+                    || empty($file_list)
+                ){
+                    continue;
                 }
+
+                foreach( $file_list as $file_path ){
+                    $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
+                    $template_variables['CoreFiles.List'] .= sucuriscan_get_snippet('integrity-corefiles', array(
+                        'CoreFiles.CssClass' => $css_class,
+                        'CoreFiles.StatusType' => $list_type,
+                        'CoreFiles.StatusAbbr' => substr($list_type, 0, 1),
+                        'CoreFiles.FilePath' => $file_path,
+                    ));
+                    $counter += 1;
+                }
+            }
+
+            if( $counter > 0 ){
+                $template_variables['CoreFiles.ListCount'] = $counter;
+                $template_variables['CoreFiles.Visibility'] = 'visible';
             }
         } else {
             sucuriscan_error( 'Error retrieving the wordpress core hashes, try again.' );
@@ -3773,15 +3784,253 @@ function sucuriscan_core_files(){
 }
 
 /**
+ * Retrieve a list with the checksums of the files in a specific version of WordPress.
+ *
+ * @param  integer $version Valid version number of the WordPress project.
+ * @return object           Associative object with the relative filepath and the checksums of the project files.
+ */
+function sucuriscan_get_official_checksums($version=0){
+    $api_url = sprintf('http://api.wordpress.org/core/checksums/1.0/?version=%s&locale=en_US', $version);
+    $request = wp_remote_get($api_url);
+
+    if( !is_wp_error($request) || wp_remote_retrieve_response_code($request) === 200 ){
+        $json_data = json_decode($request['body']);
+
+        if( $json_data->checksums !== FALSE ){
+            return $json_data->checksums;
+        }
+    }
+
+    return FALSE;
+}
+
+/**
+ * Check whether the core WordPress files where modified, removed or if any file
+ * was added to the core folders. This function returns an associative array with
+ * these keys:
+ *
+ * <ul>
+ *   <li>modified: Files with a different checksum according to the official files of the WordPress version filtered,</li>
+ *   <li>stable: Files with the same checksums than the official files,</li>
+ *   <li>removed: Official files which are not present in the local project,</li>
+ *   <li>added: Files present in the local project but not in the official WordPress packages.</li>
+ * </ul>
+ *
+ * @param  integer $version Valid version number of the WordPress project.
+ * @return array            Associative array with these keys: modified, stable, removed, added.
+ */
+function sucuriscan_check_wp_integrity($version=0){
+    $latest_hashes = sucuriscan_get_official_checksums($version);
+
+    if( !$latest_hashes ){ return FALSE; }
+
+    $output = array(
+        'added' => array(),
+        'removed' => array(),
+        'modified' => array(),
+        'stable' => array(),
+    );
+
+    // Get current filesystem tree.
+    $wp_top_hashes = read_dir_r( ABSPATH , false);
+    $wp_admin_hashes = read_dir_r( ABSPATH . 'wp-admin', true);
+    $wp_includes_hashes = read_dir_r( ABSPATH . 'wp-includes', true);
+    $wp_core_hashes = array_merge( $wp_top_hashes, $wp_admin_hashes, $wp_includes_hashes );
+
+    // Compare remote and local md5sums and search removed files.
+    foreach( $latest_hashes as $filepath=>$remote_checksum ){
+        $full_filepath = sprintf('%s/%s', ABSPATH, $filepath);
+
+        if( file_exists($full_filepath) ){
+            $local_checksum = @md5_file($full_filepath);
+
+            if( $local_checksum && $local_checksum == $remote_checksum ){
+                $output['stable'][] = $filepath;
+            } else {
+                $output['modified'][] = $filepath;
+            }
+        } else {
+            $output['removed'][] = $filepath;
+        }
+    }
+
+    // Search added files (files not common in a normal wordpress installation).
+    foreach( $wp_core_hashes  as $filepath=>$extra_info ){
+        $filepath = preg_replace('/^\.\/(.*)/', '$1', $filepath);
+
+        if( !property_exists($latest_hashes, $filepath) ){
+            $output['added'][] = $filepath;
+        }
+    }
+
+    return $output;
+}
+
+/**
+ * Generate and print the HTML code for the Post-Hack page.
+ *
+ * @return void
+ */
+function sucuriscan_posthack_page(){
+    if( !current_user_can('manage_options') ){
+        wp_die(__('You do not have sufficient permissions to access this page: Sucuri Post-Hack') );
+    }
+
+    $process_form = sucuriscan_posthack_process_form();
+
+    // Page pseudo-variables initialization.
+    $template_variables = array(
+        'PageTitle' => 'Post-Hack',
+        'UpdateSecretKeys' => sucuriscan_update_secret_keys($process_form),
+        'ResetPassword' => sucuriscan_posthack_users($process_form),
+        'ModifiedFiles' => sucuriscan_modified_files(),
+    );
+
+    echo sucuriscan_get_template('posthack', $template_variables);
+}
+
+/**
+ * Check whether the "I understand this operation" checkbox was marked or not.
+ *
+ * @return boolean TRUE if a form submission should be processed, FALSE otherwise.
+ */
+function sucuriscan_posthack_process_form(){
+    if( sucuriscan_check_page_nonce() && isset($_POST['sucuriscan_process_form']) ){
+        if( $_POST['sucuriscan_process_form'] == 1 ){
+            return TRUE;
+        } else {
+            sucuriscan_error('You need to confirm that you understand the risk of this operation.');
+        }
+    }
+
+    return FALSE;
+}
+
+/**
+ * Update the WordPress secret keys.
+ *
+ * @param  $process_form Whether a form was submitted or not.
+ * @return string        HTML code with the information of the process.
+ */
+function sucuriscan_update_secret_keys( $process_form=FALSE ){
+    $template_variables = array(
+        'WPConfigUpdate.Visibility' => 'hidden',
+        'WPConfigUpdate.NewConfig' => '',
+    );
+
+    // Update all WordPress secret keys.
+    if( $process_form && isset($_POST['sucuriscan_update_wpconfig']) ){
+        $wpconfig_process = sucuriscan_set_new_config_keys();
+
+        if( $wpconfig_process ){
+            $template_variables['WPConfigUpdate.Visibility'] = 'visible';
+
+            if( $wpconfig_process['updated'] === TRUE ){
+                sucuriscan_info( 'WordPress secret keys updated successfully (check bellow the summary of the operation).' );
+                $template_variables['WPConfigUpdate.NewConfig'] .= "// Old Keys\n";
+                $template_variables['WPConfigUpdate.NewConfig'] .= $wpconfig_process['old_keys_string'];
+                $template_variables['WPConfigUpdate.NewConfig'] .= "//\n";
+                $template_variables['WPConfigUpdate.NewConfig'] .= "// New Keys\n";
+                $template_variables['WPConfigUpdate.NewConfig'] .= $wpconfig_process['new_keys_string'];
+            } else {
+                sucuriscan_error( '<code>wp-config.php</code> file is not writable, replace the old configuration file with the new values shown bellow.' );
+                $template_variables['WPConfigUpdate.NewConfig'] = $wpconfig_process['new_wpconfig'];
+            }
+        } else {
+            sucuriscan_error('<code>wp-config.php</code> file was not found in the default location.' );
+        }
+    }
+
+    return sucuriscan_get_section('posthack-updatesecretkeys', $template_variables);
+}
+
+/**
+ * Display a list of users in a table that will be used to select the accounts
+ * where a password reset action will be executed.
+ *
+ * @param  $process_form Whether a form was submitted or not.
+ * @return string        HTML code for a table where a list of user accounts will be shown.
+ */
+function sucuriscan_posthack_users( $process_form=FALSE ){
+    $template_variables = array(
+        'ResetPassword.UserList' => '',
+    );
+
+    // Process the form submission (if any).
+    sucuriscan_reset_user_password($process_form);
+
+    // Fill the user list for ResetPassword action.
+    $user_list = get_users();
+
+    if( $user_list ){
+        $counter = 0;
+
+        foreach( $user_list as $user ){
+            $user->user_registered_timestamp = strtotime($user->user_registered);
+            $user->user_registered_formatted = date('D, M/Y H:i', $user->user_registered_timestamp);
+            $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
+
+            $user_snippet = sucuriscan_get_snippet('resetpassword', array(
+                'ResetPassword.UserId' => $user->ID,
+                'ResetPassword.Username' => $user->user_login,
+                'ResetPassword.Displayname' => $user->display_name,
+                'ResetPassword.Email' => $user->user_email,
+                'ResetPassword.Registered' => $user->user_registered_formatted,
+                'ResetPassword.Roles' => implode(', ', $user->roles),
+                'ResetPassword.CssClass' => $css_class
+            ));
+
+            $template_variables['ResetPassword.UserList'] .= $user_snippet;
+            $counter += 1;
+        }
+    }
+
+    return sucuriscan_get_section('posthack-resetpassword', $template_variables);
+}
+
+/**
+ * Update the password of the user accounts specified.
+ *
+ * @param  $process_form Whether a form was submitted or not.
+ * @return void
+ */
+function sucuriscan_reset_user_password( $process_form=FALSE ){
+    if( $process_form && isset($_POST['sucuriscan_reset_password']) ){
+        $user_identifiers = isset($_POST['user_ids']) ? $_POST['user_ids'] : array();
+        $pwd_changed = $pwd_not_changed = array();
+
+        if( is_array($user_identifiers) && !empty($user_identifiers) ){
+            arsort($user_identifiers);
+
+            foreach( $user_identifiers as $user_id ){
+                if( sucuriscan_new_password($user_id) ){
+                    $pwd_changed[] = $user_id;
+                } else {
+                    $pwd_not_changed[] = $user_id;
+                }
+            }
+
+            if( !empty($pwd_changed) ){
+                sucuriscan_info( 'Password changed successfully for users: ' . implode(', ',$pwd_changed) );
+            }
+
+            if( !empty($pwd_not_changed) ){
+                sucuriscan_error( 'Password change failed for users: ' . implode(', ',$pwd_not_changed) );
+            }
+        } else {
+            sucuriscan_error( 'You did not select a user from the list.' );
+        }
+    }
+}
+
+/**
  * List all files inside wp-content that have been modified in the last days.
  *
  * @return void
  */
 function sucuriscan_modified_files(){
-    $noncek = 'sucuriscan_modified_files';
     $valid_day_ranges = array( 1, 3, 7, 30, 60 );
     $template_variables = array(
-        'ModifiedFiles.Nonce' => wp_create_nonce($noncek),
         'ModifiedFiles.List' => '',
         'ModifiedFiles.SelectOptions' => '',
         'ModifiedFiles.NoFilesVisibility' => 'visible',
@@ -3792,11 +4041,7 @@ function sucuriscan_modified_files(){
     $back_days = 1;
 
     // Correct the ranges of the search to be between one and sixty days.
-    if( isset($_POST['sucuriscan_last_days']) ){
-        if( !isset($_POST[$noncek]) || !wp_verify_nonce($_POST[$noncek], $noncek) ){
-            wp_die(__('Invalid form submission.') );
-        }
-
+    if( sucuriscan_check_page_nonce() && isset($_POST['sucuriscan_last_days']) ){
         $back_days = intval($_POST['sucuriscan_last_days']);
         if    ( $back_days <= 0  ){ $back_days = 1;  }
         elseif( $back_days >= 60 ){ $back_days = 60; }
@@ -3822,7 +4067,7 @@ function sucuriscan_modified_files(){
             $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
             $mod_date = date('d/M/Y H:i:s', $file_info['time']);
 
-            $template_variables['ModifiedFiles.List'] .= sucuriscan_get_snippet('integrity-modifiedfiles', array(
+            $template_variables['ModifiedFiles.List'] .= sucuriscan_get_snippet('posthack-modifiedfiles', array(
                 'ModifiedFiles.CssClass' => $css_class,
                 'ModifiedFiles.CheckSum' => $file_info['md5'],
                 'ModifiedFiles.FilePath' => $file_path,
@@ -3836,193 +4081,7 @@ function sucuriscan_modified_files(){
         $template_variables['ModifiedFiles.NoFilesVisibility'] = 'hidden';
     }
 
-    return sucuriscan_get_section('integrity-modifiedfiles', $template_variables);
-}
-
-/**
- * Retrieve a list with the checksums of the files in a specific version of WordPress.
- *
- * @param  integer $version Valid version number of the WordPress project.
- * @return object           Associative object with the relative filepath and the checksums of the project files.
- */
-function sucuriscan_get_official_checksums($version=0){
-    $api_url = sprintf('http://api.wordpress.org/core/checksums/1.0/?version=%s&locale=en_US', $version);
-
-    $request = wp_remote_get($api_url);
-    if( !is_wp_error($request) || wp_remote_retrieve_response_code($request) === 200 ){
-        $json_data = json_decode($request['body']);
-        if( $json_data->checksums !== FALSE ){
-            return $json_data->checksums;
-        }
-    }
-
-    return FALSE;
-}
-
-/**
- * Check whether the core WordPress files where modified, removed or if any file
- * was added to the core folders. This function returns an associative array with
- * these keys:
- *
- * <ul>
- *   <li>bad: Files with a different checksum according to the official files of the WordPress version filtered,</li>
- *   <li>good: Files with the same checksums than the official files,</li>
- *   <li>removed: Official files which are not present in the local project,</li>
- *   <li>added: Files present in the local project but not in the official WordPress packages.</li>
- * </ul>
- *
- * @param  integer $version Valid version number of the WordPress project.
- * @return array            Associative array with these keys: bad, good, removed, added.
- */
-function sucuriscan_check_wp_integrity($version=0){
-    $latest_hashes = sucuriscan_get_official_checksums($version);
-
-    if( !$latest_hashes ){ return FALSE; }
-
-    $output = array( 'bad'=>array(), 'good'=>array(), 'removed'=>array(), 'added'=>array() );
-
-    // Get current filesystem tree.
-    $wp_top_hashes = read_dir_r( ABSPATH , false);
-    $wp_admin_hashes = read_dir_r( ABSPATH . 'wp-admin', true);
-    $wp_includes_hashes = read_dir_r( ABSPATH . 'wp-includes', true);
-    $wp_core_hashes = array_merge( $wp_top_hashes, $wp_admin_hashes, $wp_includes_hashes );
-
-    // Compare remote and local md5sums and search removed files.
-    foreach( $latest_hashes as $filepath=>$remote_checksum ){
-        $full_filepath = sprintf('%s/%s', ABSPATH, $filepath);
-        if( file_exists($full_filepath) ){
-            $local_checksum = @md5_file($full_filepath);
-            if( $local_checksum && $local_checksum == $remote_checksum ){
-                $output['good'][] = $filepath;
-            } else {
-                $output['bad'][] = $filepath;
-            }
-        } else {
-            $output['removed'][] = $filepath;
-        }
-    }
-
-    // Search added files (files not common in a normal wordpress installation).
-    foreach( $wp_core_hashes  as $filepath=>$extra_info ){
-        $filepath = preg_replace('/^\.\/(.*)/', '$1', $filepath);
-        if( !property_exists($latest_hashes, $filepath) ){
-            $output['added'][] = $filepath;
-        }
-    }
-
-    return $output;
-}
-
-/**
- * Generate and print the HTML code for the Post-Hack page.
- *
- * @return void
- */
-function sucuriscan_posthack_page(){
-
-    if( !current_user_can('manage_options') ){
-        wp_die(__('You do not have sufficient permissions to access this page: Sucuri Post-Hack') );
-    }
-
-    // Page pseudo-variables initialization.
-    $template_variables = array(
-        'PageTitle' => 'Post-Hack',
-        'WPConfigUpdate.Visibility' => 'hidden',
-        'WPConfigUpdate.NewConfig' => '',
-        'ResetPassword.UserList' => ''
-    );
-
-    // Process form submission
-    if( sucuriscan_check_page_nonce() ){
-
-        $process_form = FALSE;
-
-        // Check whether the "I understand this operation" checkbox was marked or not.
-        if( isset($_POST['sucuriscan_process_form']) ){
-            if( $_POST['sucuriscan_process_form'] == 1 ){
-                $process_form = TRUE;
-            } else {
-                sucuriscan_error('You need to confirm that you understand the risk of this operation.');
-            }
-        }
-
-        // Update all WordPress secret keys.
-        if( $process_form && isset($_POST['sucuriscan_update_wpconfig']) ){
-            $wpconfig_process = sucuriscan_set_new_config_keys();
-
-            if( $wpconfig_process ){
-                $template_variables['WPConfigUpdate.Visibility'] = 'visible';
-
-                if( $wpconfig_process['updated'] === TRUE ){
-                    sucuriscan_info( 'WordPress secret keys updated successfully (check bellow the summary of the operation).' );
-                    $template_variables['WPConfigUpdate.NewConfig'] .= "// Old Keys\n";
-                    $template_variables['WPConfigUpdate.NewConfig'] .= $wpconfig_process['old_keys_string'];
-                    $template_variables['WPConfigUpdate.NewConfig'] .= "//\n";
-                    $template_variables['WPConfigUpdate.NewConfig'] .= "// New Keys\n";
-                    $template_variables['WPConfigUpdate.NewConfig'] .= $wpconfig_process['new_keys_string'];
-                } else {
-                    sucuriscan_error( '<code>wp-config.php</code> file is not writable, replace the old configuration file with the new values shown bellow.' );
-                    $template_variables['WPConfigUpdate.NewConfig'] = $wpconfig_process['new_wpconfig'];
-                }
-            } else {
-                sucuriscan_error('<code>wp-config.php</code> file was not found in the default location.' );
-            }
-        }
-
-        // Update the password of the user accounts specified.
-        if( $process_form && isset($_POST['sucuriscan_reset_password']) ){
-            $user_identifiers = isset($_POST['user_ids']) ? $_POST['user_ids'] : array();
-            $pwd_changed = $pwd_not_changed = array();
-
-            if( is_array($user_identifiers) && !empty($user_identifiers) ){
-                arsort($user_identifiers);
-
-                foreach( $user_identifiers as $user_id ){
-                    if( sucuriscan_new_password($user_id) ){
-                        $pwd_changed[] = $user_id;
-                    } else {
-                        $pwd_not_changed[] = $user_id;
-                    }
-                }
-
-                if( !empty($pwd_changed) ){
-                    sucuriscan_info( 'Password changed successfully for users: ' . implode(', ',$pwd_changed) );
-                }
-
-                if( !empty($pwd_not_changed) ){
-                    sucuriscan_error( 'Password change failed for users: ' . implode(', ',$pwd_not_changed) );
-                }
-            } else {
-                sucuriscan_error( 'You did not select a user from the list.' );
-            }
-        }
-
-    }
-
-    // Fill the user list for ResetPassword action.
-    $counter = 0;
-    $user_list = get_users();
-
-    foreach($user_list as $user){
-        $user->user_registered_timestamp = strtotime($user->user_registered);
-        $user->user_registered_formatted = date('D, M/Y H:i', $user->user_registered_timestamp);
-        $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
-
-        $user_snippet = sucuriscan_get_snippet('resetpassword', array(
-            'ResetPassword.UserId' => $user->ID,
-            'ResetPassword.Username' => $user->user_login,
-            'ResetPassword.Displayname' => $user->display_name,
-            'ResetPassword.Email' => $user->user_email,
-            'ResetPassword.Registered' => $user->user_registered_formatted,
-            'ResetPassword.Roles' => implode(', ', $user->roles),
-            'ResetPassword.CssClass' => $css_class
-        ));
-
-        $template_variables['ResetPassword.UserList'] .= $user_snippet;
-        $counter += 1;
-    }
-
-    echo sucuriscan_get_template('posthack', $template_variables);
+    return sucuriscan_get_section('posthack-modifiedfiles', $template_variables);
 }
 
 /**
