@@ -3742,7 +3742,8 @@ function sucuriscan_core_files(){
     $template_variables = array(
         'CoreFiles.List' => '',
         'CoreFiles.ListCount' => 0,
-        'CoreFiles.Visibility' => 'hidden',
+        'CoreFiles.GoodVisibility' => 'visible',
+        'CoreFiles.BadVisibility' => 'hidden',
     );
 
     if( $wp_version ){
@@ -3773,7 +3774,8 @@ function sucuriscan_core_files(){
 
             if( $counter > 0 ){
                 $template_variables['CoreFiles.ListCount'] = $counter;
-                $template_variables['CoreFiles.Visibility'] = 'visible';
+                $template_variables['CoreFiles.GoodVisibility'] = 'hidden';
+                $template_variables['CoreFiles.BadVisibility'] = 'visible';
             }
         } else {
             sucuriscan_error( 'Error retrieving the wordpress core hashes, try again.' );

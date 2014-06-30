@@ -1,9 +1,22 @@
 
-<table class="wp-list-table widefat sucuriscan-table sucuriscan-corefiles sucuriscan-%%SUCURI.CoreFiles.Visibility%%">
+<div class="postbox sucuriscan-border sucuriscan-border-good sucuriscan-integrity-message sucuriscan-%%SUCURI.CoreFiles.GoodVisibility%%">
+    <h3>WordPress core integrity</h3>
+
+    <div class="inside">
+        <p>
+            The core files of your WordPress installation seem to match the version of the
+            official repository according to the comparison made between the list of hashes
+            gathered from scanning of your project and the official list of hashes provided
+            by WordPress using the version number recognized in your installation.
+        </p>
+    </div>
+</div>
+
+<table class="wp-list-table widefat sucuriscan-table sucuriscan-corefiles sucuriscan-%%SUCURI.CoreFiles.BadVisibility%%">
     <thead>
         <tr>
             <th class="sucuriscan-clearfix thead-with-button">
-                <span>WordPress core files integrity (%%SUCURI.CoreFiles.ListCount%% files)</span>
+                <span>WordPress core integrity (%%SUCURI.CoreFiles.ListCount%% files)</span>
                 <div class="sucuriscan-pull-right sucuriscan-corefiles-abbrs">
                     <span class="sucuriscan-status-type sucuriscan-status-added">Added</span>
                     <span class="sucuriscan-status-type sucuriscan-status-modified">Modified</span>
@@ -15,11 +28,13 @@
 
         <tr>
             <td class="sucuriscan-corefiles-warning">
-                <p>
-                    The integrity of your WordPress installation is not good. There are files that
-                    were added, modified, and/or removed in the core directories <code>/&lt;root&gt;</code>,
-                    <code>/wp-admin</code> and/or <code>/wp-includes</code>.
-                </p>
+                <div>
+                    <p>
+                        We detected changes in the integrity of your WordPress core files. There are files that
+                        were added, modified, and/or removed in the core directories <code>/&lt;root&gt;</code>,
+                        <code>/wp-admin</code> and/or <code>/wp-includes</code>.
+                    </p>
+                </div>
             </td>
         </tr>
     </thead>
