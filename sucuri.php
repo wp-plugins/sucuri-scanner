@@ -115,6 +115,7 @@ class SucuriScanFileInfo{
 
     public $ignore_files = TRUE;
     public $ignore_directories = TRUE;
+    public $run_recursively = TRUE;
 
     /**
      * Class constructor.
@@ -132,21 +133,38 @@ class SucuriScanFileInfo{
      * @param  string $scan_with Set the tool used to scan the filesystem, SplFileInfo by default.
      * @return array             List of files in the main and subdirectories of the folder specified.
      */
-    public function get_directory_tree_md5($directory='', $scan_with='spl'){
+    public function get_directory_tree_md5( $directory='', $scan_with='spl', $as_array=FALSE ){
         $project_signatures = '';
         $abs_path = rtrim( ABSPATH, '/' );
         $files = $this->get_directory_tree($directory, $scan_with);
         sort($files);
 
+        if( $as_array ){
+            $project_signatures = array();
+        }
+
         foreach( $files as $filepath){
-            $filepath = str_replace( $abs_path, $abs_path . '/', $filepath );
-            $project_signatures .= sprintf(
-                "%s%s%s%s\n",
-                md5_file($filepath),
-                filesize($filepath),
-                chr(32),
-                $filepath
-            );
+            $file_checksum = @md5_file($filepath);
+            $filesize = @filesize($filepath);
+
+            if( $as_array ){
+                $basename = str_replace( $abs_path . '/', '', $filepath );
+                $project_signatures[$basename] = array(
+                    'filepath' => $filepath,
+                    'checksum' => $file_checksum,
+                    'filesize' => $filesize,
+                    'filetime' => filectime($filepath),
+                );
+            } else {
+                $filepath = str_replace( $abs_path, $abs_path . '/', $filepath );
+                $project_signatures .= sprintf(
+                    "%s%s%s%s\n",
+                    $file_checksum,
+                    $filesize,
+                    chr(32),
+                    $filepath
+                );
+            }
         }
 
         return $project_signatures;
@@ -169,7 +187,7 @@ class SucuriScanFileInfo{
                 case 'spl':
                     if( $this->is_spl_available() ){
                         $tree = $this->get_directory_tree_with_spl($directory);
-                    }else{
+                    } else {
                         $tree = $this->get_directory_tree($directory, 'opendir');
                     }
                     break;
@@ -228,21 +246,33 @@ class SucuriScanFileInfo{
             return $this->get_directory_tree($directory, 'opendir');
         }
 
-        $flags = FilesystemIterator::KEY_AS_PATHNAME
-            | FilesystemIterator::CURRENT_AS_FILEINFO
-            | FilesystemIterator::SKIP_DOTS
-            | FilesystemIterator::UNIX_PATHS;
-        $objects = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($filepath, $flags),
-            RecursiveIteratorIterator::SELF_FIRST
-        );
+        if( $this->run_recursively ){
+            $flags = FilesystemIterator::KEY_AS_PATHNAME
+                | FilesystemIterator::CURRENT_AS_FILEINFO
+                | FilesystemIterator::SKIP_DOTS
+                | FilesystemIterator::UNIX_PATHS;
+            $objects = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($filepath, $flags),
+                RecursiveIteratorIterator::SELF_FIRST
+            );
+        } else {
+            $objects = new DirectoryIterator($filepath);
+        }
 
-        foreach( $objects as $filepath=>$fileinfo ){
-            $directory = dirname($filepath);
-            $filename = $fileinfo->getFilename();
+        foreach( $objects as $filepath => $fileinfo ){
+            if( $this->run_recursively ){
+                $directory = dirname($filepath);
+                $filename = $fileinfo->getFilename();
+            } else {
+                if( $fileinfo->isDot() || $fileinfo->isDir() ){ continue; }
+
+                $directory = $fileinfo->getPath();
+                $filename = $fileinfo->getFilename();
+                $filepath = $directory . '/' . $filename;
+            }
 
             if( $this->ignore_folderpath($directory, $filename) ){ continue; }
-            if( $this->ignore_filepath($directory, $filename) ){ continue; }
+            if( $this->ignore_filepath($filename) ){ continue; }
 
             $files[] = $filepath;
         }
@@ -272,10 +302,13 @@ class SucuriScanFileInfo{
 
                 if( is_dir($filepath) ){
                     if( $this->ignore_folderpath($directory, $filename) ){ continue; }
-                    $sub_files = $this->get_directory_tree_with_opendir($filepath);
-                    $files = array_merge($files, $sub_files);
-                }else{
-                    if( $this->ignore_filepath($directory, $filename) ){ continue; }
+
+                    if( $this->run_recursively ){
+                        $sub_files = $this->get_directory_tree_with_opendir($filepath);
+                        $files = array_merge($files, $sub_files);
+                    }
+                } else {
+                    if( $this->ignore_filepath($filename) ){ continue; }
                     $files[] = $filepath;
                 }
             }
@@ -302,10 +335,13 @@ class SucuriScanFileInfo{
 
             if( is_dir($filepath) ){
                 if( $this->ignore_folderpath($directory, $filename) ){ continue; }
-                $sub_files = $this->get_directory_tree_with_opendir($filepath);
-                $files = array_merge($files, $sub_files);
-            }else{
-                if( $this->ignore_filepath($directory, $filename) ){ continue; }
+
+                if( $this->run_recursively ){
+                    $sub_files = $this->get_directory_tree_with_opendir($filepath);
+                    $files = array_merge($files, $sub_files);
+                }
+            } else {
+                if( $this->ignore_filepath($filename) ){ continue; }
                 $files[] = $filepath;
             }
         }
@@ -322,11 +358,11 @@ class SucuriScanFileInfo{
      * @return boolean            Either TRUE or FALSE representing that the scan should ignore this folder or not.
      */
     private function ignore_folderpath($directory='', $filename=''){
+        // Ignoring current and parent folders.
+        if( $filename == '.' || $filename == '..' ){ return TRUE; }
+
         if( $this->ignore_directories ){
             $filepath = realpath($directory.'/'.$filename);
-
-            // Ignoring current and parent folders.
-            if( $filename == '.' || $filename == '..' ){ return TRUE; }
 
             if( $filename == 'sucuri' || strpos($filepath, '/sucuri/') !== FALSE ){ return TRUE; }
 
@@ -343,11 +379,10 @@ class SucuriScanFileInfo{
     /**
      * Skip some specific files from the filesystem scan.
      *
-     * @param  string  $directory Directory where the scanner is located at the moment.
-     * @param  string  $filename  Name of the folder or file being scanned at the moment.
-     * @return boolean            Either TRUE or FALSE representing that the scan should ignore this filename or not.
+     * @param  string  $filename Name of the folder or file being scanned at the moment.
+     * @return boolean           Either TRUE or FALSE representing that the scan should ignore this filename or not.
      */
-    private function ignore_filepath($directory='', $filename=''){
+    private function ignore_filepath( $filename='' ){
         if( !$this->ignore_files ){ return FALSE; }
 
         // Ignoring backup files from our clean ups.
@@ -3709,49 +3744,24 @@ function sucuriscan_page(){
  * Retrieve a list of md5sum and last modification time of all the files in the
  * folder specified. This is a recursive function.
  *
- * @param  string  $dir      The base path where the scanning will start.
- * @param  boolean $recursiv Either TRUE or FALSE if the scan should be performed recursively.
- * @return array             List of arrays containing the md5sum and last modification time of the files found.
+ * @param  string  $dir       The base path where the scanning will start.
+ * @param  boolean $recursive Either TRUE or FALSE if the scan should be performed recursively.
+ * @return array              List of arrays containing the md5sum and last modification time of the files found.
  */
-function read_dir_r($dir = "./", $recursiv = false){
-    $skipname  = basename(__FILE__);
-    $skipname .= ",_sucuribackup,wp-config.php";
+function sucuriscan_get_integrity_tree( $dir='./', $recursive=FALSE ){
+    $abs_path = rtrim( ABSPATH, '/' );
 
-    $files_info = array();
+    $sucuri_fileinfo = new SucuriScanFileInfo();
+    $sucuri_fileinfo->ignore_files = FALSE;
+    $sucuri_fileinfo->ignore_directories = FALSE;
+    $sucuri_fileinfo->run_recursively = $recursive;
+    $integrity_tree = $sucuri_fileinfo->get_directory_tree_md5( $dir, 'opendir', TRUE );
 
-    $dir_handler = opendir($dir);
-
-    while(($entry = readdir($dir_handler)) !== false) {
-        if ($entry != "." && $entry != "..") {
-            $dir = preg_replace("/^(.*)(\/)+$/", "$1", $dir);
-            $item = sprintf( '%s/%s', $dir, $entry );
-
-            if (is_file($item)) {
-                $skip_parts = explode(",", $skipname);
-
-                foreach ($skip_parts as $skip) {
-                    if (strpos($item,$skip) !== false) {
-                       continue 2;
-                    }
-                }
-
-                $md5 = @md5_file($item);
-                $time_stamp = @filectime($item);
-                $item_name = str_replace(ABSPATH, "./", $item);
-                $files_info[$item_name] = array(
-                    'md5'   => $md5,
-                    'time' => $time_stamp
-                );
-            }
-
-            elseif (is_dir($item) && $recursiv) {
-                $files_info = array_merge( $files_info , read_dir_r($item) );
-            }
-        }
+    if( $integrity_tree ){
+        return $integrity_tree;
     }
 
-    closedir($dir_handler);
-    return $files_info;
+    return FALSE;
 }
 
 /**
@@ -3896,6 +3906,15 @@ function sucuriscan_core_files(){
                         );
                     }
 
+                    elseif( $file_path == 'wp-config.php' ){
+                        $file_path = sprintf(
+                            '%s <a href="%s" target="_blank">%s</a>',
+                            $file_path,
+                            '%%SUCURI.URL.Infosys%%#wpconfig-rules',
+                            '<em>(Check WP Config Variables)</em>'
+                        );
+                    }
+
                     $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
                     $template_variables['CoreFiles.List'] .= sucuriscan_get_snippet('integrity-corefiles', array(
                         'CoreFiles.CssClass' => $css_class,
@@ -3978,9 +3997,9 @@ function sucuriscan_check_wp_integrity( $version=0 ){
     );
 
     // Get current filesystem tree.
-    $wp_top_hashes = read_dir_r( ABSPATH , false);
-    $wp_admin_hashes = read_dir_r( ABSPATH . 'wp-admin', true);
-    $wp_includes_hashes = read_dir_r( ABSPATH . 'wp-includes', true);
+    $wp_top_hashes = sucuriscan_get_integrity_tree( ABSPATH , false);
+    $wp_admin_hashes = sucuriscan_get_integrity_tree( ABSPATH . 'wp-admin', true);
+    $wp_includes_hashes = sucuriscan_get_integrity_tree( ABSPATH . 'wp-includes', true);
     $wp_core_hashes = array_merge( $wp_top_hashes, $wp_admin_hashes, $wp_includes_hashes );
 
     // Compare remote and local checksums and search removed files.
@@ -4237,18 +4256,18 @@ function sucuriscan_modified_files(){
 
     // Scan the files of the site.
     $template_variables['ModifiedFiles.Days'] = $back_days;
-    $wp_content_hashes = read_dir_r( ABSPATH.'wp-content', true );
+    $wp_content_hashes = sucuriscan_get_integrity_tree( ABSPATH.'wp-content', true );
     $back_days = current_time('timestamp') - ( $back_days * 86400);
     $counter = 0;
 
-    foreach( $wp_content_hashes as $file_path=>$file_info ){
-        if( $file_info['time'] >= $back_days ){
+    foreach( $wp_content_hashes as $file_path => $file_info ){
+        if( $file_info['filetime'] >= $back_days ){
             $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
-            $mod_date = date('d/M/Y H:i:s', $file_info['time']);
+            $mod_date = date('d/M/Y H:i:s', $file_info['filetime']);
 
             $template_variables['ModifiedFiles.List'] .= sucuriscan_get_snippet('posthack-modifiedfiles', array(
                 'ModifiedFiles.CssClass' => $css_class,
-                'ModifiedFiles.CheckSum' => $file_info['md5'],
+                'ModifiedFiles.CheckSum' => $file_info['checksum'],
                 'ModifiedFiles.FilePath' => $file_path,
                 'ModifiedFiles.DateTime' => $mod_date
             ));
