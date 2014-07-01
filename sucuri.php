@@ -4025,6 +4025,8 @@ function sucuriscan_check_wp_integrity( $version=0 ){
     foreach( $wp_core_hashes as $filepath => $extra_info ){
         $filepath = preg_replace('/^\.\/(.*)/', '$1', $filepath);
 
+        if( sucuriscan_ignore_integrity_filepath($filepath) ){ continue; }
+
         if( !isset($latest_hashes[$filepath]) ){
             $output['added'][] = $filepath;
         }
@@ -4043,6 +4045,8 @@ function sucuriscan_ignore_integrity_filepath( $filepath='' ){
     // List of files that will be ignored from the integrity checking.
     $ignore_files = array(
         'favicon.ico',
+        '.htaccess',
+        'wp-config.php',
         'wp-pass.php',
         'wp-rss.php',
         'wp-feed.php',
