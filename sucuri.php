@@ -3977,19 +3977,6 @@ function sucuriscan_check_wp_integrity( $version=0 ){
         'stable' => array(),
     );
 
-    // List of files that will be ignored from the integrity checking.
-    $ignore_files = array(
-        'favicon.ico',
-        'wp-pass.php',
-        'wp-rss.php',
-        'wp-feed.php',
-        'wp-register.php',
-        'wp-atom.php',
-        'wp-commentsrss2.php',
-        'wp-rss2.php',
-        'wp-rdf.php',
-    );
-
     // Get current filesystem tree.
     $wp_top_hashes = read_dir_r( ABSPATH , false);
     $wp_admin_hashes = read_dir_r( ABSPATH . 'wp-admin', true);
@@ -3998,14 +3985,7 @@ function sucuriscan_check_wp_integrity( $version=0 ){
 
     // Compare remote and local checksums and search removed files.
     foreach( $latest_hashes as $filepath => $remote_checksum ){
-        // Ignore irrelevant files and directories from the integrity checking.
-        if(
-            in_array($filepath, $ignore_files)
-            || strpos($filepath, 'wp-content/themes') == 0
-            || strpos($filepath, 'wp-content/plugins') == 0
-        ){
-            continue;
-        }
+        if( sucuriscan_ignore_integrity_filepath($filepath) ){ continue; }
 
         $full_filepath = sprintf('%s/%s', ABSPATH, $filepath);
 
@@ -4032,6 +4012,37 @@ function sucuriscan_check_wp_integrity( $version=0 ){
     }
 
     return $output;
+}
+
+/**
+ * Ignore irrelevant files and directories from the integrity checking.
+ *
+ * @param  string  $filepath File path that will be compared.
+ * @return boolean           TRUE if the file should be ignored, FALSE otherwise.
+ */
+function sucuriscan_ignore_integrity_filepath( $filepath='' ){
+    // List of files that will be ignored from the integrity checking.
+    $ignore_files = array(
+        'favicon.ico',
+        'wp-pass.php',
+        'wp-rss.php',
+        'wp-feed.php',
+        'wp-register.php',
+        'wp-atom.php',
+        'wp-commentsrss2.php',
+        'wp-rss2.php',
+        'wp-rdf.php',
+    );
+
+    if(
+        in_array($filepath, $ignore_files)
+        || strpos($filepath, 'wp-content/themes') == 0
+        || strpos($filepath, 'wp-content/plugins') == 0
+    ){
+        return TRUE;
+    }
+
+    return FALSE;
 }
 
 /**
