@@ -3903,6 +3903,8 @@ function sucuriscan_core_files(){
 /**
  * Retrieve a list with the checksums of the files in a specific version of WordPress.
  *
+ * @see Release Archive http://wordpress.org/download/release-archive/
+ *
  * @param  integer $version Valid version number of the WordPress project.
  * @return object           Associative object with the relative filepath and the checksums of the project files.
  */
@@ -3914,7 +3916,14 @@ function sucuriscan_get_official_checksums( $version=0 ){
         $json_data = json_decode($request['body']);
 
         if( $json_data->checksums !== FALSE ){
-            return $json_data->checksums;
+            $checksums = $json_data->checksums;
+
+            // Convert the object list to an array for better handle of the data.
+            if( $checksums instanceof stdClass ){
+                $checksums = (array) $checksums;
+            }
+
+            return $checksums;
         }
     }
 
@@ -3948,6 +3957,19 @@ function sucuriscan_check_wp_integrity( $version=0 ){
         'stable' => array(),
     );
 
+    // List of files that will be ignored from the integrity checking.
+    $ignore_files = array(
+        'favicon.ico',
+        'wp-pass.php',
+        'wp-rss.php',
+        'wp-feed.php',
+        'wp-register.php',
+        'wp-atom.php',
+        'wp-commentsrss2.php',
+        'wp-rss2.php',
+        'wp-rdf.php',
+    );
+
     // Get current filesystem tree.
     $wp_top_hashes = read_dir_r( ABSPATH , false);
     $wp_admin_hashes = read_dir_r( ABSPATH . 'wp-admin', true);
@@ -3956,6 +3978,15 @@ function sucuriscan_check_wp_integrity( $version=0 ){
 
     // Compare remote and local checksums and search removed files.
     foreach( $latest_hashes as $filepath => $remote_checksum ){
+        // Ignore irrelevant files and directories from the integrity checking.
+        if(
+            in_array($filepath, $ignore_files)
+            || strpos($filepath, 'wp-content/themes') == 0
+            || strpos($filepath, 'wp-content/plugins') == 0
+        ){
+            continue;
+        }
+
         $full_filepath = sprintf('%s/%s', ABSPATH, $filepath);
 
         if( file_exists($full_filepath) ){
@@ -3975,7 +4006,7 @@ function sucuriscan_check_wp_integrity( $version=0 ){
     foreach( $wp_core_hashes as $filepath => $extra_info ){
         $filepath = preg_replace('/^\.\/(.*)/', '$1', $filepath);
 
-        if( !property_exists($latest_hashes, $filepath) ){
+        if( !isset($latest_hashes[$filepath]) ){
             $output['added'][] = $filepath;
         }
     }
