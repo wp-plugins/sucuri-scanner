@@ -64,6 +64,11 @@ define('SUCURISCAN_PLUGIN_PATH', WP_PLUGIN_DIR.'/'.SUCURISCAN_PLUGIN_FOLDER);
 define('SUCURISCAN_PLUGIN_FILEPATH', SUCURISCAN_PLUGIN_PATH.'/'.SUCURISCAN_PLUGIN_FILE);
 
 /**
+ * Checksum of this file to check the integrity of the plugin.
+ */
+define('SUCURISCAN_PLUGIN_CHECKSUM', @md5_file(SUCURISCAN_PLUGIN_FILEPATH));
+
+/**
  * Remote URL where the public Sucuri API service is running.
  */
 define('SUCURISCAN_API', 'https://wordpress.sucuri.net/api/');
@@ -520,8 +525,14 @@ if( !function_exists('sucuriscan_admin_script_style_registration') ){
      * @return void
      */
     function sucuriscan_admin_script_style_registration(){
-        wp_register_style( 'sucuriscan', SUCURI_URL . '/inc/css/sucuriscan-default-css.css' );
-        wp_register_script( 'sucuriscan', SUCURI_URL . '/inc/js/sucuriscan-scripts.js' );
+        $asset_version = '';
+
+        if( strlen(SUCURISCAN_PLUGIN_CHECKSUM) >= 7 ){
+            $asset_version = substr(SUCURISCAN_PLUGIN_CHECKSUM, 0, 7);
+        }
+
+        wp_register_style( 'sucuriscan', SUCURI_URL . '/inc/css/sucuriscan-default-css.css', array(), $asset_version );
+        wp_register_script( 'sucuriscan', SUCURI_URL . '/inc/js/sucuriscan-scripts.js', array(), $asset_version );
 
         wp_enqueue_style( 'sucuriscan' );
         wp_enqueue_script( 'sucuriscan' );
@@ -5021,7 +5032,7 @@ function sucuriscan_server_info(){
 
         $template_variables = array(
             'PluginVersion' => SUCURISCAN_VERSION,
-            'PluginMD5' => md5_file(SUCURISCAN_PLUGIN_FILEPATH),
+            'PluginMD5' => SUCURISCAN_PLUGIN_CHECKSUM,
             'PluginRuntimeDatetime' => $plugin_runtime_datetime,
             'OperatingSystem' => sprintf('%s (%d Bit)', PHP_OS, PHP_INT_SIZE*8),
             'Server' => isset($_SERVER['SERVER_SOFTWARE']) ? $_SERVER['SERVER_SOFTWARE'] : 'Unknown',
