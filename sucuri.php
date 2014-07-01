@@ -3876,6 +3876,15 @@ function sucuriscan_core_files(){
                 }
 
                 foreach( $file_list as $file_path ){
+                    if( $file_path == '.htaccess' ){
+                        $file_path = sprintf(
+                            '%s <a href="%s" target="_blank">%s</a>',
+                            $file_path,
+                            '%%SUCURI.URL.Infosys%%#htaccess-integrity',
+                            '<em>(Check HTAccess Integrity)</em>'
+                        );
+                    }
+
                     $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
                     $template_variables['CoreFiles.List'] .= sucuriscan_get_snippet('integrity-corefiles', array(
                         'CoreFiles.CssClass' => $css_class,
