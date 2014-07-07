@@ -18,21 +18,6 @@
 
         <div class="sucuriscan-leftside sucuriscan-%%SUCURI.PageStyleClass%%">
 
-            <div class="sucuriscan-getapi-div sucuriscan-clearfix sucuriscan-%%SUCURI.GetApiFormVisibility%%">
-                <p>
-                    In order to enable audit logs, integrity checking and email alerts, you need to
-                    generate an API key that will communicate with the Sucuri Servers.
-                </p>
-
-                <form action="%%SUCURI.URL.Settings%%" method="post" class="sucuriscan-getapi-form">
-                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
-                    <button type="submit" name="sucuriscan_wordpress_apikey" class="button-primary">
-                        <span class="sucuriscan-button-title">Generate API key</span>
-                        <span class="sucuriscan-button-subtitle">for <b>%%SUCURI.CleanDomain%%</b> / <b>%%SUCURI.AdminEmail%%</b></span>
-                    </button>
-                </form>
-            </div>
-
             %%SUCURI.PageContent%%
 
         </div>

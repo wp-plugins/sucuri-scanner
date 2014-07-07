@@ -113,8 +113,29 @@ define('SUCURISCAN_MINIMUM_RUNTIME', 10800);
  */
 class SucuriScanFileInfo{
 
+    /**
+     * Whether the list of files that can be ignored from the filesystem scan will
+     * be used to return the directory tree, this should be disabled when scanning a
+     * directory without the need to filter the items in the list.
+     *
+     * @var boolean
+     */
     public $ignore_files = TRUE;
+
+    /**
+     * Whether the list of folders that can be ignored from the filesystem scan will
+     * be used to return the directory tree, this should be disabled when scanning a
+     * path without the need to filter the items in the list.
+     *
+     * @var boolean
+     */
     public $ignore_directories = TRUE;
+
+    /**
+     * Whether the filesystem scanner should run recursively or not.
+     *
+     * @var boolean
+     */
     public $run_recursively = TRUE;
 
     /**
@@ -129,9 +150,10 @@ class SucuriScanFileInfo{
      * and md5sum of that file. Some folders and files will be ignored depending
      * on some rules defined by the developer.
      *
-     * @param  string $directory Parent directory where the filesystem scan will start.
-     * @param  string $scan_with Set the tool used to scan the filesystem, SplFileInfo by default.
-     * @return array             List of files in the main and subdirectories of the folder specified.
+     * @param  string  $directory Parent directory where the filesystem scan will start.
+     * @param  string  $scan_with Set the tool used to scan the filesystem, SplFileInfo by default.
+     * @param  boolean $as_array  Whether the result of the operation will be returned as an array or string.
+     * @return array              List of files in the main and subdirectories of the folder specified.
      */
     public function get_directory_tree_md5( $directory='', $scan_with='spl', $as_array=FALSE ){
         $project_signatures = '';
@@ -965,7 +987,6 @@ function sucuriscan_shared_params( $params=array() ){
     $params['PageTitle'] = isset($params['PageTitle']) ? '('.$params['PageTitle'].')' : '';
     $params['PageNonce'] = wp_create_nonce('sucuriscan_page_nonce');
     $params['PageStyleClass'] = isset($params['PageStyleClass']) ? $params['PageStyleClass'] : 'base';
-    $params['GetApiFormVisibility'] = sucuriscan_wordpress_apikey() ? 'hidden' : 'visible';
     $params['CleanDomain'] = sucuriscan_get_domain();
     $params['AdminEmail'] = sucuriscan_get_site_email();
 
@@ -2038,7 +2059,33 @@ function sucuriscan_register_site(){
 
     if( sucuriscan_handle_response($response) ){
         sucuriscan_set_api_key( $response['body']->output->api_key );
+        sucuriscan_create_scheduled_task();
+        sucuriscan_notify_event( 'plugin_change', 'Site registered and API key generated' );
         sucuriscan_info( 'The API key for your site was successfully generated and saved.');
+
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+/**
+ * Send a request to recover a previously registered API key.
+ *
+ * @return boolean TRUE if the API key was sent to the administrator email, FALSE otherwise.
+ */
+function sucuriscan_recover_api_key(){
+    $clean_domain = sucuriscan_get_domain();
+
+    $response = sucuriscan_api_call_wordpress( 'GET', array(
+        'e' => sucuriscan_get_site_email(),
+        's' => $clean_domain,
+        'a' => 'recover_key',
+    ), FALSE );
+
+    if( sucuriscan_handle_response($response) ){
+        sucuriscan_notify_event( 'plugin_change', 'API key recovered for domain: ' . $clean_domain );
+        sucuriscan_info( $response['body']->output->message );
 
         return TRUE;
     }
@@ -2185,6 +2232,22 @@ function sucuriscan_report_wpversion(){
 }
 
 /**
+ * Schedule the task to run the first filesystem scan.
+ *
+ * @return void
+ */
+function sucuriscan_create_scheduled_task(){
+    $task_name = 'sucuriscan_scheduled_scan';
+
+    if( !wp_next_scheduled($task_name) ){
+        wp_schedule_event( time() + 10, 'twicedaily', $task_name );
+    }
+
+    wp_schedule_single_event( time() + 300, $task_name );
+    sucuriscan_info( 'The first filesystem scan was scheduled.' );
+}
+
+/**
  * Gather all the checksums (aka. file hashes) of this site, send them, and
  * analyze them using the Sucuri Monitoring service, this will generate the
  * audit logs for this site and be part of the integrity checks.
@@ -2287,6 +2350,10 @@ function sucuriscan_notify_event( $event='', $content='' ){
     $email = sucuriscan_get_option('admin_email');
 
     if( $notify == 'enabled' ){
+        if( $event == 'post_publication' ){
+            $event = 'post_update';
+        }
+
         $title = sprintf( 'Sucuri notification (%s)', str_replace('_', chr(32), $event) );
         $mail_sent = sucuriscan_send_mail( $email, $title, $content );
 
@@ -5195,10 +5262,14 @@ function sucuriscan_settings_page(){
         $counter += 1;
     }
 
+    $display_manual_key_form = (bool) isset($_POST['sucuriscan_recover_api_key']);
+
     $template_variables = array(
         'PageTitle' => 'Settings',
         'APIKey' => $api_key,
-        'APIKey.RemoveVisibility' => 'hidden',
+        'APIKey.RecoverVisibility' => ( $api_key || $display_manual_key_form ? 'hidden' : 'visible' ),
+        'APIKey.ManualKeyFormVisibility' => ( $display_manual_key_form ? 'visible' : 'hidden' ),
+        'APIKey.RemoveVisibility' => ( $api_key ? 'visible' : 'hidden' ),
         'ScanningFrequency' => ( $scan_freq ? $scan_freq : 'Undefined' ),
         'ScanningFrequencyOptions' => $scan_freq_options,
         'ScanningInterface' => ( $scan_interface ? $scan_interface : 'Undefined' ),
@@ -5226,18 +5297,12 @@ function sucuriscan_settings_form_submissions(){
 
         // Register the site, get its API key, and store it locally for future usage.
         if( isset($_POST['sucuriscan_wordpress_apikey']) ){
-            $key_generated = sucuriscan_register_site();
+            sucuriscan_register_site();
+        }
 
-            // Schedule a job to execute the filesystem scan.
-            if( $key_generated ){
-                if( !wp_next_scheduled('sucuriscan_scheduled_scan') ){
-                    wp_schedule_event( time() + 10, 'twicedaily', 'sucuriscan_scheduled_scan' );
-                }
-
-                wp_schedule_single_event( time() + 300, 'sucuriscan_scheduled_scan' );
-                sucuriscan_notify_event( 'plugin_change', 'Site registered and API key generated' );
-                sucuriscan_info( 'The first filesystem scan was scheduled.' );
-            }
+        // Recover API key through the email registered previously.
+        if( isset($_POST['sucuriscan_recover_api_key']) ){
+            sucuriscan_recover_api_key();
         }
 
         // Remove API key from the local storage.

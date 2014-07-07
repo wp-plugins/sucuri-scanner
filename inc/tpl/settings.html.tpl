@@ -28,9 +28,20 @@
                 <span class="sucuriscan-monospace">%%SUCURI.APIKey%%</span>
             </td>
             <td class="td-with-button">
-                <form method="post">
+                <form method="post" class="sucuriscan-%%SUCURI.APIKey.RecoverVisibility%%">
                     <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
-                    <button type="submit" name="sucuriscan_remove_api_key" class="button-primary sucuriscan-%%SUCURI.APIKey.RemoveVisibility%%">Remove</button>
+                    <button type="submit" name="sucuriscan_recover_api_key" class="button-primary">Recover</button>
+                </form>
+
+                <form method="post" class="sucuriscan-%%SUCURI.APIKey.ManualKeyFormVisibility%%">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <input type="text" name="sucuriscan_manual_api_key" class="input-text" placeholder="API key sent to your email" />
+                    <button type="submit" class="button-primary">Save</button>
+                </form>
+
+                <form method="post" class="sucuriscan-%%SUCURI.APIKey.RemoveVisibility%%">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <button type="submit" name="sucuriscan_remove_api_key" class="button-primary button-danger">Remove</button>
                 </form>
             </td>
         </tr>
