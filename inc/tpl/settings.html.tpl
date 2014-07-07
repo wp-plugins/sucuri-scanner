@@ -2,7 +2,13 @@
 <table class="wp-list-table widefat sucuriscan-table sucuriscan-settings">
     <thead>
         <tr>
-            <th colspan="3">Plugin Settings</th>
+            <th colspan="3" class="thead-with-button">
+                <span>Plugin Settings</span>
+                <form action="%%SUCURI.URL.Settings%%" method="post" class="thead-topright-action">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <button type="submit" name="sucuriscan_reset_options" class="button-primary">Reset plugin options</button>
+                </form>
+            </th>
         </tr>
     </thead>
 

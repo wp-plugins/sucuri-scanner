@@ -1377,7 +1377,7 @@ function sucuriscan_get_options_from_db( $filter_by='', $option_name='' ){
     $output = FALSE;
     switch($filter_by){
         case 'all_sucuriscan_options':
-            $output = $wpdb->get_results("SELECT * FROM {$wpdb->base_prefix}options WHERE option_name LIKE 'sucuriscan%' ORDER BY option_id ASC");
+            $output = $wpdb->get_results("SELECT * FROM {$wpdb->options} WHERE option_name LIKE 'sucuriscan%' ORDER BY option_id ASC");
             break;
         case 'site_options':
             $output = $wpdb->get_results("SELECT * FROM {$wpdb->options} WHERE option_name NOT LIKE '%_transient_%' ORDER BY option_id ASC");
@@ -1895,7 +1895,14 @@ function sucuriscan_api_call( $url='', $method='GET', $params=array() ){
  * @param  string  $api_key An unique string of characters to identify this installation.
  * @return boolean          Either TRUE or FALSE if the key was saved successfully or not respectively.
  */
-function sucuriscan_set_api_key( $api_key='' ){
+function sucuriscan_set_api_key( $api_key='', $validate=FALSE ){
+    if( $validate ){
+        if( !preg_match('/^([a-z0-9]{32})$/', $api_key) ){
+            sucuriscan_error( 'Invalid API key format' );
+            return FALSE;
+        }
+    }
+
     return (bool) update_option( 'sucuriscan_api_key', $api_key );
 }
 
@@ -5305,6 +5312,12 @@ function sucuriscan_settings_form_submissions(){
             sucuriscan_recover_api_key();
         }
 
+        // Save API key after it was recovered by the administrator.
+        if( isset($_POST['sucuriscan_manual_api_key']) ){
+            sucuriscan_set_api_key( $_POST['sucuriscan_manual_api_key'], TRUE );
+            sucuriscan_create_scheduled_task();
+        }
+
         // Remove API key from the local storage.
         if( isset($_POST['sucuriscan_remove_api_key']) ){
             sucuriscan_set_api_key('');
@@ -5373,6 +5386,26 @@ function sucuriscan_settings_form_submissions(){
             }
 
             sucuriscan_info( 'Notification settings updated.' );
+        }
+
+        // Reset all the plugin's options.
+        if( isset($_POST['sucuriscan_reset_options']) ){
+            // Notify the event before the API key is removed.
+            $event_msg = 'All plugins options were resetted';
+            sucuriscan_report_event( 1, 'core', $event_msg );
+            sucuriscan_notify_event( 'plugin_change', $event_msg );
+
+            // Remove all plugin's options from the database.
+            $options = sucuriscan_get_options_from_db('all_sucuriscan_options');
+
+            foreach( $options as $option ){
+                delete_option( $option->option_name );
+            }
+
+            // Remove the scheduled tasks.
+            wp_clear_scheduled_hook('sucuriscan_scheduled_scan');
+
+            sucuriscan_info( 'All plugin options were resetted successfully' );
         }
 
     }
