@@ -1576,7 +1576,6 @@ function sucuriscan_scanner_page(){
  */
 function sucuriscan_sitecheck_info(){
     $clean_domain = sucuriscan_get_domain();
-$clean_domain = 'johnhackedsite.com';
     $remote_url = 'http://sitecheck.sucuri.net/scanner/?serialized&clear&fromwp&scan='.$clean_domain;
     $scan_results = wp_remote_get($remote_url, array('timeout' => 180));
     ob_start();
