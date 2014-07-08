@@ -786,7 +786,7 @@ function sucuriscan_prettify_mail( $subject='', $message='', $data_set=array() )
         'Website' => get_option('siteurl'),
         'RemoteAddress' => $remote_addr,
         'Message' => $message,
-        'User' => $display_name,
+        'User' => 'User: ' . $display_name,
         'Time' => current_time('mysql'),
     );
 
@@ -1585,8 +1585,10 @@ function sucuriscan_scanner_page(){
         $res = @unserialize($scan_results['body']);
 
         // Check for general warnings, and return the information for Infected/Clean site.
-        $malware_warns_exists   = isset($res['MALWARE']['WARN'])   ? TRUE : FALSE;
-        $blacklist_warns_exists = isset($res['BLACKLIST']['WARN']) ? TRUE : FALSE;
+        $malware_warns_exist   = isset($res['MALWARE']['WARN'])   ? TRUE : FALSE;
+        $blacklist_warns_exist = isset($res['BLACKLIST']['WARN']) ? TRUE : FALSE;
+        $outdated_warns_exist  = isset($res['OUTDATEDSCAN'])      ? TRUE : FALSE;
+        $recommendations_exist = isset($res['RECOMMENDATIONS'])   ? TRUE : FALSE;
 
         // Check whether this WordPress installation needs an update.
         global $wp_version;
@@ -1597,32 +1599,65 @@ function sucuriscan_scanner_page(){
             $wordpress_updated = TRUE;
         }
 
-        // Generate the CSS classes for the boxes.
-        $sucuriscan_css_malware   = $malware_warns_exists   ? 'sucuriscan-border-bad'  : 'sucuriscan-border-good';
-        $sucuriscan_css_blacklist = $blacklist_warns_exists ? 'sucuriscan-border-bad'  : 'sucuriscan-border-good';
-        $sucuriscan_css_wpupdate  = $wordpress_updated      ? 'sucuriscan-border-good' : 'sucuriscan-border-bad' ;
+        if( TRUE ){
+            // Initialize the CSS classes with default values.
+            $sucuriscan_css_blacklist = 'sucuriscan-border-good';
+            $sucuriscan_css_malware = 'sucuriscan-border-good';
+            $sitecheck_results_tab = '';
+            $blacklist_status_tab = '';
+            $website_details_tab = '';
+
+            // Generate the CSS classes for the blacklist status.
+            if( $blacklist_warns_exist ){
+                $sucuriscan_css_blacklist = 'sucuriscan-border-bad';
+                $blacklist_status_tab = 'sucuriscan-red-tab';
+            }
+
+            // Generate the CSS classes for the SiteCheck scanning results.
+            if( $malware_warns_exist ){
+                $sucuriscan_css_malware = 'sucuriscan-border-bad';
+                $sitecheck_results_tab = 'sucuriscan-red-tab';
+            }
+
+            // Generate the CSS classes for the outdated/recommendations panel.
+            if( $outdated_warns_exist || $recommendations_exist ){
+                $website_details_tab = 'sucuriscan-red-tab';
+            }
+
+            $sucuriscan_css_wpupdate = $wordpress_updated ? 'sucuriscan-border-good' : 'sucuriscan-border-bad';
+        }
         ?>
 
         <div class="sucuriscan-tabs">
+
+
             <ul>
-                <li>
-                    <a href="#" data-tabname="sitecheck-results">Scanner Results</a>
+                <li class="<?php _e($sitecheck_results_tab) ?>">
+                    <a href="#" data-tabname="sitecheck-results">Remote Scanner Results</a>
                 </li>
-                <li>
+                <li class="<?php _e($website_details_tab) ?>">
                     <a href="#" data-tabname="website-details">Website Details</a>
                 </li>
                 <li>
+                    <a href="#" data-tabname="website-links">IFrames / Links / Scripts</a>
+                </li>
+                <li class="<?php _e($blacklist_status_tab) ?>">
                     <a href="#" data-tabname="blacklist-status">Blacklist Status</a>
+                </li>
+                <li>
+                    <a href="#" data-tabname="modified-files">Modified Files</a>
                 </li>
             </ul>
 
+
             <div class="sucuriscan-tab-containers">
+
 
                 <div id="sucuriscan-sitecheck-results">
                     <div id="poststuff">
                         <div class="postbox sucuriscan-border <?php _e($sucuriscan_css_malware) ?>">
                             <h3>
-                                <?php if( $malware_warns_exists ): ?>
+                                <?php if( $malware_warns_exist ): ?>
                                     Site compromised (malware was identified)
                                 <?php else: ?>
                                     Site clean (no malware was identified)
@@ -1631,24 +1666,37 @@ function sucuriscan_scanner_page(){
 
                             <div class="inside">
 
-                                <?php if( !$malware_warns_exists ): ?>
-                                    <span><strong>Malware:</strong> No.</span><br>
-                                    <span><strong>Malicious javascript:</strong> No.</span><br>
-                                    <span><strong>Malicious iframes:</strong> No.</span><br>
-                                    <span><strong>Suspicious redirections (htaccess):</strong> No.</span><br>
-                                    <span><strong>Blackhat SEO Spam:</strong> No.</span><br>
-                                    <span><strong>Anomaly detection:</strong> Clean.</span><br>
+                                <?php if( !$malware_warns_exist ): ?>
+                                    <p>
+                                        <span><strong>Malware:</strong> No.</span><br>
+                                        <span><strong>Malicious javascript:</strong> No.</span><br>
+                                        <span><strong>Malicious iframes:</strong> No.</span><br>
+                                        <span><strong>Suspicious redirections (htaccess):</strong> No.</span><br>
+                                        <span><strong>Blackhat SEO Spam:</strong> No.</span><br>
+                                        <span><strong>Anomaly detection:</strong> Clean.</span>
+                                    </p>
                                 <?php else: ?>
-                                    <?php
-                                    foreach( $res['MALWARE']['WARN'] as $malres ){
-                                        if( !is_array($malres) ){
-                                            echo htmlspecialchars($malres);
-                                        }else{
-                                            $mwdetails = explode("\n", htmlspecialchars($malres[1]));
-                                            echo htmlspecialchars($malres[0])."\n<br />". substr($mwdetails[0], 1)."<br />\n";
+                                    <ul>
+                                        <?php
+                                        foreach( $res['MALWARE']['WARN'] as $malres ){
+                                            if( !is_array($malres) ){
+                                                echo '<li>' . htmlspecialchars($malres) . '</li>';
+                                            } else {
+                                                $mwdetails = explode("\n", htmlspecialchars($malres[1]));
+                                                $mw_name_link = isset($mwdetails[0]) ? substr($mwdetails[0], 1) : '';
+
+                                                if( preg_match('/(.*)\. Details: (.*)/', $mw_name_link, $mw_match) ){
+                                                    $mw_name_link = sprintf(
+                                                        '%s. Details: <a href="%s" target="_blank">%s</a>',
+                                                        $mw_match[1], $mw_match[2], $mw_match[2]
+                                                    );
+                                                }
+
+                                                echo '<li>'. htmlspecialchars($malres[0]) . "\n<br>" . $mw_name_link . "</li>\n";
+                                            }
                                         }
-                                    }
-                                    ?>
+                                        ?>
+                                    </ul>
                                 <?php endif; ?>
 
                                 <p>
@@ -1656,12 +1704,16 @@ function sucuriscan_scanner_page(){
                                         More details here: <a href="http://sitecheck.sucuri.net/results/<?php _e($clean_domain); ?>"
                                         target="_blank">http://sitecheck.sucuri.net/results/<?php _e($clean_domain); ?></a>
                                     </i>
-                                    <hr />
+                                </p>
+
+                                <hr />
+
+                                <p>
                                     <i>
-                                        If our free scanner did not detect any issue, you may have a more complicated and hidden
-                                        problem. You can try our <a href="admin.php?page=sucuriscan_integrity">WordPress integrity
-                                        checks</a> or sign up with Sucuri <a target="_blank" href="http://sucuri.net/signup">here</a>
-                                        for a complete and in depth scan+cleanup (not included in the free checks).
+                                        If our free scanner did not detect any issue, you may have a more complicated
+                                        and hidden problem. You can <a href="http://sucuri.net/signup" target="_blank">
+                                        sign up</a> with Sucuri for a complete and in depth scan+cleanup (not included
+                                        in the free checks).
                                     </i>
                                 </p>
 
@@ -1670,8 +1722,9 @@ function sucuriscan_scanner_page(){
                     </div>
                 </div>
 
+
                 <div id="sucuriscan-website-details">
-                    <table class="wp-list-table widefat sucuriscan-table">
+                    <table class="wp-list-table widefat sucuriscan-table sucuriscan-scanner-details">
                         <thead>
                             <tr>
                                 <th colspan="2" class="thead-with-button">
@@ -1695,8 +1748,9 @@ function sucuriscan_scanner_page(){
                                 'CMS' => 'CMS Found',
                             );
                             $possible_url_keys = array(
-                                'JSLOCAL' => 'List of scripts included',
+                                'IFRAME' => 'List of iframes found',
                                 'JSEXTERNAL' => 'List of external scripts included',
+                                'JSLOCAL' => 'List of scripts included',
                                 'URL' => 'List of links found',
                             );
                             ?>
@@ -1746,6 +1800,54 @@ function sucuriscan_scanner_page(){
                                 </tr>
                             <?php endforeach; ?>
 
+                            <!-- Possible recommendations or outdated software on the site. -->
+                            <?php if( $outdated_warns_exist || $recommendations_exist ): ?>
+                                <tr>
+                                    <th colspan="2">Recommendations for the site</th>
+                                </tr>
+                            <?php endif; ?>
+
+                            <!-- Possible outdated software on the site. -->
+                            <?php if( $outdated_warns_exist ): ?>
+                                <?php foreach( $res['OUTDATEDSCAN'] as $outdated ): ?>
+                                    <?php if( count($outdated) >= 3 ): ?>
+                                        <tr>
+                                            <td colspan="2">
+                                                <strong><?php _e($outdated[0]) ?></strong>
+                                                <em>(<?php _e($outdated[2]) ?>)</em>
+                                                <span><?php _e($outdated[1]) ?></span>
+                                            </td>
+                                        </tr>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+
+                            <!-- Possible recommendations for the site. -->
+                            <?php if( $recommendations_exist ): ?>
+                                <?php foreach( $res['RECOMMENDATIONS'] as $recommendation ): ?>
+                                    <?php if( count($recommendation) >= 3 ): ?>
+                                        <tr>
+                                            <td colspan="2">
+                                                <?php printf(
+                                                    '<strong>%s</strong><br><span>%s</span><br><a href="%s" target="_blank">%s</a>',
+                                                    $recommendation[0],
+                                                    $recommendation[1],
+                                                    $recommendation[2],
+                                                    $recommendation[2]
+                                                ); ?>
+                                            </td>
+                                        </tr>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+
+
+                <div id="sucuriscan-website-links">
+                    <table class="wp-list-table widefat sucuriscan-table sucuriscan-scanner-links">
+                        <tbody>
                             <?php foreach( $possible_url_keys as $result_url_key=>$result_url_title ): ?>
 
                                 <?php if( isset($res['LINKS'][$result_url_key]) ): ?>
@@ -1762,7 +1864,7 @@ function sucuriscan_scanner_page(){
                                     <?php foreach( $res['LINKS'][$result_url_key] as $url_path ): ?>
                                         <tr>
                                             <td colspan="2">
-                                                <span class="sucuriscan-monospace"><?php _e($url_path) ?></span>
+                                                <span class="sucuriscan-monospace sucuriscan-wraptext"><?php _e($url_path) ?></span>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -1773,11 +1875,12 @@ function sucuriscan_scanner_page(){
                     </table>
                 </div>
 
+
                 <div id="sucuriscan-blacklist-status">
                     <div id="poststuff">
                         <div class="postbox sucuriscan-border <?php _e($sucuriscan_css_blacklist) ?>">
                             <h3>
-                                <?php if( $blacklist_warns_exists ): ?>
+                                <?php if( $blacklist_warns_exist ): ?>
                                     Site blacklisted
                                 <?php else: ?>
                                     Site blacklist-free
@@ -1785,28 +1888,40 @@ function sucuriscan_scanner_page(){
                             </h3>
 
                             <div class="inside">
-                                <?php
-                                foreach(array(
-                                    'INFO'=>'CLEAN',
-                                    'WARN'=>'WARNING'
-                                ) as $type=>$group_title){
-                                    if( isset($res['BLACKLIST'][$type]) ){
-                                        foreach($res['BLACKLIST'][$type] as $blres){
-                                            $report_site = htmlspecialchars($blres[0]);
-                                            $report_url = htmlspecialchars($blres[1]);
-                                            echo "<b>{$group_title}: </b>{$report_site} <a href='{$report_url}' target='_blank'>{$report_url}</a><br />";
+                                <ul>
+                                    <?php
+                                    foreach(array(
+                                        'INFO' => 'CLEAN',
+                                        'WARN' => 'WARNING'
+                                    ) as $type => $group_title){
+                                        if( isset($res['BLACKLIST'][$type]) ){
+                                            foreach( $res['BLACKLIST'][$type] as $blres ){
+                                                $report_site = htmlspecialchars($blres[0]);
+                                                $report_url = htmlspecialchars($blres[1]);
+                                                printf(
+                                                    '<li><b>%s:</b> %s.<br>Details at <a href="%s" target="_blank">%s</a></li>',
+                                                    $group_title, $report_site, $report_url, $report_url
+                                                );
+                                            }
                                         }
                                     }
-                                }
-                                ?>
+                                    ?>
+                                </ul>
                             </div>
                         </div>
                     </div>
                 </div>
+
+
+                <div id="sucuriscan-modified-files">
+                    <?php echo sucuriscan_modified_files(); ?>
+                </div>
+
+
             </div>
         </div>
 
-        <?php if( $malware_warns_exists || $blacklist_warns_exists ): ?>
+        <?php if( $malware_warns_exist || $blacklist_warns_exist ): ?>
             <a href="http://sucuri.net/signup/" target="_blank" class="button button-primary button-hero sucuriscan-cleanup-btn">
                 Get your site protected with Sucuri
             </a>
@@ -1901,6 +2016,10 @@ function sucuriscan_set_api_key( $api_key='', $validate=FALSE ){
             sucuriscan_error( 'Invalid API key format' );
             return FALSE;
         }
+    }
+
+    if( !empty($api_key) ){
+        sucuriscan_notify_event( 'plugin_change', 'API key updated successfully: ' . $api_key );
     }
 
     return (bool) update_option( 'sucuriscan_api_key', $api_key );
@@ -3805,6 +3924,8 @@ function sucuriscan_page(){
         wp_die(__('You do not have sufficient permissions to access this page: Sucuri Integrity Check') );
     }
 
+    sucuriscan_integrity_form_submissions();
+
     $template_variables = array(
         'WordpressVersion' => sucuriscan_wordpress_outdated(),
         'AuditLogs' => sucuriscan_auditlogs(),
@@ -3812,6 +3933,29 @@ function sucuriscan_page(){
     );
 
     echo sucuriscan_get_template('integrity', $template_variables);
+}
+
+/**
+ * Process the requests sent by the form submissions originated in the integrity
+ * page, all forms must have a nonce field that will be checked agains the one
+ * generated in the template render function.
+ *
+ * @return void
+ */
+function sucuriscan_integrity_form_submissions(){
+    if( sucuriscan_check_page_nonce() ){
+
+        // Manually force a filesystem scan (by an administrator user).
+        if( isset($_POST['sucuriscan_force_scan']) ){
+            if( current_user_can('manage_options') ){
+                sucuriscan_notify_event( 'plugin_change', 'Filesystem scan forced at: ' . date('r') );
+                sucuriscan_filesystem_scan(TRUE);
+            } else {
+                sucuriscan_error( 'Your privileges are not sufficient to execute this action.' );
+            }
+        }
+
+    }
 }
 
 /**
@@ -4143,6 +4287,67 @@ function sucuriscan_ignore_integrity_filepath( $filepath='' ){
 }
 
 /**
+ * List all files inside wp-content that have been modified in the last days.
+ *
+ * @return void
+ */
+function sucuriscan_modified_files(){
+    $valid_day_ranges = array( 1, 3, 7, 30, 60 );
+    $template_variables = array(
+        'ModifiedFiles.List' => '',
+        'ModifiedFiles.SelectOptions' => '',
+        'ModifiedFiles.NoFilesVisibility' => 'visible',
+        'ModifiedFiles.Days' => 0,
+    );
+
+    // Find files modified in the last days.
+    $back_days = 7;
+
+    // Correct the ranges of the search to be between one and sixty days.
+    if( sucuriscan_check_page_nonce() && isset($_POST['sucuriscan_last_days']) ){
+        $back_days = intval($_POST['sucuriscan_last_days']);
+        if    ( $back_days <= 0  ){ $back_days = 1;  }
+        elseif( $back_days >= 60 ){ $back_days = 60; }
+    }
+
+    // Generate the options for the select field of the page form.
+    foreach( $valid_day_ranges as $day ){
+        $selected_option = ($back_days == $day) ? 'selected="selected"' : '';
+        $template_variables['ModifiedFiles.SelectOptions'] .= sprintf(
+            '<option value="%d" %s>%d</option>',
+            $day, $selected_option, $day
+        );
+    }
+
+    // Scan the files of the site.
+    $template_variables['ModifiedFiles.Days'] = $back_days;
+    $wp_content_hashes = sucuriscan_get_integrity_tree( ABSPATH.'wp-content', true );
+    $back_days = current_time('timestamp') - ( $back_days * 86400);
+    $counter = 0;
+
+    foreach( $wp_content_hashes as $file_path => $file_info ){
+        if( $file_info['filetime'] >= $back_days ){
+            $css_class = ( $counter % 2 == 0 ) ? 'alternate' : '';
+            $mod_date = date('d/M/Y H:i:s', $file_info['filetime']);
+
+            $template_variables['ModifiedFiles.List'] .= sucuriscan_get_snippet('integrity-modifiedfiles', array(
+                'ModifiedFiles.CssClass' => $css_class,
+                'ModifiedFiles.CheckSum' => $file_info['checksum'],
+                'ModifiedFiles.FilePath' => $file_path,
+                'ModifiedFiles.DateTime' => $mod_date
+            ));
+            $counter += 1;
+        }
+    }
+
+    if( $counter > 0 ){
+        $template_variables['ModifiedFiles.NoFilesVisibility'] = 'hidden';
+    }
+
+    return sucuriscan_get_section('integrity-modifiedfiles', $template_variables);
+}
+
+/**
  * Generate and print the HTML code for the Post-Hack page.
  *
  * @return void
@@ -4159,7 +4364,6 @@ function sucuriscan_posthack_page(){
         'PageTitle' => 'Post-Hack',
         'UpdateSecretKeys' => sucuriscan_update_secret_keys($process_form),
         'ResetPassword' => sucuriscan_posthack_users($process_form),
-        'ModifiedFiles' => sucuriscan_modified_files(),
     );
 
     echo sucuriscan_get_template('posthack', $template_variables);
@@ -4297,67 +4501,6 @@ function sucuriscan_reset_user_password( $process_form=FALSE ){
             sucuriscan_error( 'You did not select a user from the list.' );
         }
     }
-}
-
-/**
- * List all files inside wp-content that have been modified in the last days.
- *
- * @return void
- */
-function sucuriscan_modified_files(){
-    $valid_day_ranges = array( 1, 3, 7, 30, 60 );
-    $template_variables = array(
-        'ModifiedFiles.List' => '',
-        'ModifiedFiles.SelectOptions' => '',
-        'ModifiedFiles.NoFilesVisibility' => 'visible',
-        'ModifiedFiles.Days' => 0,
-    );
-
-    // Find files modified in the last days.
-    $back_days = 1;
-
-    // Correct the ranges of the search to be between one and sixty days.
-    if( sucuriscan_check_page_nonce() && isset($_POST['sucuriscan_last_days']) ){
-        $back_days = intval($_POST['sucuriscan_last_days']);
-        if    ( $back_days <= 0  ){ $back_days = 1;  }
-        elseif( $back_days >= 60 ){ $back_days = 60; }
-    }
-
-    // Generate the options for the select field of the page form.
-    foreach( $valid_day_ranges as $day ){
-        $selected_option = ($back_days == $day) ? 'selected="selected"' : '';
-        $template_variables['ModifiedFiles.SelectOptions'] .= sprintf(
-            '<option value="%d" %s>%d</option>',
-            $day, $selected_option, $day
-        );
-    }
-
-    // Scan the files of the site.
-    $template_variables['ModifiedFiles.Days'] = $back_days;
-    $wp_content_hashes = sucuriscan_get_integrity_tree( ABSPATH.'wp-content', true );
-    $back_days = current_time('timestamp') - ( $back_days * 86400);
-    $counter = 0;
-
-    foreach( $wp_content_hashes as $file_path => $file_info ){
-        if( $file_info['filetime'] >= $back_days ){
-            $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
-            $mod_date = date('d/M/Y H:i:s', $file_info['filetime']);
-
-            $template_variables['ModifiedFiles.List'] .= sucuriscan_get_snippet('posthack-modifiedfiles', array(
-                'ModifiedFiles.CssClass' => $css_class,
-                'ModifiedFiles.CheckSum' => $file_info['checksum'],
-                'ModifiedFiles.FilePath' => $file_path,
-                'ModifiedFiles.DateTime' => $mod_date
-            ));
-            $counter += 1;
-        }
-    }
-
-    if( $counter > 0 ){
-        $template_variables['ModifiedFiles.NoFilesVisibility'] = 'hidden';
-    }
-
-    return sucuriscan_get_section('posthack-modifiedfiles', $template_variables);
 }
 
 /**
@@ -5277,7 +5420,7 @@ function sucuriscan_settings_page(){
         'APIKey.RecoverVisibility' => ( $api_key || $display_manual_key_form ? 'hidden' : 'visible' ),
         'APIKey.ManualKeyFormVisibility' => ( $display_manual_key_form ? 'visible' : 'hidden' ),
         'APIKey.RemoveVisibility' => ( $api_key ? 'visible' : 'hidden' ),
-        'ScanningFrequency' => ( $scan_freq ? $scan_freq : 'Undefined' ),
+        'ScanningFrequency' => 'Undefined',
         'ScanningFrequencyOptions' => $scan_freq_options,
         'ScanningInterface' => ( $scan_interface ? $scan_interface : 'Undefined' ),
         'ScanningInterfaceOptions' => $scan_interface_options,
@@ -5285,6 +5428,10 @@ function sucuriscan_settings_page(){
         'ScanningRuntimeHuman' => $runtime_scan_human,
         'NotificationOptions' => $notification_options,
     );
+
+    if( array_key_exists($scan_freq, $sucuriscan_schedule_allowed) ){
+        $template_variables['ScanningFrequency'] = $sucuriscan_schedule_allowed[$scan_freq];
+    }
 
     echo sucuriscan_get_template('settings', $template_variables);
 }
@@ -5359,16 +5506,6 @@ function sucuriscan_settings_form_submissions(){
                 update_option('sucuriscan_scan_interface', $interface);
                 sucuriscan_notify_event( 'plugin_change', 'Filesystem scanning interface changed to: ' . $interface );
                 sucuriscan_info( 'Filesystem scan interface set to <code>'.$interface.'</code>' );
-            }
-        }
-
-        // Manually force a filesystem scan (by an administrator user).
-        if( isset($_POST['sucuriscan_force_scan']) ){
-            if( current_user_can('manage_options') ){
-                sucuriscan_notify_event( 'plugin_change', 'Filesystem scan forced at: ' . date('r') );
-                sucuriscan_filesystem_scan(TRUE);
-            } else {
-                sucuriscan_error( 'Your privileges are not sufficient to execute this action.' );
             }
         }
 

@@ -4,7 +4,7 @@
         <tr>
             <th colspan="2" class="thead-with-button">
                 <span>Audit Logs (%%SUCURI.AuditLogs.Count%% logs)</span>
-                <form action="%%SUCURI.URL.Settings%%" method="post" class="thead-topright-action">
+                <form action="%%SUCURI.URL.Home%%" method="post" class="thead-topright-action">
                     <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
                     <button type="submit" name="sucuriscan_force_scan" class="button-primary">Force Scan</button>
                 </form>

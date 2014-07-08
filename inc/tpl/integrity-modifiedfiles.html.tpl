@@ -6,7 +6,7 @@
                 <span>Modified files <em>(inside the content directory)</em></span>
 
                 <form action="%%SUCURI.CurrentURL%%#modified-files" method="post" class="thead-topright-action">
-                    <input type="hidden" name="sucuriscan_modified_files" value="%%SUCURI.PageNonce%%" />
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
                     <label>
                         Modified in the last
                         <select name="sucuriscan_last_days" id="sucuriscan_last_days">
@@ -19,13 +19,22 @@
         </tr>
 
         <tr>
-            <th>Filepath</th>
+            <th width="540">Filepath</th>
             <th>CheckSum</th>
-            <th>Modification</th>
+            <th width="160">Modification</th>
         </tr>
     </thead>
 
     <tbody>
+        <tr>
+            <td colspan="3">
+                <div>
+                    If your site was recently hacked, you can see what files were modified recently
+                    to help you on the investigation.
+                </div>
+            </td>
+        </tr>
+
         %%SUCURI.ModifiedFiles.List%%
 
         <tr class="sucuriscan-%%SUCURI.ModifiedFiles.NoFilesVisibility%%">

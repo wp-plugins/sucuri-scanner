@@ -1,7 +1,7 @@
 Subject: %%SUCURI.Subject%%
 
 Login Info:
-Username: %%SUCURI.User%%
+%%SUCURI.User%%
 Time: %%SUCURI.Time%%
 
 Website Info:

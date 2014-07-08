@@ -1,14 +1,10 @@
 
 <div class="postbox sucuriscan-border sucuriscan-border-good sucuriscan-integrity-message sucuriscan-%%SUCURI.CoreFiles.GoodVisibility%%">
+    <span class="sucuriscan-integrity-mark">OK</span>
     <h3>WordPress core integrity</h3>
 
     <div class="inside">
-        <p>
-            The core files of your WordPress installation seem to match the version of the
-            official repository according to the comparison made between the list of hashes
-            gathered from scanning of your project and the official list of hashes provided
-            by WordPress using the version number recognized in your installation.
-        </p>
+        <p>Your WordPress core files are clean and were not modified.</p>
     </div>
 </div>
 

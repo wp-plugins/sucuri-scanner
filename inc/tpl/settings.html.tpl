@@ -84,7 +84,7 @@
             <td>Last Scanning</td>
             <td><span class="sucuriscan-monospace">%%SUCURI.ScanningRuntimeHuman%%</span></td>
             <td class="td-with-button">
-                <form method="post">
+                <form action="%%SUCURI.URL.Home%%" method="post">
                     <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
                     <button type="submit" name="sucuriscan_force_scan" class="button-primary">Force Scan</button>
                 </form>

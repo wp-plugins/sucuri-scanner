@@ -83,6 +83,8 @@ div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:1
 .sucuriscan-tabs > ul li{margin-bottom:0}
 .sucuriscan-tabs > ul li > a{background:#e5e5e5;font-size:13px;font-weight:bold;color:#333;line-height:38px;text-decoration:none;padding:0 10px}
 .sucuriscan-tabs > ul li > a.sucuriscan-tab-active{background:#fff;border:1px solid #e1e1e1;border-bottom:0}
+.sucuriscan-tabs > ul li.sucuriscan-red-tab a{background:#ff8a83;color:#fff}
+.sucuriscan-tabs > ul li.sucuriscan-red-tab a.sucuriscan-tab-active{background:#dd3d36;border-color:#dd3d36}
 .sucuriscan-maincontent .sucuriscan-tab-containers > div > table{margin-top:0}
 .sucuriscan-maincontent .sucuriscan-tab-containers > div > #poststuff{margin-top:0}
 /* Get API Form */
@@ -98,7 +100,7 @@ div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:1
 .sucuriscan-maincontent .sucuriscan-border-good{border-left-color:#7ad03a}
 .sucuriscan-maincontent .sucuriscan-border-bad{border-left-color:#dd3d36}
 .sucuriscan-maincontent .sucuriscan-cleanup-btn{display:block;text-align:center;margin:20px 0 0 0}
-.sucuriscan-scanner-results table tr:nth-child(even){background:#f5f5f5}
+.sucuriscan-scanner-results .sucuriscan-scanner-details tr:nth-child(even){background:#f5f5f5}
 /* Integrity Styles */
 .sucuriscan-status-type{width:20px;background:#ddd;text-align:center;text-transform:uppercase;margin-right:10px;padding:0 3px;border:1px solid transparent;border-radius:3px}
 .sucuriscan-status-added{background:#dff0d8;color:#3c763d;border-color:#d6e9c6}
@@ -113,6 +115,8 @@ div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:1
 .sucuriscan-maincontent td.sucuriscan-corefiles-warning, .sucuriscan-maincontent td.sucuriscan-corefiles-warning p{margin:0;padding:0}
 .sucuriscan-maincontent td.sucuriscan-corefiles-warning div{padding:10px;border-width:1px;border-style:solid}
 .sucuriscan-maincontent td.sucuriscan-corefiles-warning code{font-size:12px;padding:0 5px}
+.sucuriscan-maincontent .sucuriscan-integrity-message{position:relative}
+.sucuriscan-maincontent .sucuriscan-integrity-message .sucuriscan-integrity-mark{position:absolute;top:1px;right:1px;background:#7ad03a;font-weight:bold;color:#fff;line-height:35px;padding:0 10px;border-left:1px solid #ddd}
 /* Monitoring Styles */
 .sucuriscan-monitoring-settings{margin-bottom:20px}
 .sucuriscan-monitoring-settings td.td-with-button{text-align:left}

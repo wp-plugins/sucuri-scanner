@@ -5,7 +5,7 @@
             <th colspan="4" class="thead-with-button">
                 <span>Search among the logs:</span>
                 <div class="thead-topright-action">
-                    <form method="post" class="sucuriscan-monitoring-search-form">
+                    <form action="%%SUCURI.URL.Monitoring%%#monitoring-logs" method="post" class="sucuriscan-monitoring-search-form">
                         <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
                         <input type="text" name="sucuriscan_monitoring_log_filter" class="input-text" />
                         <input type="submit" value="Search" class="button button-primary" />
@@ -18,7 +18,7 @@
             <th colspan="4" class="thead-with-button">
                 <span>Filter by the denial type:</span>
                 <div class="thead-topright-action">
-                    <form method="post" class="sucuriscan-monitoring-denial-types-form">
+                    <form action="%%SUCURI.URL.Monitoring%%#monitoring-logs" method="post" class="sucuriscan-monitoring-denial-types-form">
                         <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
                         <select name="sucuriscan_monitoring_denial_type">%%SUCURI.AuditLogs.DenialTypeOptions%%</select>
                         <input type="submit" value="Filter" class="button button-primary" />
@@ -31,7 +31,7 @@
             <th colspan="4" class="thead-with-button">
                 <span>Filter by date:</span>
                 <div class="thead-topright-action">
-                    <form method="post" class="sucuriscan-monitoring-date-form">
+                    <form action="%%SUCURI.URL.Monitoring%%#monitoring-logs" method="post" class="sucuriscan-monitoring-date-form">
                         <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
                         <input type="hidden" name="sucuriscan_monitoring_date" value="1" />
                         <em class="sucuriscan-target-date">(%%SUCURI.AuditLogs.TargetDate%%)</em>

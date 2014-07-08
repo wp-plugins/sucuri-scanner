@@ -20,7 +20,7 @@
                 <td style="padding:20px 20px 10px 20px;border:1px solid #ccc;border-top:none">
                     <h4 style="margin:0">Information:</h4>
                     <p style="margin:0 0 10px 0">
-                        User: %%SUCURI.User%%<br />
+                        %%SUCURI.User%%<br />
                         Alert Time: %%SUCURI.Time%%<br />
                     </p>
                     <h4 style="text-transform:uppercase;margin:0">Website Information:</h4>
