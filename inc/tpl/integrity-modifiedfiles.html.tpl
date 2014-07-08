@@ -26,15 +26,6 @@
     </thead>
 
     <tbody>
-        <tr>
-            <td colspan="3">
-                <div>
-                    If your site was recently hacked, you can see what files were modified recently
-                    to help you on the investigation.
-                </div>
-            </td>
-        </tr>
-
         %%SUCURI.ModifiedFiles.List%%
 
         <tr class="sucuriscan-%%SUCURI.ModifiedFiles.NoFilesVisibility%%">

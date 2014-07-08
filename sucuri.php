@@ -1552,12 +1552,31 @@ if( !function_exists('sucuriscan_plugin_setup_notice') ){
 }
 
 /**
- * Display the result of site scan made through SiteCheck.
+ * Display the page with a temporary message explaining the action that will be
+ * performed once the hidden form is submitted to retrieve the scanning results
+ * from the public SiteCheck API.
  *
  * @return void
  */
 function sucuriscan_scanner_page(){
+    if(
+        sucuriscan_check_page_nonce()
+        && isset($_POST['sucuriscan_malware_scan'])
+    ){
+        sucuriscan_sitecheck_info();
+    } else {
+        echo sucuriscan_get_template('malwarescan');
+    }
+}
+
+/**
+ * Display the result of site scan made through SiteCheck.
+ *
+ * @return void
+ */
+function sucuriscan_sitecheck_info(){
     $clean_domain = sucuriscan_get_domain();
+$clean_domain = 'johnhackedsite.com';
     $remote_url = 'http://sitecheck.sucuri.net/scanner/?serialized&clear&fromwp&scan='.$clean_domain;
     $scan_results = wp_remote_get($remote_url, array('timeout' => 180));
     ob_start();
@@ -1627,6 +1646,20 @@ function sucuriscan_scanner_page(){
             $sucuriscan_css_wpupdate = $wordpress_updated ? 'sucuriscan-border-good' : 'sucuriscan-border-bad';
         }
         ?>
+
+        <div id="poststuff">
+            <div class="postbox sucuriscan-border sucuriscan-border-info sucuriscan-malwarescan-message">
+                <h3>SiteCheck Scanner</h3>
+
+                <div class="inside">
+                    <p>
+                        If your site was recently hacked, you can see which files were modified
+                        recently, to assist with any investigation.
+                    </p>
+                </div>
+            </div>
+        </div>
+
 
         <div class="sucuriscan-tabs">
 
@@ -4327,7 +4360,7 @@ function sucuriscan_modified_files(){
 
     foreach( $wp_content_hashes as $file_path => $file_info ){
         if( $file_info['filetime'] >= $back_days ){
-            $css_class = ( $counter % 2 == 0 ) ? 'alternate' : '';
+            $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
             $mod_date = date('d/M/Y H:i:s', $file_info['filetime']);
 
             $template_variables['ModifiedFiles.List'] .= sucuriscan_get_snippet('integrity-modifiedfiles', array(

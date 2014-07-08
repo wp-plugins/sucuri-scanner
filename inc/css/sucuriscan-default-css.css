@@ -92,6 +92,13 @@ div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:1
 .sucuriscan-getapi-div p{margin:0;padding:10px}
 .sucuriscan-getapi-form{}
 .sucuriscan-getapi-form button.button-primary{width:100%;height:initial;line-height:30px;margin:0 0 -1px 0;padding:0;border-radius:0 0 3px 3px}
+/* Scanner Page */
+.sucuriscan-malwarescan-message{margin-bottom:20px !important}
+.sucuriscan-loading{background:#fff;text-align:center;padding:30px;padding-bottom:15px;border:1px solid #ddd;border-radius:4px}
+.sucuriscan-loading p, .sucuriscan-loading h3{margin:0;padding:0}
+.sucuriscan-loading .title{font-size:26px;margin-bottom:10px}
+.sucuriscan-loading .description{font-size:18px}
+.sucuriscan-sitelogo{width:190px;height:100px;background:url('http://sitecheck.sucuri.net/images/sucuri-sprite.png') no-repeat;margin:0 auto}
 /* Scanner Results */
 .sucuriscan-maincontent .sucuriscan-border{border:0;border-left:4px solid #ddd}
 .sucuriscan-maincontent .sucuriscan-border > h3, .sucuriscan-maincontent .sucuriscan-border > .inside{border-top:1px solid #e5e5e5;border-right:1px solid #e5e5e5}
@@ -99,6 +106,7 @@ div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:1
 .sucuriscan-maincontent .sucuriscan-border > .inside{margin-top:0 !important;border-bottom:1px solid #ddd}
 .sucuriscan-maincontent .sucuriscan-border-good{border-left-color:#7ad03a}
 .sucuriscan-maincontent .sucuriscan-border-bad{border-left-color:#dd3d36}
+.sucuriscan-maincontent .sucuriscan-border-info{border-left-color:#2ea2cc}
 .sucuriscan-maincontent .sucuriscan-cleanup-btn{display:block;text-align:center;margin:20px 0 0 0}
 .sucuriscan-scanner-results .sucuriscan-scanner-details tr:nth-child(even){background:#f5f5f5}
 /* Integrity Styles */
