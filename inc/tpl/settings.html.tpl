@@ -1,4 +1,6 @@
 
+%%SUCURI.ModalWhenAPIRegistered%%
+
 <table class="wp-list-table widefat sucuriscan-table sucuriscan-settings">
     <thead>
         <tr>

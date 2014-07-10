@@ -1035,6 +1035,42 @@ function sucuriscan_get_section($template='', $params=array()){
  * @param  array  $params   A hash containing the pseudo-variable name as the key and the value that will replace it.
  * @return string           The formatted HTML page after replace all the pseudo-variables.
  */
+function sucuriscan_get_modal($template='', $params=array()){
+    $required = array(
+        'Title' => 'Lorem ipsum dolor sit amet',
+        'CssClass' => '',
+        'Content' => '<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do
+            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim
+            veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
+            consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse
+            cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
+            proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>',
+    );
+
+    if( !empty($template) && $template != 'none' ){
+        $params['Content'] = sucuriscan_get_section($template);
+    }
+
+    foreach( $required as $param_name => $param_value ){
+        if( !isset($params[$param_name]) ){
+            $params[$param_name] = $param_value;
+        }
+    }
+
+    $params = sucuriscan_shared_params($params);
+
+    return sucuriscan_get_template( 'modalwindow', $params, 'section' );
+}
+
+/**
+ * Generate a HTML code using a template and replacing all the pseudo-variables
+ * by the dynamic variables provided by the developer through one of the parameters
+ * of the function.
+ *
+ * @param  string $template Filename of the template that will be used to generate the page.
+ * @param  array  $params   A hash containing the pseudo-variable name as the key and the value that will replace it.
+ * @return string           The formatted HTML page after replace all the pseudo-variables.
+ */
 function sucuriscan_get_snippet($template='', $params=array()){
     return sucuriscan_get_template( $template, $params, 'snippet' );
 }
@@ -2039,8 +2075,9 @@ function sucuriscan_api_call( $url='', $method='GET', $params=array() ){
 /**
  * Store the API key locally.
  *
- * @param  string  $api_key An unique string of characters to identify this installation.
- * @return boolean          Either TRUE or FALSE if the key was saved successfully or not respectively.
+ * @param  string  $api_key  An unique string of characters to identify this installation.
+ * @param  boolean $validate Whether the format of the key should be validated before store it.
+ * @return boolean           Either TRUE or FALSE if the key was saved successfully or not respectively.
  */
 function sucuriscan_set_api_key( $api_key='', $validate=FALSE ){
     if( $validate ){
@@ -5310,13 +5347,13 @@ function sucuriscan_server_info(){
         $mysql_version = $wpdb->get_var('SELECT VERSION() AS version');
         $mysql_info = $wpdb->get_results('SHOW VARIABLES LIKE "sql_mode"');
         $sql_mode = ( is_array($mysql_info) && !empty($mysql_info[0]->Value) ) ? $mysql_info[0]->Value : 'Not set';
-        $plugin_runtime_filepath = sucuriscan_dir_filepath('.runtime');
-        $plugin_runtime_datetime = file_exists($plugin_runtime_filepath) ? date('r',filemtime($plugin_runtime_filepath)) : 'N/A';
+        $runtime_scan = sucuriscan_get_option('sucuriscan_runtime');
+        $runtime_scan_human = date( 'd/M/Y H:i:s', $runtime_scan );
 
         $template_variables = array(
             'PluginVersion' => SUCURISCAN_VERSION,
             'PluginMD5' => SUCURISCAN_PLUGIN_CHECKSUM,
-            'PluginRuntimeDatetime' => $plugin_runtime_datetime,
+            'PluginRuntimeDatetime' => $runtime_scan_human,
             'OperatingSystem' => sprintf('%s (%d Bit)', PHP_OS, PHP_INT_SIZE*8),
             'Server' => isset($_SERVER['SERVER_SOFTWARE']) ? $_SERVER['SERVER_SOFTWARE'] : 'Unknown',
             'MemoryUsage' => $memory_usage,
@@ -5396,8 +5433,25 @@ function sucuriscan_settings_page(){
 
     global $sucuriscan_schedule_allowed, $sucuriscan_interface_allowed, $sucuriscan_notify_options;
 
+    // Check the nonce here to populate the value through other functions.
+    $page_nonce = sucuriscan_check_page_nonce();
+
     // Process all form submissions.
-    sucuriscan_settings_form_submissions();
+    sucuriscan_settings_form_submissions($page_nonce);
+
+    // Register the site, get its API key, and store it locally for future usage.
+    $api_registered_modal = '';
+
+    if( $page_nonce && isset($_POST['sucuriscan_wordpress_apikey']) ){
+        $registered = sucuriscan_register_site();
+
+        if( $registered ){
+            $api_registered_modal = sucuriscan_get_modal('settings-apiregistered', array(
+                'Title' => 'Site registered successfully',
+                'CssClass' => 'sucuriscan-apikey-registered',
+            ));
+        }
+    }
 
     // Get initial variables to decide some things bellow.
     $api_key = sucuriscan_wordpress_apikey();
@@ -5459,6 +5513,7 @@ function sucuriscan_settings_page(){
         'ScanningRuntime' => $runtime_scan,
         'ScanningRuntimeHuman' => $runtime_scan_human,
         'NotificationOptions' => $notification_options,
+        'ModalWhenAPIRegistered' => $api_registered_modal,
     );
 
     if( array_key_exists($scan_freq, $sucuriscan_schedule_allowed) ){
@@ -5470,21 +5525,22 @@ function sucuriscan_settings_page(){
 
 /**
  * Process the requests sent by the form submissions originated in the settings
- * page, all forms must have a nonce field that will be checked agains the one
+ * page, all forms must have a nonce field that will be checked against the one
  * generated in the template render function.
  *
+ * @param  boolean $page_nonce True if the nonce is valid, False otherwise.
  * @return void
  */
-function sucuriscan_settings_form_submissions(){
+function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
 
     global $sucuriscan_schedule_allowed, $sucuriscan_interface_allowed, $sucuriscan_notify_options;
 
-    if( sucuriscan_check_page_nonce() ){
+    // Use this conditional to avoid double checking.
+    if( is_null($page_nonce) ){
+        $page_nonce = sucuriscan_check_page_nonce();
+    }
 
-        // Register the site, get its API key, and store it locally for future usage.
-        if( isset($_POST['sucuriscan_wordpress_apikey']) ){
-            sucuriscan_register_site();
-        }
+    if( $page_nonce ){
 
         // Recover API key through the email registered previously.
         if( isset($_POST['sucuriscan_recover_api_key']) ){
