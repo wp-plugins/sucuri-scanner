@@ -2503,12 +2503,14 @@ function sucuriscan_report_event( $severity=0, $location='', $message='' ){
     // Identify current user in session.
     if(
         $user instanceof WP_User
-        && isset($user->display_name)
         && isset($user->user_login)
-        && empty($user->display_name)
-        && empty($user->user_login)
+        && !empty($user->user_login)
     ){
-        $username = sprintf( ' %s (%s),', $user->display_name, $user->user_login );
+        if( $user->user_login != $user->display_name ){
+            $username = sprintf( ' %s (%s),', $user->display_name, $user->user_login );
+        } else {
+            $username = sprintf( ' %s,', $user->user_login );
+        }
     }
 
     // Convert the severity number into a readable string.
@@ -2525,7 +2527,10 @@ function sucuriscan_report_event( $severity=0, $location='', $message='' ){
     $message = str_replace( array("\n", "\r"), array('', ''), $message );
     $event_sent = sucuriscan_send_log(sprintf(
         '%s:%s %s; %s',
-        $severity_name, $username, $remote_ip, $message
+        $severity_name,
+        $username,
+        $remote_ip,
+        $message
     ));
 
     return $event_sent;
