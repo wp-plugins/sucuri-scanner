@@ -2921,17 +2921,39 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
 
         // Plugin activation and/or deactivation.
         if(
-            isset($_GET['action'])
-            && isset($_GET['plugin'])
-            && !empty($_GET['plugin'])
-            && ( $_GET['action'] == 'activate' || $_GET['action'] == 'deactivate' )
-            && strpos($_SERVER['REQUEST_URI'], 'plugins.php') !== FALSE
+            ( isset($_GET['action']) || isset($_POST['action']) )
             && current_user_can('activate_plugins')
         ){
-            $action_d = $_GET['action'] . 'd';
-            $message = 'Plugin '.$action_d.': '.esc_attr($_GET['plugin']);
-            sucuriscan_report_event( 3, 'core', $message );
-            sucuriscan_notify_event( 'plugin_'.$action_d, $message );
+            $plugin_list = array();
+
+            if(
+                isset($_GET['plugin'])
+                && !empty($_GET['plugin'])
+                && ( $_GET['action'] == 'activate' || $_GET['action'] == 'deactivate' )
+                && strpos($_SERVER['REQUEST_URI'], 'plugins.php') !== FALSE
+            ){
+                $action_d = $_GET['action'] . 'd';
+                $plugin_list[] = $_GET['plugin'];
+            }
+
+            elseif( isset($_POST['checked']) ){
+                $action_d = str_replace('-selected', 'd', $_POST['action']);
+                $plugin_list = $_POST['checked'];
+            }
+
+            foreach( $plugin_list as $plugin ){
+                $plugin_info = get_plugin_data( WP_PLUGIN_DIR . '/' . $plugin );
+                $message = sprintf(
+                    'Plugin %s: %s (v%s; %s)',
+                    $action_d,
+                    $plugin_info['Name'],
+                    $plugin_info['Version'],
+                    esc_attr($plugin)
+                );
+
+                sucuriscan_report_event( 3, 'core', $message );
+                sucuriscan_notify_event( 'plugin_'.$action_d, $message );
+            }
         }
 
         // Plugin update request.
@@ -2940,24 +2962,22 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
             && preg_match('/(upgrade-plugin|do-plugin-upgrade)/', $_GET['action'])
             && current_user_can('update_plugins')
         ){
-            $plugins_to_update = array();
+            $plugin_list = array();
 
             if(
                 isset($_GET['plugin'])
                 && !empty($_GET['plugin'])
                 && strpos($_SERVER['REQUEST_URI'], 'wp-admin/update.php') !== FALSE
             ){
-                $plugins_to_update[] = $_GET['plugin'];
+                $plugin_list[] = $_GET['plugin'];
             }
 
             elseif( isset($_POST['checked']) ){
-                $plugins_to_update = $_POST['checked'];
+                $plugin_list = $_POST['checked'];
             }
 
-            foreach( $plugins_to_update as $plugin ){
-                $plugin_path = WP_PLUGIN_DIR . '/' . $plugin;
-                $plugin_info = get_plugin_data($plugin_path);
-
+            foreach( $plugin_list as $plugin ){
+                $plugin_info = get_plugin_data( WP_PLUGIN_DIR . '/' . $plugin );
                 $message = sprintf(
                     'Plugin request to be updated: %s (v%s; %s)',
                     $plugin_info['Name'],
