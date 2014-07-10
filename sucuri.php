@@ -2951,7 +2951,7 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
                 );
 
                 sucuriscan_report_event( 3, 'core', $message );
-                sucuriscan_notify_event( 'plugin_'.$action_d, $message );
+                sucuriscan_notify_event( 'plugin_' . $action_d, $message );
             }
         }
 
@@ -3060,6 +3060,7 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
         // Theme installation request (hook not available).
         // Theme deletion request (hook not available).
 
+        // Theme update request.
         elseif(
             isset($_GET['action'])
             && preg_match('/^(upgrade-theme|do-theme-upgrade)$/', $_GET['action'])
@@ -3091,14 +3092,47 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
 
         // WordPress update request.
         elseif(
-            isset($_POST['upgrade'])
+            isset($_GET['action'])
+            && $_GET['action'] == 'do-core-reinstall'
+            && isset($_POST['upgrade'])
             && isset($_POST['version'])
-            && strpos($_SERVER['REQUEST_URI'], 'update-core.php?action=do-core-reinstall') !== FALSE
-            && current_user_can('update_core')
         ){
             $message = 'WordPress updated (or re-installed) to version: ' . esc_attr($_POST['version']);
             sucuriscan_report_event( 3, 'core', $message );
             sucuriscan_notify_event( 'website_updated', $message );
+        }
+
+        // Widget addition or deletion.
+        elseif(
+            isset($_POST['action'])
+            && $_POST['action'] == 'save-widget'
+            && isset($_POST['id_base'])
+            && isset($_POST['sidebar'])
+        ){
+            if(
+                isset($_POST['delete_widget'])
+                && $_POST['delete_widget'] == 1
+            ){
+                $action_d = 'deleted';
+                $action_text = 'deleted from';
+            } else {
+                $action_d = 'added';
+                $action_text = 'added to';
+            }
+
+            $message = sprintf(
+                'Widget %s (%s) %s %s (#%d; size %dx%d)',
+                esc_attr($_POST['id_base']),
+                esc_attr($_POST['widget-id']),
+                $action_text,
+                esc_attr($_POST['sidebar']),
+                esc_attr($_POST['widget_number']),
+                esc_attr($_POST['widget-width']),
+                esc_attr($_POST['widget-height'])
+            );
+
+            sucuriscan_report_event( 3, 'core', $message );
+            sucuriscan_notify_event( 'widget_' . $action_d, $message );
         }
 
         // Detect any Wordpress settings modification.
@@ -5474,6 +5508,8 @@ $sucuriscan_notify_options = array(
     'sucuriscan_notify_settings_updated' => 'Enable email alerts when your website settings are updated',
     'sucuriscan_notify_theme_switched' => 'Enable email alerts when the website theme is switched',
     'sucuriscan_notify_theme_updated' => 'Enable email alerts when a theme is updated',
+    'sucuriscan_notify_widget_added' => 'Enable email alerts when a widget is added to a sidebar',
+    'sucuriscan_notify_widget_deleted' => 'Enable email alerts when a widget is deleted from a sidebar',
     'sucuriscan_notify_plugin_change' => 'Enable email alerts for Sucuri plugin changes',
     'sucuriscan_notify_plugin_activated' => 'Enable email alerts when a plugin is activated',
     'sucuriscan_notify_plugin_deactivated' => 'Enable email alerts when a plugin is deactivated',
