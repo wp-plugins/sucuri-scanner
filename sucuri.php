@@ -2934,18 +2934,40 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
             sucuriscan_notify_event( 'plugin_'.$action_d, $message );
         }
 
-        // Plugin updated.
+        // Plugin update request.
         elseif(
             isset($_GET['action'])
-            && isset($_GET['plugin'])
-            && !empty($_GET['plugin'])
-            && $_GET['action'] == 'upgrade-plugin'
-            && strpos($_SERVER['REQUEST_URI'], 'wp-admin/update.php') !== FALSE
+            && preg_match('/(upgrade-plugin|do-plugin-upgrade)/', $_GET['action'])
             && current_user_can('update_plugins')
         ){
-            $message = 'Plugin request to be updated: '.esc_attr($_GET['plugin']);
-            sucuriscan_report_event( 3, 'core', $message );
-            sucuriscan_notify_event( 'plugin_updated', $message );
+            $plugins_to_update = array();
+
+            if(
+                isset($_GET['plugin'])
+                && !empty($_GET['plugin'])
+                && strpos($_SERVER['REQUEST_URI'], 'wp-admin/update.php') !== FALSE
+            ){
+                $plugins_to_update[] = $_GET['plugin'];
+            }
+
+            elseif( isset($_POST['checked']) ){
+                $plugins_to_update = $_POST['checked'];
+            }
+
+            foreach( $plugins_to_update as $plugin ){
+                $plugin_path = WP_PLUGIN_DIR . '/' . $plugin;
+                $plugin_info = get_plugin_data($plugin_path);
+
+                $message = sprintf(
+                    'Plugin request to be updated: %s (v%s; %s)',
+                    $plugin_info['Name'],
+                    $plugin_info['Version'],
+                    esc_attr($plugin)
+                );
+
+                sucuriscan_report_event( 3, 'core', $message );
+                sucuriscan_notify_event( 'plugin_updated', $message );
+            }
         }
 
         // Plugin installation request.
@@ -2991,16 +3013,17 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
             sucuriscan_notify_event( 'plugin_deleted', $message );
         }
 
-        // WordPress update request.
+        // Plugin editor request.
         elseif(
-            isset($_POST['upgrade'])
-            && isset($_POST['version'])
-            && strpos($_SERVER['REQUEST_URI'], 'update-core.php?action=do-core-reinstall') !== FALSE
-            && current_user_can('update_core')
+            isset($_POST['action'])
+            && $_POST['action'] == 'update'
+            && isset($_POST['file'])
+            && isset($_POST['plugin'])
+            && strpos($_SERVER['REQUEST_URI'], 'plugin-editor.php') !== FALSE
         ){
-            $message = 'WordPress updated (or re-installed) to version: ' . esc_attr($_POST['version']);
+            $message = 'Plugin editor modification: ' . esc_attr($_POST['file']);
             sucuriscan_report_event( 3, 'core', $message );
-            sucuriscan_notify_event( 'website_updated', $message );
+            sucuriscan_notify_event( 'theme_editor', $message );
         }
 
         // Theme editor request.
@@ -3016,17 +3039,33 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
             sucuriscan_notify_event( 'theme_editor', $message );
         }
 
-        // Plugin editor request.
+        // Theme activation and/or deactivation (same hook for switch_theme).
+        // Theme installation request (hook not available).
+        // Theme deletion request (hook not available).
+
+        // Theme update request.
+        // elseif(
+        //     isset($_GET['action'])
+        //     && isset($_GET['plugin'])
+        //     && !empty($_GET['plugin'])
+        //     && $_GET['action'] == 'upgrade-plugin'
+        //     && strpos($_SERVER['REQUEST_URI'], 'wp-admin/update.php') !== FALSE
+        //     && current_user_can('update_plugins')
+        // ){
+        //     var_dump($_POST);
+        //     var_dump($_SERVER);
+        // }
+
+        // WordPress update request.
         elseif(
-            isset($_POST['action'])
-            && $_POST['action'] == 'update'
-            && isset($_POST['file'])
-            && isset($_POST['plugin'])
-            && strpos($_SERVER['REQUEST_URI'], 'plugin-editor.php') !== FALSE
+            isset($_POST['upgrade'])
+            && isset($_POST['version'])
+            && strpos($_SERVER['REQUEST_URI'], 'update-core.php?action=do-core-reinstall') !== FALSE
+            && current_user_can('update_core')
         ){
-            $message = 'Plugin editor modification: ' . esc_attr($_POST['file']);
+            $message = 'WordPress updated (or re-installed) to version: ' . esc_attr($_POST['version']);
             sucuriscan_report_event( 3, 'core', $message );
-            sucuriscan_notify_event( 'theme_editor', $message );
+            sucuriscan_notify_event( 'website_updated', $message );
         }
 
         // Detect any Wordpress settings modification.
