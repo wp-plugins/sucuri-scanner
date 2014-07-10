@@ -2921,15 +2921,14 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
 
         // Plugin activation and/or deactivation.
         if(
-            ( isset($_GET['action']) || isset($_POST['action']) )
-            && current_user_can('activate_plugins')
+            ( isset($_GET['action']) && preg_match('/^(activate|deactivate)$/', $_GET['action']) ) ||
+            ( isset($_POST['action']) && preg_match('/^(activate|deactivate)-selected$/', $_POST['action']))
         ){
             $plugin_list = array();
 
             if(
                 isset($_GET['plugin'])
                 && !empty($_GET['plugin'])
-                && ( $_GET['action'] == 'activate' || $_GET['action'] == 'deactivate' )
                 && strpos($_SERVER['REQUEST_URI'], 'plugins.php') !== FALSE
             ){
                 $action_d = $_GET['action'] . 'd';
@@ -2958,9 +2957,8 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
 
         // Plugin update request.
         elseif(
-            isset($_GET['action'])
-            && preg_match('/(upgrade-plugin|do-plugin-upgrade)/', $_GET['action'])
-            && current_user_can('update_plugins')
+            ( isset($_GET['action']) && preg_match('/(upgrade-plugin|do-plugin-upgrade)/', $_GET['action']) ) ||
+            ( isset($_POST['action']) && $_POST['action'] == 'update-selected' )
         ){
             $plugin_list = array();
 
@@ -3015,22 +3013,21 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
             && $_POST['action'] == 'delete-selected'
             && isset($_POST['verify-delete'])
             && $_POST['verify-delete'] == 1
-            && current_user_can('delete_plugins')
         ){
-            $plugin = '';
-            $plugins = isset($_POST['checked']) ? $_POST['checked'] : array();
+            $plugin_list = (array) $_POST['checked'];
 
-            if( is_array($plugins) && !empty($plugins) ){
-                $separator = ','.chr(32);
-                foreach($plugins as $plugin_path){
-                    $plugin .= basename($plugin_path).$separator;
-                }
-                $plugin = rtrim($plugin, $separator);
+            foreach( $plugin_list as $plugin ){
+                $plugin_info = get_plugin_data( WP_PLUGIN_DIR . '/' . $plugin );
+                $message = sprintf(
+                    'Plugin request to be deleted: %s (v%s; %s)',
+                    $plugin_info['Name'],
+                    $plugin_info['Version'],
+                    esc_attr($plugin)
+                );
+
+                sucuriscan_report_event( 3, 'core', $message );
+                sucuriscan_notify_event( 'plugin_deleted', $message );
             }
-
-            $message = 'Plugin request to be deleted: ' . esc_attr($plugin);
-            sucuriscan_report_event( 3, 'core', $message );
-            sucuriscan_notify_event( 'plugin_deleted', $message );
         }
 
         // Plugin editor request.
