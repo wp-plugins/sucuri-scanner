@@ -3060,18 +3060,34 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
         // Theme installation request (hook not available).
         // Theme deletion request (hook not available).
 
-        // Theme update request.
-        // elseif(
-        //     isset($_GET['action'])
-        //     && isset($_GET['plugin'])
-        //     && !empty($_GET['plugin'])
-        //     && $_GET['action'] == 'upgrade-plugin'
-        //     && strpos($_SERVER['REQUEST_URI'], 'wp-admin/update.php') !== FALSE
-        //     && current_user_can('update_plugins')
-        // ){
-        //     var_dump($_POST);
-        //     var_dump($_SERVER);
-        // }
+        elseif(
+            isset($_GET['action'])
+            && preg_match('/^(upgrade-theme|do-theme-upgrade)$/', $_GET['action'])
+            && isset($_POST['checked'])
+        ){
+            $theme_list = (array) $_POST['checked'];
+
+            foreach( $theme_list as $theme ){
+                $theme_info = wp_get_theme($theme);
+                $theme_name = ucwords($theme);
+                $theme_version = '0.0';
+
+                if( $theme_info->exists() ){
+                    $theme_name = $theme_info->get('Name');
+                    $theme_version = $theme_info->get('Version');
+                }
+
+                $message = sprintf(
+                    'Theme request to be updated: %s (v%s; %s)',
+                    $theme_name,
+                    $theme_version,
+                    esc_attr($theme)
+                );
+
+                sucuriscan_report_event( 3, 'core', $message );
+                sucuriscan_notify_event( 'theme_updated', $message );
+            }
+        }
 
         // WordPress update request.
         elseif(
@@ -5457,6 +5473,7 @@ $sucuriscan_notify_options = array(
     'sucuriscan_notify_website_updated' => 'Enable email alerts when your website is updated',
     'sucuriscan_notify_settings_updated' => 'Enable email alerts when your website settings are updated',
     'sucuriscan_notify_theme_switched' => 'Enable email alerts when the website theme is switched',
+    'sucuriscan_notify_theme_updated' => 'Enable email alerts when a theme is updated',
     'sucuriscan_notify_plugin_change' => 'Enable email alerts for Sucuri plugin changes',
     'sucuriscan_notify_plugin_activated' => 'Enable email alerts when a plugin is activated',
     'sucuriscan_notify_plugin_deactivated' => 'Enable email alerts when a plugin is deactivated',
