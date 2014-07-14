@@ -3679,6 +3679,7 @@ function sucuriscan_hardening_page(){
             sucuriscan_harden_phpversion();
             sucuriscan_harden_secretkeys();
             sucuriscan_harden_readme();
+            sucuriscan_harden_adminuser();
             ?>
         </form>
     </div>
@@ -4170,6 +4171,37 @@ function sucuriscan_harden_readme(){
         '<code>readme.html</code> file properly deleted',
         '<code>readme.html</code> not deleted and leaking the WordPress version',
         'It checks whether you have the <code>readme.html</code> file available that leaks your WordPress version',
+        $upmsg
+    );
+}
+
+/**
+ * Check whether the main administrator user still has the default name "admin"
+ * or not, which can lead to an attacker to perform a brute force attack.
+ *
+ * @return void
+ */
+function sucuriscan_harden_adminuser(){
+    global $wpdb;
+
+    $upmsg = NULL;
+    $res = $wpdb->get_results("SELECT user_login FROM {$wpdb->prefix}users WHERE user_login = 'admin'");
+    $account_removed = ( count($res) == 0 ? 1 : 0 );
+
+    if( $account_removed == 0 ){
+        $upmsg = '<i><strong>We do not offer the option</strong> to automatically change the user name.
+        Go to the <a href="'.admin_url('users.php').'" target="_blank">user list</a> and create a new
+        admin user name. Once created, log in as that user and remove the default "admin" from there
+        (make sure to assign all the admin posts to the new user too!).</i>';
+    }
+
+    sucuriscan_harden_status(
+        'Default admin user account',
+        $account_removed,
+        NULL,
+        'Default admin user account (admin) not being used',
+        'Default admin user account (admin) being used. Not recommended',
+        'It checks whether you have the default <code>admin</code> account enabled, security guidelines recommend creating a new admin user name.',
         $upmsg
     );
 }
