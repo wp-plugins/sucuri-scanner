@@ -498,6 +498,535 @@ class SucuriScanFileInfo{
 }
 
 /**
+ * Class responsible for the processing of all the tasks associated to the database.
+ *
+ * Here are implemented the functions needed to rename tables, generate random names,
+ * change the Wordpress table prefix and modify the name of all the options linked to
+ * the previous database prefix.
+ */
+class SucuriScanDatabase{
+    /**
+     * Class constructor.
+     */
+    public function __construct(){
+    }
+
+    /**
+     * Generates a lowercase random string with an specific length.
+     *
+     * @param  integer $length Length of the string that will be generated.
+     * @return string          The random string generated.
+     */
+    public function random_char( $length=4 ){
+        $string = '';
+        $chars = range('a','z');
+
+        for( $i=0; $i<$length; $i++ ){
+            $string .= $chars[ rand(0, count($chars)-1) ];
+        }
+
+        return $string;
+    }
+
+    /**
+     * Translate a given number in bytes to a human readable file size using the
+     * a approximate value in Kylo, Mega, Giga, etc.
+     *
+     * @link   http://www.php.net/manual/en/function.filesize.php#106569
+     * @param  integer $bytes    An integer representing a file size in bytes.
+     * @param  integer $decimals How many decimals should be returned after the translation.
+     * @return string            Human readable representation of the given number in Kylo, Mega, Giga, etc.
+     */
+    public function human_filesize( $bytes=0, $decimals=2 ){
+        $sz = 'BKMGTP';
+        $factor = floor((strlen($bytes) - 1) / 3);
+        return sprintf("%.{$decimals}f", $bytes / pow(1024, $factor)) . @$sz[$factor];
+    }
+
+    /**
+     * List all database tables in a clean array of strings.
+     *
+     * @return array Array of strings.
+     */
+    public function get_dbtables(){
+        global $wpdb;
+
+        $table_names = array();
+        $tables = $wpdb->get_results('SHOW TABLES', ARRAY_N);
+
+        foreach($tables as $table){
+            $table_names[] = $table[0];
+        }
+
+        return $table_names;
+    }
+
+    /**
+     * Set a new database table prefix to improve the security.
+     *
+     * @return void
+     */
+    public function new_table_prefix(){
+        $new_table_prefix = $this->random_char( rand(4,7) ).'_';
+        $this->set_table_prefix($new_table_prefix);
+    }
+
+    /**
+     * Reset the database table prefix with the default value 'wp_'.
+     *
+     * @return void
+     */
+    public function reset_table_prefix(){
+        $this->set_table_prefix('wp_');
+    }
+
+    /**
+     * Set a new table prefix and changes table names, options, configuration files, etc.
+     *
+     * @param  string $new_table_prefix The new table prefix.
+     * @return void
+     */
+    private function set_table_prefix( $new_table_prefix='wp_' ){
+        $resp_parts = array();
+
+        // Set the new table prefix in the configuration file.
+        $resp_parts[] = $this->new_table_prefix_wpconfig($new_table_prefix);
+
+        // Update options table with the new table prefix.
+        $resp_parts[] = $this->new_table_prefix_optionstable($new_table_prefix);
+
+        // Update usermeta table with the new table prefix.
+        $resp_parts[] = $this->new_table_prefix_usermetatable($new_table_prefix);
+
+        // Rename table names with the new table prefix.
+        $resp_parts[] = $this->new_table_prefix_tablerename($new_table_prefix);
+
+        foreach( $resp_parts as $response ){
+            if( $response['process'] !== TRUE ){
+                sucuriscan_error( $response['message'] );
+            }
+        }
+    }
+
+    /**
+     * Using the new database table prefix, it modifies the main configuration file with that new value.
+     *
+     * @param  string $new_table_prefix
+     * @return array  An array with two default indexes containing the result of the operation and a message.
+     */
+    private function new_table_prefix_wpconfig( $new_table_prefix='' ){
+        global $wpdb;
+
+        $response = array( 'process'=>FALSE, 'message'=>'' );
+        $wp_config_path = sucuriscan_get_wpconfig_path();
+
+        if( file_exists($wp_config_path) ){
+            @chmod($wp_config_path, 0777);
+
+            if( is_writable($wp_config_path) ){
+                $new_wpconfig = '';
+                $wpconfig_lines = @file($wp_config_path);
+
+                foreach( $wpconfig_lines as $line ){
+                    $line = str_replace("\n", '', $line);
+
+                    if( preg_match('/.*\$table_prefix([ ]+)?=.*/', $line, $match) ){
+                        $line = str_replace($wpdb->prefix, $new_table_prefix, $match[0]);
+                    }
+
+                    $new_wpconfig .= "{$line}\n";
+                }
+
+                $handle = fopen($wp_config_path, 'w');
+                @fwrite($handle, $new_wpconfig);
+                @fclose($handle);
+                @chmod($wp_config_path, 0644);
+
+                $response['process'] = TRUE;
+                $response['message'] = 'Main configuration file modified.';
+            } else {
+                $response['message'] = 'Main configuration file is not writable, you will need to put the new
+                    table prefix <code>'.$new_table_prefix.'</code> manually in <code>wp-config.php</code>.';
+            }
+        } else {
+            $response['message'] = 'Main configuration file was not located: <code>'.$wp_config_path.'</code>.';
+        }
+
+        return $response;
+    }
+
+    /**
+     * Returns a list of all the tables in the selected database containing the same prefix.
+     *
+     * @param  string $prefix A text string used to filter the tables with a specific prefix.
+     * @return array          A list of all the tables with the prefix specified.
+     */
+    public function get_prefixed_tables( $prefix='' ){
+        global $wpdb;
+
+        $tables = array();
+        $prefix = empty($prefix) ? $wpdb->prefix : $prefix;
+        $db_tables = $this->get_dbtables();
+
+        foreach( $db_tables as $table_name ){
+            if( preg_match("/^{$prefix}/", $table_name) ){
+                $tables[] = $table_name;
+            }
+        }
+
+        return $tables;
+    }
+
+    /**
+     * Using the new database table prefix, it modifies the name of all tables with the new value.
+     *
+     * @param  string $new_table_prefix
+     * @return array  An array with two default indexes containing the result of the operation and a message.
+     */
+    private function new_table_prefix_tablerename( $new_table_prefix='' ){
+        global $wpdb;
+
+        $response = array( 'process'=>FALSE, 'message'=>'' );
+        $db_tables = $this->get_prefixed_tables();
+
+        $renamed_count = 0;
+        $total_tables = count($db_tables);
+        $tables_not_renamed = array();
+
+        foreach( $db_tables as $table_name ){
+            $table_new_name = $new_table_prefix . str_replace($wpdb->prefix, '', $table_name);
+            $sql = 'RENAME TABLE `%s` TO `%s`';
+
+            /* Don't use WPDB->Prepare() */
+            if( $wpdb->query(sprintf($sql, $table_name, $table_new_name))===FALSE ){
+                $tables_not_renamed[] = $table_name;
+            } else {
+                $renamed_count += 1;
+            }
+        }
+
+        $response['message'] = 'Database tables renamed: '.$renamed_count.' out of '.$total_tables;
+
+        if( $renamed_count>0 && $renamed_count==$total_tables ){
+            $response['process'] = TRUE;
+            $error = $wpdb->set_prefix($new_table_prefix);
+
+            if( is_wp_error($error) ){
+                foreach( $error->errors as $error_index=>$error_data ){
+                    if( is_array($error_data) ){
+                        foreach( $error_data as $error_data_value ){
+                            $response['message'] .= chr(32) . $error_data_value . '.';
+                        }
+                    }
+                }
+            }
+        } else {
+            $response['message'] .= '<br>These tables were not renamed, you will need to do it manually:';
+            $response['message'] .= chr(32) . implode( ',' . chr(32), $table_not_renamed );
+        }
+
+        return $response;
+    }
+
+    /**
+     * Using the new database table prefix, it modifies the name of all options with the new value.
+     *
+     * @param  string $new_table_prefix
+     * @return array  An array with two default indexes containing the result of the operation and a message.
+     */
+    private function new_table_prefix_optionstable( $new_table_prefix='' ){
+        global $wpdb;
+
+        $response = array( 'process'=>TRUE, 'message'=>'' );
+        $results = $wpdb->get_results("SELECT option_id, option_name FROM {$wpdb->prefix}options WHERE option_name LIKE '{$wpdb->prefix}%'");
+
+        foreach( $results as $row ){
+            $row->new_option_name = $new_table_prefix.str_replace($wpdb->prefix, '', $row->option_name);
+            $sql = "UPDATE {$wpdb->prefix}options SET option_name=%s WHERE option_id=%s LIMIT 1";
+
+            if( $wpdb->query($wpdb->prepare($sql, $row->new_option_name, $row->option_id))===FALSE ){
+                $response['process'] = FALSE;
+            }
+        }
+
+        $response['message'] = $response['process']
+            ? 'Database table options updated.'
+            : 'Some entries in the database table <strong>Options</strong> were not updated';
+
+        return $response;
+    }
+
+    /**
+     * Using the new database table prefix, it modifies the name of all usermeta keys with the new value.
+     *
+     * @param  string $new_table_prefix
+     * @return array  An array with two default indexes containing the result of the operation and a message.
+     */
+    private function new_table_prefix_usermetatable( $new_table_prefix='' ){
+        global $wpdb;
+
+        $response = array( 'process'=>TRUE, 'message'=>'' );
+        $results = $wpdb->get_results("SELECT umeta_id, meta_key FROM {$wpdb->prefix}usermeta WHERE meta_key LIKE '{$wpdb->prefix}%'");
+
+        foreach( $results as $row ){
+            $row->new_meta_key = $new_table_prefix.str_replace($wpdb->prefix, '', $row->meta_key);
+            $sql = "UPDATE {$wpdb->prefix}usermeta SET meta_key=%s WHERE umeta_id=%s LIMIT 1";
+
+            if( $wpdb->query($wpdb->prepare($sql, $row->new_meta_key, $row->umeta_id))===FALSE ){
+                $response['process'] = FALSE;
+            }
+        }
+
+        $response['message'] = $response['process']
+            ? 'Database table usermeta updated.'
+            : 'Some entries in the database table <strong>UserMeta</strong> were not updated';
+
+        return $response;
+    }
+}
+
+/**
+ * Class responsible for the processing of the generation of backups for the database.
+ *
+ * Here are implemented the functions needed to get the list of databases, information
+ * of single tables, generate the backup file (which can be a SQL or Zip file), a way
+ * to download and remove old backup files.
+ */
+class SucuriScanBackup extends SucuriScanDatabase{
+    /**
+     * Class constructor.
+     */
+    public function __construct(){
+        ini_set('memory_limit', '-1');
+    }
+
+    /**
+     * Returns the system filepath to the relevant user uploads directory for this
+     * site. This is a multisite capable function.
+     *
+     * @param  string $path The relative path that needs to be completed to get the absolute path.
+     * @return string       The full filesystem path including the directory specified.
+     */
+    public function datastore_folder_path( $path='' ){
+        if( function_exists('sucuriscan_dir_filepath') ){
+            return sucuriscan_dir_filepath();
+        }
+
+        else {
+            $wp_dir_array = wp_upload_dir();
+            $wp_dir_array['basedir'] = untrailingslashit($wp_dir_array['basedir']);
+            $wp_filepath = $wp_dir_array['basedir'] . '/sucuri/' . $path;
+
+            return $wp_filepath;
+        }
+    }
+
+    /**
+     * Generate a SQL or Zip file with the current state of the database in use.
+     *
+     * @return string Returns the SQL or Zip full file path created.
+     */
+    public function all_database(){
+        $sql_output = '';
+        $tables = $this->get_dbtables();
+
+        foreach($tables as $table_name){
+            $sql_output .= $this->single_table($table_name, TRUE);
+            $sql_output .= PHP_EOL.PHP_EOL;
+        }
+
+        $sql_output .= PHP_EOL.PHP_EOL;
+
+        return $this->generate_backup($sql_output);
+    }
+
+    /**
+     * Generate a SQL or Zip file containing all the content inside a single table in the current database.
+     *
+     * @param  string  $table_name Specify the table name to dump.
+     * @param  boolean $batch_mode Specify whether if return the SQL generated or generate the SQL/Zip file.
+     * @return string              Returns the SQL generated or the SQL/Zip full file path created.
+     */
+    public function single_table( $table_name='', $batch_mode=FALSE ){
+        global $wpdb;
+
+        if( $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'")==$table_name ){
+            $sql_output = '';
+
+            $results = $wpdb->get_results("SELECT * FROM `{$table_name}`", ARRAY_N);
+            $fields = $wpdb->get_col("DESCRIBE `{$table_name}`", 0);
+            $num_fields = count($fields);
+
+            $sql_output .= "DROP TABLE IF EXISTS `{$table_name}`;";
+            $table_definition = $wpdb->get_row("SHOW CREATE TABLE `{$table_name}`", ARRAY_N);
+            $sql_output .= PHP_EOL.PHP_EOL . $table_definition[1].';' . PHP_EOL.PHP_EOL;
+
+            foreach($results as $row){
+                $sql_output .= "INSERT INTO `{$table_name}` VALUES(";
+
+                for( $i=0; $i<$num_fields; $i++ ) {
+                    $row[$i] = esc_sql($row[$i]);
+                    $row[$i] = preg_replace('#'.PHP_EOL.'#', "\n", $row[$i]);
+
+                    if( isset($row[$i]) ){
+                        $sql_output .= "'{$row[$i]}'";
+                    } else {
+                        $sql_output .= "''";
+                    }
+
+                    if( $i < ($num_fields-1) ){
+                        $sql_output .= ','.chr(32);
+                    }
+                }
+
+                $sql_output .= ');'.PHP_EOL;
+            }
+
+            return $batch_mode===TRUE ? $sql_output : $this->generate_backup($sql_output);
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Create a SQL or Zip file with the passed content.
+     *
+     * @param  string         $content SQL generated.
+     * @return string|boolean          Return FALSE or the SQL/Zip full file path created.
+     */
+    private function generate_backup( $content='' ){
+        $plugin_upload_folder = $this->datastore_folder_path();
+
+        if( is_writable($plugin_upload_folder) ){
+            $filename = 'sucuri-dbbackup-'.current_time('timestamp').'.sql';
+            $filepath = rtrim($plugin_upload_folder,'/').'/'.$filename;
+            $handle = @fopen($filepath, 'w+');
+            @fwrite($handle, $content);
+            @fclose($handle);
+
+            if( class_exists('ZipArchive') ){
+                $package_path = $filepath.'.zip';
+
+                $zip = new ZipArchive();
+                $archive = $zip->open($package_path, ZipArchive::CREATE);
+                $zip->addFile($filepath, $filename);
+                $zip->close();
+
+                if( file_exists($package_path) && filesize($package_path)>0 ){
+                    @unlink($filepath); /* Remove the old SQL file to keep the new Zip file */
+                    $filename = $filename.'.zip';
+                    $filepath = $package_path;
+                }
+            }
+
+            return ( file_exists($filepath) && filesize($filepath)>0 ) ? $filepath : FALSE;
+        } else {
+            sucuriscan_error('Upload folder is not writable, can not continue with the backup: <code>'.$plugin_upload_folder.'</code>');
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Get extra information of the filepath specified, including full filepath, filesize, timeatime, etc.
+     *
+     * @param  string $filepath Relative path of the file.
+     * @return object           Extra information of the file specified.
+     */
+    private function get_backup_file_info( $filepath='' ){
+        $backup_file = FALSE;
+        $plugin_upload_folder = $this->datastore_folder_path();
+
+        if( file_exists($filepath) && is_file($filepath) && is_readable($filepath) ){
+            $filesize = filesize($filepath);
+            $filename_exploded = explode('.', $filepath);
+            $backup_file = (object)array(
+                'filepath' => $filepath,
+                'filename' => basename($filepath),
+                'filesize' => $filesize,
+                'filehumansize' => $this->human_filesize($filesize),
+                'filetime' => fileatime($filepath),
+                'fileext' => array_pop($filename_exploded),
+                'fileurl' => site_url( str_replace(ABSPATH, '', rtrim($plugin_upload_folder,'/').'/'.basename($filepath)) ),
+            );
+        }
+
+        return $backup_file;
+    }
+
+    /**
+     * List all database backup files generated with extra information.
+     *
+     * @return array Key-value list of backup files.
+     */
+    public function get_backup_files(){
+        $backup_files = array();
+        $plugin_upload_folder = $this->datastore_folder_path();
+
+        $files = glob( rtrim($plugin_upload_folder,'/').'/sucuri-dbbackup*.{sql,zip}', GLOB_BRACE );
+        if( is_array($files) && !empty($files) ){
+            $files_ordered = array_reverse($files);
+
+            foreach( $files_ordered as $filepath ){
+                $backup_file = $this->get_backup_file_info($filepath);
+
+                if( $backup_file ){
+                    $backup_files[] = $backup_file;
+                }
+            }
+        }
+
+        return $backup_files;
+    }
+
+    /**
+     * Get extra information of the filename specified, including full filepath, filesize, timeatime, etc.
+     *
+     * @param  string $filename Simple filename with extension.
+     * @return object           Extra information of the file specified.
+     */
+    public function get_backup_file_from_filename( $filename='' ){
+        $plugin_upload_folder = $this->datastore_folder_path();
+        $filepath = rtrim($plugin_upload_folder,'/').'/'.$filename;
+
+        return $this->get_backup_file_info($filepath);
+    }
+
+    /**
+     * Remove a list of backup files selected by the user through the plugin interface.
+     *
+     * @param  array  $files List of filenames that will be deleted.
+     * @return void
+     */
+    public function remove_backup_file( $files=array() ){
+        $files = is_array($files) ? $files : array($files);
+
+        if( !empty($files) ){
+            $num_files_to_remove = count($files);
+            $num_removed_files = 0;
+
+            foreach($files as $filename){
+                $backup_file = $this->get_backup_file_from_filename($filename);
+
+                if($backup_file && @unlink($backup_file->filepath) ){
+                    $num_removed_files += 1;
+                }
+            }
+
+            $message = sprintf( 'Database backups removed: %d out of %d', $num_removed_files, $num_files_to_remove );
+
+            if( $num_removed_files == $num_files_to_remove ){
+                sucuriscan_info( $message );
+            } else {
+                sucuriscan_error( $message );
+            }
+        } else {
+            sucuriscan_error('You did not select any backup file to remove.');
+        }
+    }
+}
+
+/**
  * Check whether the current site is working as a multi-site instance.
  *
  * @return boolean Either TRUE or FALSE in case WordPress is being used as a multi-site instance.
@@ -1279,6 +1808,7 @@ function sucuriscan_get_wpconfig_path(){
     if( !is_readable($wp_config_path)){
         $wp_config_path = ABSPATH.'/../wp-config.php';
     }
+
     return $wp_config_path;
 }
 
@@ -3681,6 +4211,7 @@ function sucuriscan_hardening_page(){
             sucuriscan_harden_readme();
             sucuriscan_harden_adminuser();
             sucuriscan_harden_fileeditor();
+            sucuriscan_harden_dbtables();
             ?>
         </form>
     </div>
@@ -4269,6 +4800,50 @@ function sucuriscan_harden_fileeditor(){
         'File editor for Plugins and Themes is disabled',
         'File editor for Plugins and Themes is enabled',
         $message,
+        NULL
+    );
+}
+
+/**
+ * Check whether the prefix of each table in the database designated for the site
+ * is the same as the default prefix defined by Wordpress "_wp", in that case the
+ * "harden" button will generate randomly a new prefix and rename all those tables.
+ *
+ * @return void
+ */
+function sucuriscan_harden_dbtables(){
+    global $table_prefix;
+
+    $hardened = ( $table_prefix == 'wp_' ? 0 : 1 );
+
+    if( isset($_POST['wpsucuri-doharden']) && isset($_POST['sucuriscan_harden_dbtables']) ){
+        $sucuri_backup = new SucuriScanBackup();
+        $dbbackup_filepath = $sucuri_backup->all_database();
+
+        if( $dbbackup_filepath ){
+            sucuriscan_info( 'A new database table prefix change was initialized, if you have
+                problems after this operation finishes you can find a backup of the current
+                database here: <code>'.$dbbackup_filepath.'</code>' );
+
+            if( isset($_POST['sucuriscan_harden_dbtables']) ){
+                $hardened = 1;
+                $sucuri_backup->new_table_prefix();
+            } elseif( isset($_POST['sucuri_harden_dbtables_unharden']) ){
+                $hardened = 0;
+                $sucuri_backup->reset_table_prefix();
+            }
+        } else {
+            sucuriscan_error( 'Error generating a backup for your database.' );
+        }
+    }
+
+    sucuriscan_harden_status(
+        'Database table prefix',
+        $hardened,
+        'sucuriscan_harden_dbtables',
+        'Database table prefix properly modified',
+        'Database table set to the default value <code>wp_</code>',
+        'It checks whether your database table prefix has been changed from the default <code>wp_</code>',
         NULL
     );
 }
