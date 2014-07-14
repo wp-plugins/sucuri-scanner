@@ -3678,6 +3678,7 @@ function sucuriscan_hardening_page(){
             sucuriscan_harden_wpincludes();
             sucuriscan_harden_phpversion();
             sucuriscan_harden_secretkeys();
+            sucuriscan_harden_readme();
             ?>
         </form>
     </div>
@@ -3691,26 +3692,6 @@ function sucuriscan_hardening_page(){
         'PageStyleClass' => 'hardening'
     ));
     return;
-}
-
-/**
- * Print an error message in the interface.
- *
- * @param  string $message The text string that will be shown inside the error box.
- * @return void
- */
-function sucuriscan_harden_error($message){
-    return('<div id="message" class="error"><p>'.$message.'</p></div>');
-}
-
-/**
- * Print a success message in the interface.
- *
- * @param  string $message The text string that will be shown inside the success box.
- * @return void
- */
-function sucuriscan_harden_ok($message){
-    return( '<div id="message" class="updated"><p>' . $message . '</p></div>' );
 }
 
 /**
@@ -3853,9 +3834,9 @@ function sucuriscan_harden_upload(){
     if( isset($_POST['wpsucuri-doharden']) ){
         if( isset($_POST['sucuriscan_harden_upload']) && $cp == 0 ){
             if( @file_put_contents($htaccess_upload, "\n<Files *.php>\ndeny from all\n</Files>") === FALSE ){
-                $upmsg = sucuriscan_harden_error('ERROR: Unable to create <code>.htaccess</code> file, folder destination is not writable.');
+                $upmsg = sucuriscan_error('ERROR: Unable to create <code>.htaccess</code> file, folder destination is not writable.');
             } else {
-                $upmsg = sucuriscan_harden_ok('COMPLETE: Upload directory successfully hardened');
+                $upmsg = sucuriscan_info('COMPLETE: Upload directory successfully hardened');
                 $cp = 1;
             }
         }
@@ -3925,9 +3906,9 @@ function sucuriscan_harden_wpcontent(){
     if( isset($_POST['wpsucuri-doharden']) ){
         if( isset($_POST['sucuriscan_harden_wpcontent']) && $cp == 0 ){
             if( @file_put_contents($htaccess_upload, "\n<Files *.php>\ndeny from all\n</Files>") === FALSE ){
-                $upmsg = sucuriscan_harden_error('ERROR: Unable to create <code>.htaccess</code> file, folder destination is not writable.');
+                $upmsg = sucuriscan_error('ERROR: Unable to create <code>.htaccess</code> file, folder destination is not writable.');
             } else {
-                $upmsg = sucuriscan_harden_ok('COMPLETE: wp-content directory successfully hardened');
+                $upmsg = sucuriscan_info('COMPLETE: wp-content directory successfully hardened');
                 $cp = 1;
             }
         }
@@ -4000,9 +3981,9 @@ function sucuriscan_harden_wpincludes(){
     if( isset($_POST['wpsucuri-doharden']) ){
         if( isset($_POST['sucuriscan_harden_wpincludes']) && $cp == 0 ){
             if( @file_put_contents($htaccess_upload, "\n<Files *.php>\ndeny from all\n</Files>\n<Files wp-tinymce.php>\nallow from all\n</Files>\n")===FALSE ){
-                $upmsg = sucuriscan_harden_error('ERROR: Unable to create <code>.htaccess</code> file, folder destination is not writable.');
+                $upmsg = sucuriscan_error('ERROR: Unable to create <code>.htaccess</code> file, folder destination is not writable.');
             } else {
-                $upmsg = sucuriscan_harden_ok('COMPLETE: wp-includes directory successfully hardened.');
+                $upmsg = sucuriscan_info('COMPLETE: wp-includes directory successfully hardened.');
                 $cp = 1;
             }
         }
@@ -4153,6 +4134,43 @@ function sucuriscan_harden_secretkeys(){
         'WordPress secret keys and salts not set, we recommend creating them for security reasons',
         $message,
         NULL
+    );
+}
+
+/**
+ * Check whether the "readme.html" file is still available in the root of the
+ * site or not, which can lead to an attacker to know which version number of
+ * Wordpress is being used and search for possible vulnerabilities.
+ *
+ * @return void
+ */
+function sucuriscan_harden_readme(){
+    $upmsg = NULL;
+    $cp = is_readable(ABSPATH.'/readme.html') ? 0 : 1;
+
+    if( isset($_POST['wpsucuri-doharden']) ){
+        if( isset($_POST['sucuriscan_harden_readme']) && $cp == 0 ){
+            if( @unlink(ABSPATH.'/readme.html') === FALSE ){
+                $upmsg = sucuriscan_error('Unable to remove <code>readme.html</code> file.');
+            } else {
+                $cp = 1;
+                $upmsg = sucuriscan_info('<code>readme.html</code> file removed successfully.');
+            }
+        }
+
+        elseif( isset($_POST['sucuriscan_harden_readme_unharden']) ){
+            sucuriscan_error('We can not revert this action, you should create the <code>readme.html</code> file at your own.');
+        }
+    }
+
+    sucuriscan_harden_status(
+        'Information leakage (readme.html)',
+        $cp,
+        'sucuriscan_harden_readme',
+        '<code>readme.html</code> file properly deleted',
+        '<code>readme.html</code> not deleted and leaking the WordPress version',
+        'It checks whether you have the <code>readme.html</code> file available that leaks your WordPress version',
+        $upmsg
     );
 }
 
