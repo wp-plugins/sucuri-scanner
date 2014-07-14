@@ -4816,7 +4816,7 @@ function sucuriscan_harden_dbtables(){
 
     $hardened = ( $table_prefix == 'wp_' ? 0 : 1 );
 
-    if( isset($_POST['wpsucuri-doharden']) && isset($_POST['sucuriscan_harden_dbtables']) ){
+    if( isset($_POST['wpsucuri-doharden']) ){
         $sucuri_backup = new SucuriScanBackup();
         $dbbackup_filepath = $sucuri_backup->all_database();
 
@@ -4828,7 +4828,7 @@ function sucuriscan_harden_dbtables(){
             if( isset($_POST['sucuriscan_harden_dbtables']) ){
                 $hardened = 1;
                 $sucuri_backup->new_table_prefix();
-            } elseif( isset($_POST['sucuri_harden_dbtables_unharden']) ){
+            } elseif( isset($_POST['sucuriscan_harden_dbtables_unharden']) ){
                 $hardened = 0;
                 $sucuri_backup->reset_table_prefix();
             }
