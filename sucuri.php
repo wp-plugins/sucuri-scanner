@@ -5302,6 +5302,7 @@ function sucuriscan_posthack_page(){
         'PageTitle' => 'Post-Hack',
         'UpdateSecretKeys' => sucuriscan_update_secret_keys($process_form),
         'ResetPassword' => sucuriscan_posthack_users($process_form),
+        'DatabaseBackups' => sucuriscan_database_backups($process_form),
     );
 
     echo sucuriscan_get_template('posthack', $template_variables);
@@ -5439,6 +5440,122 @@ function sucuriscan_reset_user_password( $process_form=FALSE ){
             sucuriscan_error( 'You did not select a user from the list.' );
         }
     }
+}
+
+/**
+ * List and offer a way to download the database backups generates so far.
+ *
+ * @param  $process_form Whether a form was submitted or not.
+ * @return void
+ */
+function sucuriscan_database_backups( $process_form=FALSE ){
+    $template_variables = array(
+        'BackupList' => '',
+    );
+
+    // Process the form submission (if any).
+    sucuriscan_process_database_backups_form($process_form);
+
+    // Instantiate the database/backup library and get all files.
+    $sucuri_backup = new SucuriScanBackup();
+    $backup_files = $sucuri_backup->get_backup_files();
+
+    if( $backup_files ){
+        $counter = 0;
+
+        foreach( $backup_files as $backup_file ){
+            $backupfile_snippet = sucuriscan_get_snippet('posthack-databasebackups', array(
+                'BackupList.FileURL' => admin_url('?sucuriscan_download=' . $backup_file->filename),
+                'BackupList.Filename' => $backup_file->filename,
+                'BackupList.Filetype' => strtoupper($backup_file->fileext),
+                'BackupList.Filesize' => ( $backup_file->filesize>0 ? "{$backup_file->filesize} (~ {$backup_file->filehumansize})" : 0 ),
+                'BackupList.Filetime' => date('Y/M/d H:i', $backup_file->filetime),
+                'BackupList.CssClass' => ( $counter % 2 == 0 ) ? '' : 'alternate',
+            ));
+
+            $template_variables['BackupList'] .= $backupfile_snippet;
+            $counter += 1;
+        }
+    }
+
+    return sucuriscan_get_section('posthack-databasebackups', $template_variables);
+}
+
+/**
+ * Process the form submissions of the database backups panel.
+ *
+ * @param  $process_form Whether a form was submitted or not.
+ * @return void
+ */
+function sucuriscan_process_database_backups_form( $process_form=FALSE ){
+    if( $process_form && isset($_POST['sucuriscan_database_backup']) ){
+
+        if( isset($_POST['generate_dbbackup']) ){
+            $sucuri_backup = new SucuriScanBackup();
+            $dbbackup_filepath = $sucuri_backup->all_database();
+
+            if( $dbbackup_filepath ){
+                $dbbackup_fileurl = admin_url( '?sucuriscan_download=' . basename($dbbackup_filepath) );
+                sucuriscan_info( 'Database backup generated and stored in the plugin upload folder, you can download the
+                    file from here: <a href="'.$dbbackup_fileurl.'" target="_blank"><strong>Download DB Backup</strong></a>' );
+            } else {
+                sucuriscan_error( 'Could not generate a new database backup' );
+            }
+        }
+
+        elseif( isset($_POST['remove_dbbackup']) ){
+            $sucuri_backup = new SucuriScanBackup();
+            $backups_to_remove = isset($_POST['dbbackup_filenames']) ? $_POST['dbbackup_filenames'] : array();
+            $sucuri_backup->remove_backup_file($backups_to_remove);
+        }
+
+    }
+}
+
+if( !function_exists('sucuriscan_download_file') ){
+    /**
+     * Download the SQL or Zip file generated to hold a backup of the database.
+     *
+     * @return void
+     */
+    function sucuriscan_download_file(){
+        if(
+            current_user_can('manage_options')
+            AND isset($_GET['sucuriscan_download'])
+        ){
+            $sucuri_backup = new SucuriScanBackup();
+            $backup_file = $sucuri_backup->get_backup_file_from_filename($_GET['sucuriscan_download']);
+
+            if( $backup_file ){
+                switch($backup_file->fileext){
+                    case 'sql':
+                        $download_filename = sprintf('%s.sql', DB_NAME);
+                        header('Content-Type: application/x-sql');
+                        break;
+                    case 'zip':
+                        $download_filename = sprintf('%s.sql.zip', DB_NAME);
+                        header('Content-Type: application/zip');
+                        break;
+                    default:
+                        $download_filename = $backup_file->filename;
+                        header('Content-Type: application/octet-stream');
+                        break;
+                }
+
+                header('Content-Disposition: attachment; filename='.$download_filename);
+                header('Content-Length: '.$backup_file->filesize);
+                header('Cache-Control: private');
+
+                if( $fd=fopen($backup_file->filepath,'r') ){
+                    while( !feof($fd) ){ echo fread($fd, 2048); }
+                }
+
+                fclose($fd);
+            }
+        }
+    }
+
+    add_action('admin_init', 'sucuriscan_download_file');
 }
 
 /**
