@@ -2556,6 +2556,8 @@ function sucuriscan_api_call( $url='', $method='GET', $params=array() ){
 
     $req_args = array(
         'method' => $method,
+        'timeout' => 90,
+        'redirection' => 2,
         'httpversion' => '1.0',
         'user-agent' => sucuriscan_user_agent(),
         'blocking' => TRUE,
