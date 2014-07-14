@@ -4842,9 +4842,9 @@ function sucuriscan_harden_dbtables(){
         $hardened,
         'sucuriscan_harden_dbtables',
         'Database table prefix properly modified',
-        'Database table set to the default value <code>wp_</code>',
+        'Database table set to the default value <code>wp_</code>.',
         'It checks whether your database table prefix has been changed from the default <code>wp_</code>',
-        NULL
+        '<strong>Be aware that this hardening procedure can cause your site to go down</strong>'
     );
 }
 
