@@ -3677,6 +3677,7 @@ function sucuriscan_hardening_page(){
             sucuriscan_harden_wpcontent();
             sucuriscan_harden_wpincludes();
             sucuriscan_harden_phpversion();
+            sucuriscan_harden_secretkeys();
             ?>
         </form>
     </div>
@@ -4086,6 +4087,71 @@ function sucuriscan_cloudproxy_enabled(){
         'A WAF is a protection layer for your web site, blocking all sort of attacks (brute force attempts, DDoS, '
         .'SQL injections, etc) and helping it remain malware and blacklist free. This test checks if your site is '
         .'using <a href="http://cloudproxy.sucuri.net/" target="_blank">Sucuri\'s CloudProxy WAF</a> to protect your site. ',
+        NULL
+    );
+}
+
+/**
+ * Check whether the Wordpress configuration file has the security keys recommended
+ * to avoid any unauthorized access to the interface.
+ *
+ * WordPress Security Keys is a set of random variables that improve encryption of
+ * information stored in the user’s cookies. There are a total of four security
+ * keys: AUTH_KEY, SECURE_AUTH_KEY, LOGGED_IN_KEY, and NONCE_KEY.
+ *
+ * @return void
+ */
+function sucuriscan_harden_secretkeys(){
+    $wp_config_path = sucuriscan_get_wpconfig_path();
+
+    if( $wp_config_path ){
+        $cp = 1;
+        $message = 'The main configuration file was found at: <code>'.$wp_config_path.'</code><br>';
+
+        $secret_key_names = array(
+            'AUTH_KEY',
+            'SECURE_AUTH_KEY',
+            'LOGGED_IN_KEY',
+            'NONCE_KEY',
+            'AUTH_SALT',
+            'SECURE_AUTH_SALT',
+            'LOGGED_IN_SALT',
+            'NONCE_SALT',
+        );
+
+        foreach( $secret_key_names as $key_name){
+            if( !defined($key_name) ){
+                $cp = 0;
+                $message .= 'The secret key <strong>'.$key_name.'</strong> is not defined.<br>';
+            } elseif( constant($key_name) == 'put your unique phrase here' ){
+                $cp = 0;
+                $message .= 'The secret key <strong>'.$key_name.'</strong> is not properly set.<br>';
+            }
+        }
+
+        if( $cp == 0 ){
+            $admin_url = admin_url('admin.php?page=sucuriscan_posthack');
+            $message .= '<br><a href="'.$admin_url.'" class="button button-primary">Update WP-Config Keys</a><br>';
+        }
+    }else{
+        $cp = 0;
+        $message = 'The <code>wp-config</code> file was not found.<br>';
+    }
+
+    $message .= '<br>It checks whether you have proper random keys/salts created for WordPress. A
+        <a href="http://codex.wordpress.org/Editing_wp-config.php#Security_Keys" target="_blank">
+        secret key</a> makes your site harder to hack and access harder to crack by adding
+        random elements to the password. In simple terms, a secret key is a password with
+        elements that make it harder to generate enough options to break through your
+        security barriers.';
+
+    sucuriscan_harden_status(
+        'Validity of the secret keys',
+        $cp,
+        NULL,
+        'WordPress secret keys and salts properly created',
+        'WordPress secret keys and salts not set, we recommend creating them for security reasons',
+        $message,
         NULL
     );
 }
