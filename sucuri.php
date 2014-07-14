@@ -3680,6 +3680,7 @@ function sucuriscan_hardening_page(){
             sucuriscan_harden_secretkeys();
             sucuriscan_harden_readme();
             sucuriscan_harden_adminuser();
+            sucuriscan_harden_fileeditor();
             ?>
         </form>
     </div>
@@ -4203,6 +4204,72 @@ function sucuriscan_harden_adminuser(){
         'Default admin user account (admin) being used. Not recommended',
         'It checks whether you have the default <code>admin</code> account enabled, security guidelines recommend creating a new admin user name.',
         $upmsg
+    );
+}
+
+/**
+ * Enable or disable the user of the built-in Wordpress file editor.
+ *
+ * @return void
+ */
+function sucuriscan_harden_fileeditor(){
+    $file_editor_disabled = defined('DISALLOW_FILE_EDIT') ? DISALLOW_FILE_EDIT : FALSE;
+
+    if( isset($_POST['wpsucuri-doharden']) ){
+        $current_time = date('r');
+        $wp_config_path = sucuriscan_get_wpconfig_path();
+
+        $wp_config_writable = ( file_exists($wp_config_path) && is_writable($wp_config_path) ) ? TRUE : FALSE;
+        $new_wpconfig = $wp_config_writable ? file_get_contents($wp_config_path) : '';
+
+        if( isset($_POST['sucuriscan_harden_fileeditor']) ){
+            if( $wp_config_writable ){
+                if( preg_match('/(.*define\(.DB_COLLATE..*)/', $new_wpconfig, $match) ){
+                    $disallow_fileedit_definition = "\n\ndefine('DISALLOW_FILE_EDIT', TRUE); // Sucuri Security: {$current_time}\n";
+                    $new_wpconfig = str_replace($match[0], $match[0].$disallow_fileedit_definition, $new_wpconfig);
+                }
+
+                @file_put_contents($wp_config_path, $new_wpconfig, LOCK_EX);
+                sucuriscan_info( 'WP-Config file updated successfully, the plugin and theme editor was disabled.' );
+                $file_editor_disabled = TRUE;
+            } else {
+                sucuriscan_error( 'The <code>wp-config.php</code> file is not in the default location
+                    or is not writable, you will need to put the following code manually there:
+                    <code>define("DISALLOW_FILE_EDIT", TRUE);</code>' );
+            }
+        }
+
+        elseif( isset($_POST['sucuriscan_harden_fileeditor_unharden']) ){
+            if( preg_match("/(.*define\('DISALLOW_FILE_EDIT', TRUE\);.*)/", $new_wpconfig, $match) ){
+                if( $wp_config_writable ){
+                    $new_wpconfig = str_replace("\n{$match[1]}", '', $new_wpconfig);
+                    file_put_contents($wp_config_path, $new_wpconfig, LOCK_EX);
+                    sucuriscan_info( 'WP-Config file updated successfully, the plugin and theme editor was enabled.' );
+                    $file_editor_disabled = FALSE;
+                } else {
+                    sucuriscan_error( 'The <code>wp-config.php</code> file is not in the default location
+                        or is not writable, you will need to remove the following code manually from there:
+                        <code>define("DISALLOW_FILE_EDIT", TRUE);</code>' );
+                }
+            } else {
+                sucuriscan_error( 'We did not find a definition to disallow the file editor.' );
+            }
+        }
+    }
+
+    $message = 'Occasionally you may wish to disable the plugin or theme editor to prevent overzealous users
+        from being able to edit sensitive files and potentially crash the site. Disabling these also
+        provides an additional layer of security if a hacker gains access to a well-privileged user
+        account.';
+
+    sucuriscan_harden_status(
+        'Plugin &amp; Theme editor',
+        ( $file_editor_disabled === FALSE ? 0 : 1 ),
+        'sucuriscan_harden_fileeditor',
+        'File editor for Plugins and Themes is disabled',
+        'File editor for Plugins and Themes is enabled',
+        $message,
+        NULL
     );
 }
 
