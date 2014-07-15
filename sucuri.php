@@ -466,19 +466,16 @@ class SucuriScanFileInfo extends SucuriScan {
      * @param  string  $filename  Name of the folder or file being scanned at the moment.
      * @return boolean            Either TRUE or FALSE representing that the scan should ignore this folder or not.
      */
-    private function ignore_folderpath($directory='', $filename=''){
+    private function ignore_folderpath( $directory='', $filename='' ){
         // Ignoring current and parent folders.
         if( $filename == '.' || $filename == '..' ){ return TRUE; }
 
         if( $this->ignore_directories ){
-            $filepath = realpath($directory.'/'.$filename);
+            $filepath = realpath( $directory . '/' . $filename );
+            $pattern = '/\/wp-content\/(uploads|cache|backup|w3tc)/';
 
-            if( $filename == 'sucuri' || strpos($filepath, '/sucuri/') !== FALSE ){ return TRUE; }
-
-            if( is_dir($filepath) ){
-                if( ($filename == 'cache') && (strpos($directory, 'wp-content') !== FALSE) ){ return TRUE; }
-
-                if( ($filename == 'w3tc') && (strpos($filepath, 'wp-content/w3tc') !== FALSE) ){ return TRUE; }
+            if( preg_match($pattern, $filepath) ){
+                return TRUE;
             }
         }
 
@@ -3415,6 +3412,7 @@ function sucuriscan_filesystem_scan( $force_scan=FALSE ){
         $sucuri_fileinfo = new SucuriScanFileInfo();
         $scan_interface = get_option('sucuriscan_scan_interface');
         $signatures = $sucuri_fileinfo->get_directory_tree_md5(ABSPATH, $scan_interface);
+echo '<pre>';print($signatures);exit;
 
         if( $signatures ){
             $hashes_sent = sucuriscan_send_hashes( $signatures );
