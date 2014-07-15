@@ -2827,7 +2827,7 @@ function sucuriscan_sitecheck_info(){
                                 <?php foreach( $res['OUTDATEDSCAN'] as $outdated ): ?>
                                     <?php if( count($outdated) >= 3 ): ?>
                                         <tr>
-                                            <td colspan="2">
+                                            <td colspan="2" class="sucuriscan-border-bad">
                                                 <strong><?php _e($outdated[0]) ?></strong>
                                                 <em>(<?php _e($outdated[2]) ?>)</em>
                                                 <span><?php _e($outdated[1]) ?></span>
@@ -2842,7 +2842,7 @@ function sucuriscan_sitecheck_info(){
                                 <?php foreach( $res['RECOMMENDATIONS'] as $recommendation ): ?>
                                     <?php if( count($recommendation) >= 3 ): ?>
                                         <tr>
-                                            <td colspan="2">
+                                            <td colspan="2" class="sucuriscan-border-bad">
                                                 <?php printf(
                                                     '<strong>%s</strong><br><span>%s</span><br><a href="%s" target="_blank">%s</a>',
                                                     $recommendation[0],
@@ -3412,7 +3412,6 @@ function sucuriscan_filesystem_scan( $force_scan=FALSE ){
         $sucuri_fileinfo = new SucuriScanFileInfo();
         $scan_interface = get_option('sucuriscan_scan_interface');
         $signatures = $sucuri_fileinfo->get_directory_tree_md5(ABSPATH, $scan_interface);
-echo '<pre>';print($signatures);exit;
 
         if( $signatures ){
             $hashes_sent = sucuriscan_send_hashes( $signatures );
