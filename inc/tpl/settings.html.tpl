@@ -21,11 +21,9 @@
                 <p>
                     Most of the tools in this plugin can be used without a specific configuration,
                     but the core features <strong>require an API key</strong> to communicate with
-                    the Sucuri services, you can get this key for free using the button located at
-                    the top-left corner of this interface. The key is generated using your
-                    administrator e-mail and the domain of this site, this will allow you to have
-                    access to our free monitoring tool forever even if you remove the API key and
-                    generate it again.
+                    the Sucuri services. The key is generated using your administrator e-mail and
+                    the domain of this site, this will allow you to have access to our free
+                    monitoring tool forever even if you remove the API key and generate it again.
                 </p>
             </td>
         </tr>

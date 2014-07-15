@@ -2655,7 +2655,7 @@ function sucuriscan_set_api_key( $api_key='', $validate=FALSE ){
  *
  * @return string|boolean The API key or FALSE if it does not exists.
  */
-function sucuriscan_wordpress_apikey(){
+function sucuriscan_wordpress_apikey(){return FALSE;
     $api_key = get_option('sucuriscan_api_key');
 
     if( $api_key && strlen($api_key) > 10 ){
@@ -4356,7 +4356,7 @@ function sucuriscan_harden_version(){
         $wp_version
     );
 
-    sucuriscan_harden_status( 'Verify WordPress Version', $cp, NULL, $messageok, $messagewarn, $initial_msg );
+    sucuriscan_harden_status( 'Verify WordPress version', $cp, NULL, $messageok, $messagewarn, $initial_msg );
 }
 
 /**
@@ -4368,7 +4368,7 @@ function sucuriscan_harden_version(){
  */
 function sucuriscan_harden_removegenerator(){
     sucuriscan_harden_status(
-        'Remove WordPress Version',
+        'Remove WordPress version',
         1,
         NULL,
         'WordPress version properly hidden',
@@ -4440,7 +4440,7 @@ function sucuriscan_harden_upload(){
     }
 
     sucuriscan_harden_status(
-        'Protect Uploads Directory',
+        'Protect uploads directory',
         $cp,
         'sucuriscan_harden_upload',
         'Upload directory properly hardened',
@@ -4512,7 +4512,7 @@ function sucuriscan_harden_wpcontent(){
     }
 
     sucuriscan_harden_status(
-        'Restrict wp-content Access',
+        'Restrict wp-content access',
         $cp,
         'sucuriscan_harden_wpcontent',
         'WP-content directory properly hardened',
@@ -4588,7 +4588,7 @@ function sucuriscan_harden_wpincludes(){
     }
 
     sucuriscan_harden_status(
-        'Restrict wp-includes Access',
+        'Restrict wp-includes access',
         $cp,
         'sucuriscan_harden_wpincludes',
         'WP-Includes directory properly hardened',
@@ -4609,7 +4609,7 @@ function sucuriscan_harden_phpversion(){
     $cp = ( strncmp($phpv, '5.', 2) < 0 ) ? 0 : 1;
 
     sucuriscan_harden_status(
-        'Verify PHP Version',
+        'Verify PHP version',
         $cp,
         NULL,
         'Using an updated version of PHP (' . $phpv . ')',
@@ -4635,7 +4635,7 @@ function sucuriscan_cloudproxy_enabled(){
     }
 
     sucuriscan_harden_status(
-        'Verify if your site is protected by a Web Firewall',
+        'Website Firewall protection',
         $status,
         NULL,
         'Your website is protected by a Website Firewall (WAF)',
@@ -4702,7 +4702,7 @@ function sucuriscan_harden_secretkeys(){
         security barriers.';
 
     sucuriscan_harden_status(
-        'Validity of the secret keys',
+        'Secret keys validity',
         $cp,
         NULL,
         'WordPress secret keys and salts properly created',
@@ -4770,7 +4770,7 @@ function sucuriscan_harden_adminuser(){
     }
 
     sucuriscan_harden_status(
-        'Default admin user account',
+        'Default admin account',
         $account_removed,
         NULL,
         'Default admin user account (admin) not being used',
