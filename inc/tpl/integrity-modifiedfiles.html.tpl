@@ -14,6 +14,9 @@
                         </select>
                         days
                     </label>
+
+                    <!-- This field was added to give backward compatibility with the SiteCheck form. -->
+                    <input type="hidden" name="sucuriscan_malware_scan" value="1" />
                 </form>
             </th>
         </tr>
