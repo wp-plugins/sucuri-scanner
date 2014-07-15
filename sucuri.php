@@ -3917,18 +3917,13 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
      */
     function sucuriscan_hook_undefined_actions(){
 
-        // Check WordPress options nonce before process any other request parameters.
-        if(
-            !current_user_can('manage_options')
-            || !SucuriScan::sucuriscan_check_options_wpnonce()
-        ){
-            return FALSE;
-        }
-
         // Plugin activation and/or deactivation.
         if(
-            ( isset($_GET['action']) && preg_match('/^(activate|deactivate)$/', $_GET['action']) ) ||
-            ( isset($_POST['action']) && preg_match('/^(activate|deactivate)-selected$/', $_POST['action']))
+            current_user_can('activate_plugins')
+            && (
+                ( isset($_GET['action']) && preg_match('/^(activate|deactivate)$/', $_GET['action']) ) ||
+                ( isset($_POST['action']) && preg_match('/^(activate|deactivate)-selected$/', $_POST['action']))
+            )
         ){
             $plugin_list = array();
 
@@ -3963,8 +3958,11 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
 
         // Plugin update request.
         elseif(
-            ( isset($_GET['action']) && preg_match('/(upgrade-plugin|do-plugin-upgrade)/', $_GET['action']) ) ||
-            ( isset($_POST['action']) && $_POST['action'] == 'update-selected' )
+            current_user_can('update_plugins')
+            && (
+                ( isset($_GET['action']) && preg_match('/(upgrade-plugin|do-plugin-upgrade)/', $_GET['action']) ) ||
+                ( isset($_POST['action']) && $_POST['action'] == 'update-selected' )
+            )
         ){
             $plugin_list = array();
 
@@ -3996,7 +3994,8 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
 
         // Plugin installation request.
         elseif(
-            isset($_GET['action'])
+            current_user_can('install_plugins')
+            && isset($_GET['action'])
             && preg_match('/^(install|upload)-plugin$/', $_GET['action'])
             && current_user_can('install_plugins')
         ){
@@ -4015,7 +4014,8 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
 
         // Plugin deletion request.
         elseif(
-            isset($_POST['action'])
+            current_user_can('delete_plugins')
+            && isset($_POST['action'])
             && $_POST['action'] == 'delete-selected'
             && isset($_POST['verify-delete'])
             && $_POST['verify-delete'] == 1
@@ -4038,7 +4038,8 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
 
         // Plugin editor request.
         elseif(
-            isset($_POST['action'])
+            current_user_can('edit_plugins')
+            && isset($_POST['action'])
             && $_POST['action'] == 'update'
             && isset($_POST['file'])
             && isset($_POST['plugin'])
@@ -4051,7 +4052,8 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
 
         // Theme editor request.
         elseif(
-            isset($_POST['action'])
+            current_user_can('edit_themes')
+            && isset($_POST['action'])
             && $_POST['action'] == 'update'
             && isset($_POST['file'])
             && isset($_POST['theme'])
@@ -4068,7 +4070,8 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
 
         // Theme update request.
         elseif(
-            isset($_GET['action'])
+            current_user_can('update_themes')
+            && isset($_GET['action'])
             && preg_match('/^(upgrade-theme|do-theme-upgrade)$/', $_GET['action'])
             && isset($_POST['checked'])
         ){
@@ -4098,7 +4101,8 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
 
         // WordPress update request.
         elseif(
-            isset($_GET['action'])
+            current_user_can('update_core')
+            && isset($_GET['action'])
             && $_GET['action'] == 'do-core-reinstall'
             && isset($_POST['upgrade'])
             && isset($_POST['version'])
@@ -4110,7 +4114,8 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
 
         // Widget addition or deletion.
         elseif(
-            isset($_POST['action'])
+            current_user_can('edit_theme_options')
+            && isset($_POST['action'])
             && $_POST['action'] == 'save-widget'
             && isset($_POST['id_base'])
             && isset($_POST['sidebar'])
@@ -4142,7 +4147,11 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
         }
 
         // Detect any Wordpress settings modification.
-        elseif( isset($_POST['option_page']) ){
+        elseif(
+            isset($_POST['option_page'])
+            && current_user_can('manage_options')
+            && SucuriScan::sucuriscan_check_options_wpnonce()
+        ){
             // Get the settings available in the database and compare them with the submission.
             $all_options = sucuriscan_get_wp_options();
             $options_changed = sucuriscan_what_options_were_changed($_POST);
