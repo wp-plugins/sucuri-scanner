@@ -2546,7 +2546,6 @@ function sucuriscan_sitecheck_info(){
     $sucuri_cache = new SucuriScanCache('sitecheck');
     $scan_results = $sucuri_cache->get( 'scan_results', SUCURISCAN_SITECHECK_LIFETIME, 'array' );
     $clean_domain = sucuriscan_get_domain();
-    $clean_domain = 'johnhackedsite.com';
     $display_results = FALSE;
 
     ob_start();
