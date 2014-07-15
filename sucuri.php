@@ -171,18 +171,46 @@ class SucuriScan {
     }
 
     /**
-     * Check the default WordPress nonce.
+     * Check the nonce comming from any of the settings pages.
      *
-     * @param  string $action Action name that gives the context to what is taking place.
-     * @param  string $nonce  Nonce to verify.
-     * @return boolean        TRUE if the nonce is valid, FALSE otherwise.
+     * @return boolean TRUE if the nonce is valid, FALSE otherwise.
      */
-    public static function sucuriscan_check_wpnonce( $action='', $nonce='_wpnonce' ){
+    public static function sucuriscan_check_options_wpnonce(){
+        // Create the option_page value if permalink submission.
         if(
-            isset($_REQUEST[$nonce])
-            && wp_verify_nonce($_REQUEST[$nonce], $action)
+            !isset($_POST['option_page'])
+            && isset($_POST['permalink_structure'])
         ){
-            return TRUE;
+            $_POST['option_page'] = 'permalink';
+        }
+
+        // Check if the option_page has an allowed value.
+        if( isset($_POST['option_page']) ){
+            $nonce='_wpnonce';
+            $action = '';
+
+            switch( $_POST['option_page'] ){
+                case 'general':    /* no_break */
+                case 'writing':    /* no_break */
+                case 'reading':    /* no_break */
+                case 'discussion': /* no_break */
+                case 'media':      /* no_break */
+                case 'options':    /* no_break */
+                    $action = $_POST['option_page'] . '-options';
+                    break;
+                case 'permalink':
+                    $action = 'update-permalink';
+                    break;
+            }
+
+            // Check the nonce validity.
+            if(
+                !empty($action)
+                && isset($_REQUEST[$nonce])
+                && wp_verify_nonce($_REQUEST[$nonce], $action)
+            ){
+                return TRUE;
+            }
         }
 
         return FALSE;
@@ -1105,6 +1133,9 @@ class SucuriScanCache extends SucuriScan {
 
     /**
      * Class constructor.
+     *
+     * @param  string $datastore Unique name (or identifier) of the file with the data.
+     * @return void
      */
     public function __construct( $datastore='' ){
         $this->datastore = $datastore;
@@ -1130,7 +1161,8 @@ class SucuriScanCache extends SucuriScan {
     /**
      * Default content of every datastore file.
      *
-     * @return string Default content of every datastore file.
+     * @param  array  $finfo Rainbow table with the key names and decoded values.
+     * @return string        Default content of every datastore file.
      */
     private function datastore_info( $finfo=array() ){
         $attrs = $this->datastore_default_info();
@@ -3888,12 +3920,8 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
         // Check WordPress options nonce before process any other request parameters.
         if(
             !current_user_can('manage_options')
-            || (
-                !SucuriScan::sucuriscan_check_wpnonce('options-options') &&
-                !SucuriScan::sucuriscan_check_wpnonce('update-permalink')
-            )
+            || !SucuriScan::sucuriscan_check_options_wpnonce()
         ){
-            // Avoid the use of wp_die when because it breaks the functionality.
             return FALSE;
         }
 
@@ -4118,20 +4146,23 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
             // Get the settings available in the database and compare them with the submission.
             $all_options = sucuriscan_get_wp_options();
             $options_changed = sucuriscan_what_options_were_changed($_POST);
+            $options_changed_str = '';
+            $options_changed_count = 0;
 
             // Generate the list of options changed.
-            $options_changed_str = '';
             foreach( $options_changed['original'] as $option_name => $option_value ){
+                $options_changed_count += 1;
                 $options_changed_str .= sprintf(
                     "The value of the option <b>%s</b> was changed from <b>'%s'</b> to <b>'%s'</b>.<br>\n",
                     $option_name, $option_value, $options_changed['changed'][$option_name]
                 );
             }
 
-            // Notify via email that these options were modified.
-            $page_referer = FALSE;
+            // Get the option group (name of the page where the request was originated).
             $option_page = isset($_POST['option_page']) ? $_POST['option_page'] : 'options';
+            $page_referer = FALSE;
 
+            // Check which of these option groups where modified.
             switch( $option_page ){
                 case 'options':
                     $page_referer = 'Global';
@@ -4149,7 +4180,7 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
                     break;
             }
 
-            if( $page_referer ){
+            if( $page_referer && $options_changed_count > 0 ){
                 $message = $page_referer.' settings changed';
                 sucuriscan_report_event( 3, 'core', $message );
                 sucuriscan_notify_event( 'settings_updated', $message . "<br>\n" . $options_changed_str );
