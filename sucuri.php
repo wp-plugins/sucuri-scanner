@@ -6868,6 +6868,9 @@ function sucuriscan_settings_page(){
     // Register the site, get its API key, and store it locally for future usage.
     $api_registered_modal = '';
 
+    // Whether the form to manually add the API key should be shown or not.
+    $display_manual_key_form = (bool) isset($_POST['sucuriscan_recover_api_key']);
+
     if( $page_nonce && isset($_POST['sucuriscan_wordpress_apikey']) ){
         $registered = sucuriscan_register_site();
 
@@ -6876,6 +6879,8 @@ function sucuriscan_settings_page(){
                 'Title' => 'Site registered successfully',
                 'CssClass' => 'sucuriscan-apikey-registered',
             ));
+        } else {
+            $display_manual_key_form = TRUE;
         }
     }
 
@@ -6923,8 +6928,6 @@ function sucuriscan_settings_page(){
         ));
         $counter += 1;
     }
-
-    $display_manual_key_form = (bool) isset($_POST['sucuriscan_recover_api_key']);
 
     $template_variables = array(
         'PageTitle' => 'Settings',
