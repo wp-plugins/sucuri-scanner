@@ -324,7 +324,7 @@ class SucuriScanFileInfo extends SucuriScan {
      *
      * @return boolean Whether the PHP class "SplFileObject" is available or not.
      */
-    private function is_spl_available(){
+    public static function is_spl_available(){
         return (bool) class_exists('SplFileObject');
     }
 
@@ -6545,8 +6545,9 @@ function sucuriscan_settings_page(){
         'APIKey.RemoveVisibility' => ( $api_key ? 'visible' : 'hidden' ),
         'ScanningFrequency' => 'Undefined',
         'ScanningFrequencyOptions' => $scan_freq_options,
-        'ScanningInterface' => ( $scan_interface ? $scan_interface : 'Undefined' ),
+        'ScanningInterface' => ( $scan_interface ? $sucuriscan_interface_allowed[$scan_interface] : 'Undefined' ),
         'ScanningInterfaceOptions' => $scan_interface_options,
+        'ScanningInterfaceVisibility' => ( SucuriScanFileInfo::is_spl_available() ? 'hidden' : 'visible' ),
         'ScanningRuntime' => $runtime_scan,
         'ScanningRuntimeHuman' => $runtime_scan_human,
         'NotificationOptions' => $notification_options,

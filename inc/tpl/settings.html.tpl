@@ -55,6 +55,17 @@
         </tr>
 
         <tr>
+            <td>Last Scanning</td>
+            <td><span class="sucuriscan-monospace">%%SUCURI.ScanningRuntimeHuman%%</span></td>
+            <td class="td-with-button">
+                <form action="%%SUCURI.URL.Home%%" method="post">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <button type="submit" name="sucuriscan_force_scan" class="button-primary">Force Scan</button>
+                </form>
+            </td>
+        </tr>
+
+        <tr class="alternate">
             <td>Scanning frequency</td>
             <td><span class="sucuriscan-monospace">%%SUCURI.ScanningFrequency%%</span></td>
             <td class="td-with-button">
@@ -68,7 +79,7 @@
             </td>
         </tr>
 
-        <tr class="alternate">
+        <tr class="sucuriscan-%%SUCURI.ScanningInterfaceVisibility%%">
             <td>Scanning interface</td>
             <td><span class="sucuriscan-monospace">%%SUCURI.ScanningInterface%%</span></td>
             <td class="td-with-button">
@@ -78,17 +89,6 @@
                         %%SUCURI.ScanningInterfaceOptions%%
                     </select>
                     <button type="submit" class="button-primary">Change</button>
-                </form>
-            </td>
-        </tr>
-
-        <tr>
-            <td>Last Scanning</td>
-            <td><span class="sucuriscan-monospace">%%SUCURI.ScanningRuntimeHuman%%</span></td>
-            <td class="td-with-button">
-                <form action="%%SUCURI.URL.Home%%" method="post">
-                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
-                    <button type="submit" name="sucuriscan_force_scan" class="button-primary">Force Scan</button>
                 </form>
             </td>
         </tr>
