@@ -165,6 +165,24 @@ class SucuriScan {
         return $wp_filepath;
     }
 
+    /**
+     * Check the default WordPress nonce.
+     *
+     * @param  string $action Action name that gives the context to what is taking place.
+     * @param  string $nonce  Nonce to verify.
+     * @return boolean        TRUE if the nonce is valid, FALSE otherwise.
+     */
+    public static function sucuriscan_check_wpnonce( $action='', $nonce='_wpnonce' ){
+        if(
+            isset($_REQUEST[$nonce])
+            && wp_verify_nonce($_REQUEST[$nonce], $action)
+        ){
+            return TRUE;
+        }
+
+        return FALSE;
+    }
+
 }
 
 /**
@@ -3461,6 +3479,22 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
      * @return integer Either one or zero representing the success or fail of the operation.
      */
     function sucuriscan_hook_undefined_actions(){
+
+        // Check WordPress options nonce before process any other request parameters.
+        if(
+            !current_user_can('manage_options')
+            || (
+                !SucuriScan::sucuriscan_check_wpnonce('options-options') &&
+                !SucuriScan::sucuriscan_check_wpnonce('update-permalink')
+            )
+        ){
+            // Avoid the use of wp_die when it is a simple GET request.
+            if( !empty($_POST) ){
+                wp_die(__('WordPress Nonce verification failed, try again going back and checking the form.') );
+            }
+
+            return FALSE;
+        }
 
         // Plugin activation and/or deactivation.
         if(
