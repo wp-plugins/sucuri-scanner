@@ -1704,11 +1704,15 @@ function sucuriscan_prettify_mail( $subject='', $message='', $data_set=array() )
     $prettify_type = isset($data_set['PrettifyType']) ? $data_set['PrettifyType'] : 'simple';
     $template_name = 'notification-' . $prettify_type;
     $remote_addr = sucuriscan_get_remoteaddr();
-    $current_user = wp_get_current_user();
-    $display_name = 'Unknown user';
+    $user = wp_get_current_user();
+    $display_name = '';
 
-    if( $current_user instanceof WP_User ){
-        $display_name = sprintf( '%s (%s)', $current_user->display_name, $current_user->user_login );
+    if(
+        $user instanceof WP_User
+        && isset($user->user_login)
+        && !empty($user->user_login)
+    ){
+        $display_name = sprintf( 'User: %s (%s)', $user->display_name, $user->user_login );
     }
 
     $mail_variables = array(
@@ -1717,7 +1721,7 @@ function sucuriscan_prettify_mail( $subject='', $message='', $data_set=array() )
         'Website' => get_option('siteurl'),
         'RemoteAddress' => $remote_addr,
         'Message' => $message,
-        'User' => 'User: ' . $display_name,
+        'User' => $display_name,
         'Time' => current_time('mysql'),
     );
 
@@ -2965,9 +2969,10 @@ function sucuriscan_sitecheck_info(){
  * @param  string $url    The target URL where the request will be sent.
  * @param  string $method HTTP method that will be used to send the request.
  * @param  array  $params Parameters for the request defined in an associative array of key-value.
+ * @param  array  $args   Request arguments like the timeout, redirections, headers, cookies, etc.
  * @return array          Array of results including HTTP headers or WP_Error if the request failed.
  */
-function sucuriscan_api_call( $url='', $method='GET', $params=array() ){
+function sucuriscan_api_call( $url='', $method='GET', $params=array(), $args=array() ){
     if( !$url ){ return FALSE; }
 
     $req_args = array(
@@ -2984,9 +2989,16 @@ function sucuriscan_api_call( $url='', $method='GET', $params=array() ){
         'sslverify' => TRUE,
     );
 
+    // Update the request arguments with the values passed tot he function.
+    foreach( $args as $arg_name => $arg_value ){
+        if( array_key_exists($arg_name, $req_args) ){
+            $req_args[$arg_name] = $arg_value;
+        }
+    }
+
     if( $method == 'GET' ){
         $url = sprintf( '%s?%s', $url, http_build_query($params) );
-        $response = wp_remote_post( $url, $req_args );
+        $response = wp_remote_get( $url, $req_args );
     }
 
     elseif( $method == 'POST' ){
@@ -3106,9 +3118,10 @@ function sucuriscan_cloudproxy_apikey(){
  * @param  string  $method       HTTP method that will be used to send the request.
  * @param  array   $params       Parameters for the request defined in an associative array of key-value.
  * @param  boolean $send_api_key Whether the API key should be added to the request parameters or not.
+ * @param  array   $args         Request arguments like the timeout, redirections, headers, cookies, etc.
  * @return array                 Array of results including HTTP headers or WP_Error if the request failed.
  */
-function sucuriscan_api_call_wordpress( $method='GET', $params=array(), $send_api_key=TRUE ){
+function sucuriscan_api_call_wordpress( $method='GET', $params=array(), $send_api_key=TRUE, $args=array() ){
     $url = SUCURISCAN_API;
     $params[SUCURISCAN_API_VERSION] = 1;
     $params['p'] = 'wordpress';
@@ -3121,7 +3134,7 @@ function sucuriscan_api_call_wordpress( $method='GET', $params=array(), $send_ap
         $params['k'] = $api_key;
     }
 
-    $response = sucuriscan_api_call( $url, $method, $params );
+    $response = sucuriscan_api_call( $url, $method, $params, $args );
 
     return $response;
 }
@@ -3250,7 +3263,7 @@ function sucuriscan_send_log( $event='' ){
         $response = sucuriscan_api_call_wordpress( 'POST', array(
             'a' => 'send_log',
             'm' => $event,
-        ) );
+        ), TRUE, array( 'timeout' => 20 ) );
 
         if( sucuriscan_handle_response($response) ){
             return TRUE;
@@ -3473,15 +3486,15 @@ function sucuriscan_report_event( $severity=0, $location='', $message='' ){
     }
 
     $message = str_replace( array("\n", "\r"), array('', ''), $message );
-    $event_sent = sucuriscan_send_log(sprintf(
+    $event_message = sprintf(
         '%s:%s %s; %s',
         $severity_name,
         $username,
         $remote_ip,
         $message
-    ));
+    );
 
-    return $event_sent;
+    return sucuriscan_send_log($event_message);
 }
 
 /**
