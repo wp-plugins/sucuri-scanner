@@ -104,6 +104,70 @@ define('SUCURISCAN_AUDITLOGS_PER_PAGE', 50);
 define('SUCURISCAN_MINIMUM_RUNTIME', 10800);
 
 /**
+ * Miscellaneous library.
+ *
+ * Multiple and generic functions that will be used through out the code of
+ * other libraries extending from this and functions defined in other files, be
+ * aware of the hierarchy and check the other libraries for duplicated methods.
+ */
+class SucuriScan {
+
+    /**
+     * Class constructor.
+     */
+    public function __construct(){
+    }
+
+    /**
+     * Generates a lowercase random string with an specific length.
+     *
+     * @param  integer $length Length of the string that will be generated.
+     * @return string          The random string generated.
+     */
+    public static function random_char( $length=4 ){
+        $string = '';
+        $chars = range('a','z');
+
+        for( $i=0; $i<$length; $i++ ){
+            $string .= $chars[ rand(0, count($chars)-1) ];
+        }
+
+        return $string;
+    }
+
+    /**
+     * Translate a given number in bytes to a human readable file size using the
+     * a approximate value in Kylo, Mega, Giga, etc.
+     *
+     * @link   http://www.php.net/manual/en/function.filesize.php#106569
+     * @param  integer $bytes    An integer representing a file size in bytes.
+     * @param  integer $decimals How many decimals should be returned after the translation.
+     * @return string            Human readable representation of the given number in Kylo, Mega, Giga, etc.
+     */
+    public static function human_filesize( $bytes=0, $decimals=2 ){
+        $sz = 'BKMGTP';
+        $factor = floor((strlen($bytes) - 1) / 3);
+        return sprintf("%.{$decimals}f", $bytes / pow(1024, $factor)) . @$sz[$factor];
+    }
+
+    /**
+     * Returns the system filepath to the relevant user uploads directory for this
+     * site. This is a multisite capable function.
+     *
+     * @param  string $path The relative path that needs to be completed to get the absolute path.
+     * @return string       The full filesystem path including the directory specified.
+     */
+    public static function datastore_folder_path( $path='' ){
+        $wp_dir_array = wp_upload_dir();
+        $wp_dir_array['basedir'] = untrailingslashit($wp_dir_array['basedir']);
+        $wp_filepath = $wp_dir_array['basedir'] . '/sucuri/' . $path;
+
+        return $wp_filepath;
+    }
+
+}
+
+/**
  * Class to process files and folders.
  *
  * Here are implemented the functions needed to open, scan, read, create files
@@ -111,7 +175,7 @@ define('SUCURISCAN_MINIMUM_RUNTIME', 10800);
  * offers a high-level object oriented interface to information for an individual
  * file.
  */
-class SucuriScanFileInfo{
+class SucuriScanFileInfo extends SucuriScan {
 
     /**
      * Whether the list of files that can be ignored from the filesystem scan will
@@ -495,6 +559,7 @@ class SucuriScanFileInfo{
 
         return $all_removed;
     }
+
 }
 
 /**
@@ -504,44 +569,7 @@ class SucuriScanFileInfo{
  * change the Wordpress table prefix and modify the name of all the options linked to
  * the previous database prefix.
  */
-class SucuriScanDatabase{
-    /**
-     * Class constructor.
-     */
-    public function __construct(){
-    }
-
-    /**
-     * Generates a lowercase random string with an specific length.
-     *
-     * @param  integer $length Length of the string that will be generated.
-     * @return string          The random string generated.
-     */
-    public function random_char( $length=4 ){
-        $string = '';
-        $chars = range('a','z');
-
-        for( $i=0; $i<$length; $i++ ){
-            $string .= $chars[ rand(0, count($chars)-1) ];
-        }
-
-        return $string;
-    }
-
-    /**
-     * Translate a given number in bytes to a human readable file size using the
-     * a approximate value in Kylo, Mega, Giga, etc.
-     *
-     * @link   http://www.php.net/manual/en/function.filesize.php#106569
-     * @param  integer $bytes    An integer representing a file size in bytes.
-     * @param  integer $decimals How many decimals should be returned after the translation.
-     * @return string            Human readable representation of the given number in Kylo, Mega, Giga, etc.
-     */
-    public function human_filesize( $bytes=0, $decimals=2 ){
-        $sz = 'BKMGTP';
-        $factor = floor((strlen($bytes) - 1) / 3);
-        return sprintf("%.{$decimals}f", $bytes / pow(1024, $factor)) . @$sz[$factor];
-    }
+class SucuriScanDatabase extends SucuriScan {
 
     /**
      * List all database tables in a clean array of strings.
@@ -783,6 +811,7 @@ class SucuriScanDatabase{
 
         return $response;
     }
+
 }
 
 /**
@@ -792,33 +821,13 @@ class SucuriScanDatabase{
  * of single tables, generate the backup file (which can be a SQL or Zip file), a way
  * to download and remove old backup files.
  */
-class SucuriScanBackup extends SucuriScanDatabase{
+class SucuriScanBackup extends SucuriScanDatabase {
+
     /**
      * Class constructor.
      */
     public function __construct(){
         ini_set('memory_limit', '-1');
-    }
-
-    /**
-     * Returns the system filepath to the relevant user uploads directory for this
-     * site. This is a multisite capable function.
-     *
-     * @param  string $path The relative path that needs to be completed to get the absolute path.
-     * @return string       The full filesystem path including the directory specified.
-     */
-    public function datastore_folder_path( $path='' ){
-        if( function_exists('sucuriscan_dir_filepath') ){
-            return sucuriscan_dir_filepath();
-        }
-
-        else {
-            $wp_dir_array = wp_upload_dir();
-            $wp_dir_array['basedir'] = untrailingslashit($wp_dir_array['basedir']);
-            $wp_filepath = $wp_dir_array['basedir'] . '/sucuri/' . $path;
-
-            return $wp_filepath;
-        }
     }
 
     /**
@@ -1024,6 +1033,7 @@ class SucuriScanBackup extends SucuriScanDatabase{
             sucuriscan_error('You did not select any backup file to remove.');
         }
     }
+
 }
 
 /**
@@ -1135,11 +1145,7 @@ if( !function_exists('sucuriscan_admin_script_style_registration') ){
  * @return string       The full filesystem path including the directory specified.
  */
 function sucuriscan_dir_filepath($path = ''){
-    $wp_dir_array = wp_upload_dir();
-    $wp_dir_array['basedir'] = untrailingslashit($wp_dir_array['basedir']);
-    $wp_filepath = $wp_dir_array['basedir'] . '/sucuri/' . $path;
-
-    return $wp_filepath;
+    return SucuriScan::datastore_folder_path($path);
 }
 
 /**
