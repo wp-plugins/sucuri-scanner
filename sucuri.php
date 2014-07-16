@@ -2936,6 +2936,17 @@ function sucuriscan_valid_cloudproxy_apikey( $api_key='', $return_match=FALSE ){
  */
 function sucuriscan_cloudproxy_apikey(){
     $api_key = get_option('sucuriscan_cloudproxy_apikey');
+
+    // Check if the cloudproxy-waf plugin was previously installed.
+    if( !$api_key ){
+        $api_key = get_option('sucuriwaf_apikey');
+
+        if( $api_key ){
+            delete_option('sucuriwaf_apikey');
+        }
+    }
+
+    // Check the validity of the API key.
     $match = sucuriscan_valid_cloudproxy_apikey( $api_key, TRUE );
 
     if( $match ){
@@ -5973,8 +5984,6 @@ function sucuriscan_get_logins( $limit=10, $user_id=0 ){
                         $user_lastlogin[$var_name] = $var_value;
                     }
                 }
-
-$user_lastlogin['user_lastlogin'] = -456789;
 
                 $lastlogins[] = (object)$user_lastlogin;
                 $parsed_lines += 1;
