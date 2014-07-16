@@ -2118,7 +2118,7 @@ function sucuriscan_time_ago($timestamp=0){
         $timestamp = strtotime($timestamp);
     }
 
-    $diff = time() - (int)$timestamp;
+    $diff = abs( time() - intval($timestamp) );
 
     if( $diff == 0 ){ return 'just now'; }
 
@@ -2133,7 +2133,14 @@ function sucuriscan_time_ago($timestamp=0){
     );
 
     $value = floor($diff/$intervals[1][1]);
-    return $value.chr(32).$intervals[1][0].($value > 1 ? 's' : '').' ago';
+    $time_ago = sprintf(
+        '%s %s%s ago',
+        $value,
+        $intervals[1][0],
+        ( $value > 1 ? 's' : '' )
+    );
+
+    return $time_ago;
 }
 
 /**
@@ -5935,7 +5942,8 @@ function sucuriscan_get_logins( $limit=10, $user_id=0 ){
 
     if( $datastore_filepath ){
         $parsed_lines = 0;
-        $lastlogins_lines = array_reverse(file($datastore_filepath));
+        $data_lines = @file($datastore_filepath);
+        $lastlogins_lines = $data_lines ? array_reverse($data_lines) : array();
 
         foreach( $lastlogins_lines as $line ){
             $line = str_replace("\n", '', $line);
@@ -5965,6 +5973,8 @@ function sucuriscan_get_logins( $limit=10, $user_id=0 ){
                         $user_lastlogin[$var_name] = $var_value;
                     }
                 }
+
+$user_lastlogin['user_lastlogin'] = -456789;
 
                 $lastlogins[] = (object)$user_lastlogin;
                 $parsed_lines += 1;
