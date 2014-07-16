@@ -1307,7 +1307,22 @@ if( !function_exists('sucuriscan_create_uploaddir') ){
 
         if( !file_exists($plugin_upload_folder) ){
             if( @mkdir($plugin_upload_folder) ){
+                // Create last-logins datastore file.
                 sucuriscan_lastlogins_datastore_exists();
+
+                // Create a htaccess file to deny access from all.
+                @file_put_contents(
+                    $plugin_upload_folder . '/.htaccess',
+                    "Order Deny,Allow\nDeny from all",
+                    LOCK_EX
+                );
+
+                // Create an index.html to avoid directory listing.
+                @file_put_contents(
+                    $plugin_upload_folder . '/index.html',
+                    '<!-- Attemp to prevent the directory listing. -->',
+                    LOCK_EX
+                );
             } else {
                 sucuriscan_error(
                     'Data folder does not exists and could not be created. You will need to
