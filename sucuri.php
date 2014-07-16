@@ -2339,13 +2339,18 @@ if( !function_exists('sucuriscan_plugin_setup_notice') ){
      * @return void
      */
     function sucuriscan_plugin_setup_notice(){
-        echo sucuriscan_get_section('setup_notice');
+        if(
+            current_user_can('manage_options')
+            && !sucuriscan_wordpress_apikey()
+            && !isset($_POST['sucuriscan_wordpress_apikey'])
+            && !isset($_POST['sucuriscan_recover_api_key'])
+        ){
+            echo sucuriscan_get_section('setup_notice');
+        }
     }
 
-    if( !sucuriscan_wordpress_apikey() ){
-        $sucuriscan_admin_notice_name = sucuriscan_is_multisite() ? 'network_admin_notices' : 'admin_notices';
-        add_action( $sucuriscan_admin_notice_name, 'sucuriscan_plugin_setup_notice' );
-    }
+    $sucuriscan_admin_notice_name = sucuriscan_is_multisite() ? 'network_admin_notices' : 'admin_notices';
+    add_action( $sucuriscan_admin_notice_name, 'sucuriscan_plugin_setup_notice' );
 }
 
 /**
@@ -2511,11 +2516,11 @@ function sucuriscan_sitecheck_info(){
 
                                 <?php if( !$malware_warns_exist ): ?>
                                     <p>
-                                        <span><strong>Malware:</strong> No.</span><br>
-                                        <span><strong>Malicious javascript:</strong> No.</span><br>
-                                        <span><strong>Malicious iframes:</strong> No.</span><br>
-                                        <span><strong>Suspicious redirections (htaccess):</strong> No.</span><br>
-                                        <span><strong>Blackhat SEO Spam:</strong> No.</span><br>
+                                        <span><strong>Malware:</strong> Clean.</span><br>
+                                        <span><strong>Malicious javascript:</strong> Clean.</span><br>
+                                        <span><strong>Malicious iframes:</strong> Clean.</span><br>
+                                        <span><strong>Suspicious redirections (htaccess):</strong> Clean.</span><br>
+                                        <span><strong>Blackhat SEO Spam:</strong> Clean.</span><br>
                                         <span><strong>Anomaly detection:</strong> Clean.</span>
                                     </p>
                                 <?php else: ?>
@@ -4975,7 +4980,7 @@ function sucuriscan_harden_readme(){
     sucuriscan_harden_status(
         'Information leakage (readme.html)',
         $cp,
-        'sucuriscan_harden_readme',
+        ( $cp == 0 ? 'sucuriscan_harden_readme' : NULL ),
         '<code>readme.html</code> file properly deleted',
         '<code>readme.html</code> not deleted and leaking the WordPress version',
         'It checks whether you have the <code>readme.html</code> file available that leaks your WordPress version',
@@ -5037,7 +5042,7 @@ function sucuriscan_harden_fileeditor(){
                 }
 
                 @file_put_contents($wp_config_path, $new_wpconfig, LOCK_EX);
-                sucuriscan_info( 'WP-Config file updated successfully, the plugin and theme editor was disabled.' );
+                sucuriscan_info( 'WP-Config file updated successfully, the plugin and theme editor were disabled.' );
                 $file_editor_disabled = TRUE;
             } else {
                 sucuriscan_error( 'The <code>wp-config.php</code> file is not in the default location
@@ -5051,7 +5056,7 @@ function sucuriscan_harden_fileeditor(){
                 if( $wp_config_writable ){
                     $new_wpconfig = str_replace("\n{$match[1]}", '', $new_wpconfig);
                     file_put_contents($wp_config_path, $new_wpconfig, LOCK_EX);
-                    sucuriscan_info( 'WP-Config file updated successfully, the plugin and theme editor was enabled.' );
+                    sucuriscan_info( 'WP-Config file updated successfully, the plugin and theme editor were enabled.' );
                     $file_editor_disabled = FALSE;
                 } else {
                     sucuriscan_error( 'The <code>wp-config.php</code> file is not in the default location
