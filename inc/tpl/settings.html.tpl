@@ -111,6 +111,17 @@
 
         <tbody>
 
+            <tr>
+                <td colspan="3">
+                    <div>
+                        <label>
+                            <span>Send notifications to this e-mail:</span>
+                            <input type="text" name="sucuriscan_notify_to" value="%%SUCURI.NotificationEmail%%" />
+                        </label>
+                    </div>
+                </td>
+            </tr>
+
             %%SUCURI.NotificationOptions%%
 
         </tbody>

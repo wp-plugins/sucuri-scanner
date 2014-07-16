@@ -2261,13 +2261,15 @@ function sucuriscan_get_single_option( $option_name='' ){
  * @return string|array           The default values for the specified options.
  */
 function sucuriscan_get_default_options( $settings='' ){
+    $admin_email = get_option('admin_email');
     $default_options = array(
         'sucuriscan_api_key' => FALSE,
-        'sucuriscan_account' => get_option('admin_email'),
+        'sucuriscan_account' => $admin_email,
         'sucuriscan_scan_frequency' => 'hourly',
         'sucuriscan_scan_interface' => 'spl',
         'sucuriscan_runtime' => 0,
         'sucuriscan_lastlogin_redirection' => 'enabled',
+        'sucuriscan_notify_to' => $admin_email,
         'sucuriscan_prettify_mails' => 'enabled',
         'sucuriscan_notify_success_login' => 'enabled',
         'sucuriscan_notify_failed_login' => 'enabled',
@@ -2897,7 +2899,7 @@ function sucuriscan_set_api_key( $api_key='', $validate=FALSE ){
  * @return string|boolean The API key or FALSE if it does not exists.
  */
 function sucuriscan_wordpress_apikey(){
-    $api_key = get_option('sucuriscan_api_key');
+    $api_key = sucuriscan_get_option('sucuriscan_api_key');
 
     if( $api_key && strlen($api_key) > 10 ){
         return $api_key;
@@ -2935,11 +2937,11 @@ function sucuriscan_valid_cloudproxy_apikey( $api_key='', $return_match=FALSE ){
  * @return array|boolean FALSE if the key is invalid or not present, an array otherwise.
  */
 function sucuriscan_cloudproxy_apikey(){
-    $api_key = get_option('sucuriscan_cloudproxy_apikey');
+    $api_key = sucuriscan_get_option('sucuriscan_cloudproxy_apikey');
 
     // Check if the cloudproxy-waf plugin was previously installed.
     if( !$api_key ){
-        $api_key = get_option('sucuriwaf_apikey');
+        $api_key = sucuriscan_get_option('sucuriwaf_apikey');
 
         if( $api_key ){
             delete_option('sucuriwaf_apikey');
@@ -3199,7 +3201,7 @@ function sucuriscan_send_hashes( $hashes='' ){
  */
 function sucuriscan_verify_run( $runtime=0, $force_scan=FALSE ){
     $runtime_name = 'sucuriscan_runtime';
-    $last_run = get_option($runtime_name);
+    $last_run = sucuriscan_get_option($runtime_name);
     $current_time = time();
 
     if( $last_run && !$force_scan ){
@@ -3222,7 +3224,7 @@ function sucuriscan_verify_run( $runtime=0, $force_scan=FALSE ){
  */
 function sucuriscan_report_wpversion(){
     $option_name = 'sucuriscan_wp_version';
-    $reported_version = get_option($option_name);
+    $reported_version = sucuriscan_get_option($option_name);
     $wp_version = sucuriscan_get_wpversion();
 
     if( $reported_version != $wp_version ){
@@ -3270,7 +3272,7 @@ function sucuriscan_filesystem_scan( $force_scan=FALSE ){
         sucuriscan_report_wpversion();
 
         $sucuri_fileinfo = new SucuriScanFileInfo();
-        $scan_interface = get_option('sucuriscan_scan_interface');
+        $scan_interface = sucuriscan_get_option('sucuriscan_scan_interface');
         $signatures = $sucuri_fileinfo->get_directory_tree_md5(ABSPATH, $scan_interface);
 
         if( $signatures ){
@@ -3356,7 +3358,7 @@ function sucuriscan_report_event( $severity=0, $location='', $message='' ){
 function sucuriscan_notify_event( $event='', $content='' ){
     $event_name = 'sucuriscan_notify_' . $event;
     $notify = sucuriscan_get_option($event_name);
-    $email = sucuriscan_get_option('admin_email');
+    $email = sucuriscan_get_option('sucuriscan_notify_to');
 
     if( $notify == 'enabled' ){
         if( $event == 'post_publication' ){
@@ -6643,7 +6645,7 @@ function sucuriscan_settings_page(){
     foreach( $sucuriscan_notify_options as $alert_type => $alert_label ){
         $alert_value = sucuriscan_get_option($alert_type);
         $checked = ( $alert_value == 'enabled' ? 'checked="checked"' : '' );
-        $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
+        $css_class = ( $counter % 2 == 0 ) ? 'alternate' : '';
 
         $notification_options .= sucuriscan_get_snippet('settings-notification', array(
             'Notification.CssClass' => $css_class,
@@ -6669,6 +6671,7 @@ function sucuriscan_settings_page(){
         'ScanningRuntimeHuman' => $runtime_scan_human,
         'NotificationOptions' => $notification_options,
         'ModalWhenAPIRegistered' => $api_registered_modal,
+        'NotificationEmail' => sucuriscan_get_option('sucuriscan_notify_to'),
     );
 
     if( array_key_exists($scan_freq, $sucuriscan_schedule_allowed) ){
@@ -6757,6 +6760,13 @@ function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
             isset($_POST['sucuriscan_save_notification_settings'])
             && isset($sucuriscan_notify_options)
         ){
+            if(
+                isset($_POST['sucuriscan_notify_to'])
+                && is_valid_email($_POST['sucuriscan_notify_to'])
+            ){
+                update_option( 'sucuriscan_notify_to', $_POST['sucuriscan_notify_to'] );
+            }
+
             foreach( $sucuriscan_notify_options as $alert_type => $alert_label ){
                 if( isset($_POST[$alert_type]) ){
                     $option_value = ( $_POST[$alert_type] == 1 ? 'enabled' : 'disabled' );
