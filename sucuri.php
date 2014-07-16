@@ -1043,10 +1043,14 @@ class SucuriScanBackup extends SucuriScanDatabase {
      * @return object           Extra information of the file specified.
      */
     public function get_backup_file_from_filename( $filename='' ){
-        $plugin_upload_folder = $this->datastore_folder_path();
-        $filepath = rtrim($plugin_upload_folder,'/').'/'.$filename;
+        if( preg_match('/^sucuri-dbbackup-([0-9]{10})\.sql\.zip$/', $filename) ){
+            $plugin_upload_folder = $this->datastore_folder_path();
+            $filepath = rtrim($plugin_upload_folder,'/').'/'.$filename;
 
-        return $this->get_backup_file_info($filepath);
+            return $this->get_backup_file_info($filepath);
+        }
+
+        return FALSE;
     }
 
     /**
