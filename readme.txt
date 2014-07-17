@@ -3,7 +3,7 @@ Contributors: dd@sucuri.net
 Donate Link: http://sitecheck.sucuri.net
 Tags: malware, security, firewall, scan, spam, virus, sucuri, protection
 Requires at least:3.2
-Stable tag:1.6.1
+Stable tag:1.6.2
 Tested up to: 3.9.1
 
 The Sucuri Security - Auditing, SiteCheck Malware Scanner and Hardening is a security plugin enables you to scan your WordPress site using Sucuri SiteCheck for security and malware issues, and also verifies the security integrity of your core files right in your dashboard. It also includes post-hack security ions to help you reset passwords and secret keys in case it has been already hacked, or infected with malware.
@@ -65,6 +65,11 @@ the compromise on your site).
 
 
 == Changelog ==
+
+= 1.6.2 =
+* Setting a maximum number of emails per hour.
+* Fixing typos.
+
 
 = 1.6.1 =
 * Initial release with new auditing options.
