@@ -2988,13 +2988,15 @@ function sucuriscan_valid_cloudproxy_apikey( $api_key='', $return_match=FALSE ){
  * @return array|boolean FALSE if the key is invalid or not present, an array otherwise.
  */
 function sucuriscan_cloudproxy_apikey(){
-    $api_key = sucuriscan_get_option('sucuriscan_cloudproxy_apikey');
+    $option_name = 'sucuriscan_cloudproxy_apikey';
+    $api_key = sucuriscan_get_option($option_name);
 
     // Check if the cloudproxy-waf plugin was previously installed.
     if( !$api_key ){
         $api_key = sucuriscan_get_option('sucuriwaf_apikey');
 
         if( $api_key ){
+            update_option( $option_name, $api_key );
             delete_option('sucuriwaf_apikey');
         }
     }
@@ -4185,6 +4187,11 @@ function sucuriscan_monitoring_settings( $api_key='' ){
             $settings = sucuriscan_explain_monitoring_settings($settings);
 
             foreach( $settings as $option_name => $option_value ){
+                // Change the name of some options.
+                if( $option_name == 'internal_ip' ){
+                    $option_name = 'hosting_ip';
+                }
+
                 $css_class = ( $counter % 2 == 0 ) ? 'alternate' : '';
                 $option_title = ucwords(str_replace('_', chr(32), $option_name));
 
