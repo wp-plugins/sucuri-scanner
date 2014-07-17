@@ -1491,14 +1491,14 @@ function is_valid_email( $email='' ){
 /**
  * Send a message to a specific email address.
  *
- * @param  string  $to       The email address of the recipient that will receive the message.
+ * @param  string  $email    The email address of the recipient that will receive the message.
  * @param  string  $subject  The reason of the message that will be sent.
  * @param  string  $message  Body of the message that will be sent.
  * @param  array   $data_set Optional parameter to add more information to the notification.
  * @param  boolean $debug    TRUE if you want to test the function printing the email before sending it.
- * @return void
+ * @return boolean           Whether the email contents were sent successfully.
  */
-function sucuriscan_send_mail( $to='', $subject='', $message='', $data_set=array(), $debug=FALSE ){
+function sucuriscan_send_mail( $email='', $subject='', $message='', $data_set=array(), $debug=FALSE ){
     $headers = array();
     $subject = ucwords(strtolower($subject));
     $wp_domain = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : get_option('siteurl');
@@ -1508,13 +1508,61 @@ function sucuriscan_send_mail( $to='', $subject='', $message='', $data_set=array
         $data_set['PrettifyType'] = 'pretty';
     }
 
-    $message = sucuriscan_prettify_mail($subject, $message, $data_set);
+    if( !sucuriscan_emails_per_hour_reached() ){
+        $message = sucuriscan_prettify_mail($subject, $message, $data_set);
 
-    if( $debug ){
-        die($message);
+        if( $debug ){ die($message); }
+
+        $email_sent = wp_mail(
+            $email,
+            "Sucuri WP Notification: {$wp_domain} - {$subject}",
+            $message,
+            $headers
+        );
+
+        if( $email_sent ){
+            $emails_sent_num = (int) sucuriscan_get_option('sucuriscan_emails_sent');
+            update_option( 'sucuriscan_emails_sent', $emails_sent_num + 1 );
+            update_option( 'sucuriscan_last_email_at', time() );
+
+            return TRUE;
+        }
     } else {
-        wp_mail($to, "Sucuri WP Notification: {$wp_domain} - {$subject}" , $message, $headers);
+        // sucuriscan_error( 'Cant send more emails for the next hour' );
     }
+
+    return FALSE;
+}
+
+/**
+ * Check whether the maximum quantity of emails per hour was reached.
+ *
+ * @return boolean Whether the quota emails per hour was reached.
+ */
+function sucuriscan_emails_per_hour_reached(){
+    $max_emails_per_hour = sucuriscan_get_option('sucuriscan_emails_per_hour');
+
+    if( $max_emails_per_hour != 'unlimited' ){
+        // Check if we are still in that sixty minutes.
+        $current_time = time();
+        $last_email_at = sucuriscan_get_option('sucuriscan_last_email_at');
+        $diff_time = abs( $current_time - $last_email_at );
+
+        if( $diff_time <= 3600 ){
+            // Check if the quantity of emails sent is bigger than the configured.
+            $emails_sent = (int) sucuriscan_get_option('sucuriscan_emails_sent');
+            $max_emails_per_hour = intval($max_emails_per_hour);
+
+            if( $emails_sent >= $max_emails_per_hour ){
+                return TRUE;
+            }
+        } else {
+            // Reset the counter of emails sent.
+            update_option( 'sucuriscan_emails_sent', 0 );
+        }
+    }
+
+    return FALSE;
 }
 
 /**
@@ -2270,6 +2318,9 @@ function sucuriscan_get_default_options( $settings='' ){
         'sucuriscan_runtime' => 0,
         'sucuriscan_lastlogin_redirection' => 'enabled',
         'sucuriscan_notify_to' => $admin_email,
+        'sucuriscan_emails_sent' => 0,
+        'sucuriscan_emails_per_hour' => 5,
+        'sucuriscan_last_email_at' => time(),
         'sucuriscan_prettify_mails' => 'enabled',
         'sucuriscan_notify_success_login' => 'enabled',
         'sucuriscan_notify_failed_login' => 'enabled',
@@ -6577,6 +6628,16 @@ $sucuriscan_interface_allowed = array(
     'glob' => 'Glob (Low performance)',
 );
 
+$sucuriscan_emails_per_hour = array(
+    '5' => 'Maximum 5 per hour',
+    '10' => 'Maximum 10 per hour',
+    '20' => 'Maximum 20 per hour',
+    '40' => 'Maximum 40 per hour',
+    '80' => 'Maximum 80 per hour',
+    '160' => 'Maximum 160 per hour',
+    'unlimited' => 'Unlimited',
+);
+
 /**
  * Print a HTML code with the settings of the plugin.
  *
@@ -6584,7 +6645,10 @@ $sucuriscan_interface_allowed = array(
  */
 function sucuriscan_settings_page(){
 
-    global $sucuriscan_schedule_allowed, $sucuriscan_interface_allowed, $sucuriscan_notify_options;
+    global $sucuriscan_schedule_allowed,
+        $sucuriscan_interface_allowed,
+        $sucuriscan_notify_options,
+        $sucuriscan_emails_per_hour;
 
     // Check the nonce here to populate the value through other functions.
     $page_nonce = sucuriscan_check_page_nonce();
@@ -6615,6 +6679,7 @@ function sucuriscan_settings_page(){
     $api_key = sucuriscan_wordpress_apikey();
     $scan_freq = sucuriscan_get_option('sucuriscan_scan_frequency');
     $scan_interface = sucuriscan_get_option('sucuriscan_scan_interface');
+    $emails_per_hour = sucuriscan_get_option('sucuriscan_emails_per_hour');
     $runtime_scan = sucuriscan_get_option('sucuriscan_runtime');
     $runtime_scan_human = date( 'd/M/Y H:i:s', $runtime_scan );
 
@@ -6631,10 +6696,24 @@ function sucuriscan_settings_page(){
     // Generate HTML code to configure the scanning interface from the plugin settings.
     $scan_interface_options = '';
     foreach( $sucuriscan_interface_allowed as $interface_name => $interface_desc ){
-        $selected = ( $scan_interface==$interface_name ? 'selected="selected"' : '' );
+        $selected = ( $scan_interface == $interface_name ? 'selected="selected"' : '' );
         $scan_interface_options .= sprintf(
             '<option value="%s" %s>%s</option>',
-            $interface_name, $selected, $interface_desc
+            $interface_name,
+            $selected,
+            $interface_desc
+        );
+    }
+
+    // Generate the HTML code to configure the emails per hour.
+    $emails_per_hour_options = '';
+    foreach( $sucuriscan_emails_per_hour as $per_hour => $per_hour_label ){
+        $selected = ( $emails_per_hour == $per_hour ? 'selected="selected"' : '' );
+        $emails_per_hour_options .= sprintf(
+            '<option value="%s" %s>%s</option>',
+            $per_hour,
+            $selected,
+            $per_hour_label
         );
     }
 
@@ -6671,7 +6750,9 @@ function sucuriscan_settings_page(){
         'ScanningRuntimeHuman' => $runtime_scan_human,
         'NotificationOptions' => $notification_options,
         'ModalWhenAPIRegistered' => $api_registered_modal,
-        'NotificationEmail' => sucuriscan_get_option('sucuriscan_notify_to'),
+        'NotifyTo' => sucuriscan_get_option('sucuriscan_notify_to'),
+        'EmailsPerHour' => $sucuriscan_emails_per_hour[$emails_per_hour],
+        'EmailsPerHourOptions' => $emails_per_hour_options,
     );
 
     if( array_key_exists($scan_freq, $sucuriscan_schedule_allowed) ){
@@ -6691,7 +6772,10 @@ function sucuriscan_settings_page(){
  */
 function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
 
-    global $sucuriscan_schedule_allowed, $sucuriscan_interface_allowed, $sucuriscan_notify_options;
+    global $sucuriscan_schedule_allowed,
+        $sucuriscan_interface_allowed,
+        $sucuriscan_notify_options,
+        $sucuriscan_emails_per_hour;
 
     // Use this conditional to avoid double checking.
     if( is_null($page_nonce) ){
@@ -6755,27 +6839,49 @@ function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
             }
         }
 
+        // Update the value for the maximum emails per hour.
+        if( isset($_POST['sucuriscan_emails_per_hour']) ){
+            $per_hour = esc_attr($_POST['sucuriscan_emails_per_hour']);
+
+            if( array_key_exists($per_hour, $sucuriscan_emails_per_hour) ){
+                $per_hour_label = $sucuriscan_emails_per_hour[$per_hour];
+                update_option( 'sucuriscan_emails_per_hour', $per_hour );
+                sucuriscan_notify_event( 'plugin_change', 'Maximum email notifications per hour changed' );
+                sucuriscan_info( 'E-mail notifications: <code>' . $per_hour_label . '</code>' );
+            } else {
+                sucuriscan_error( 'Invalid value for the maximum emails per hour.' );
+            }
+        }
+
+        // Update the email where the event notifications will be sent.
+        if(
+            isset($_POST['sucuriscan_notify_to'])
+            && is_valid_email($_POST['sucuriscan_notify_to'])
+        ){
+            update_option( 'sucuriscan_notify_to', $_POST['sucuriscan_notify_to'] );
+            sucuriscan_notify_event( 'plugin_change', 'Email address to get the event notifications was changed' );
+            sucuriscan_info( 'All the event notifications will be sent to the email specified.' );
+        }
+
         // Update the notification settings.
         if(
             isset($_POST['sucuriscan_save_notification_settings'])
             && isset($sucuriscan_notify_options)
         ){
-            if(
-                isset($_POST['sucuriscan_notify_to'])
-                && is_valid_email($_POST['sucuriscan_notify_to'])
-            ){
-                update_option( 'sucuriscan_notify_to', $_POST['sucuriscan_notify_to'] );
-            }
+            $options_updated_counter = 0;
 
             foreach( $sucuriscan_notify_options as $alert_type => $alert_label ){
                 if( isset($_POST[$alert_type]) ){
                     $option_value = ( $_POST[$alert_type] == 1 ? 'enabled' : 'disabled' );
                     update_option( $alert_type, $option_value );
-                    sucuriscan_notify_event( 'plugin_change', 'Email notification settings changed' );
+                    $options_updated_counter += 1;
                 }
             }
 
-            sucuriscan_info( 'Notification settings updated.' );
+            if( $options_updated_counter > 0 ){
+                sucuriscan_notify_event( 'plugin_change', 'Email notification settings changed' );
+                sucuriscan_info( 'Notification settings updated.' );
+            }
         }
 
         // Reset all the plugin's options.

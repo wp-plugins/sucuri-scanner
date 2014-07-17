@@ -64,6 +64,32 @@
         </tr>
 
         <tr class="alternate">
+            <td>Notify events to</td>
+            <td><a href="mailto:%%SUCURI.NotifyTo%%">%%SUCURI.NotifyTo%%</a></td>
+            <td class="td-with-button">
+                <form method="post">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <input type="text" name="sucuriscan_notify_to" class="input-text" placeholder="Send notifications to..." />
+                    <button type="submit" class="button-primary">Change</button>
+                </form>
+            </td>
+        </tr>
+
+        <tr>
+            <td>Alerts per hour</td>
+            <td>%%SUCURI.EmailsPerHour%%</td>
+            <td class="td-with-button">
+                <form method="post">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <select name="sucuriscan_emails_per_hour">
+                        %%SUCURI.EmailsPerHourOptions%%
+                    </select>
+                    <button type="submit" class="button-primary">Change</button>
+                </form>
+            </td>
+        </tr>
+
+        <tr class="alternate">
             <td>Scanning frequency</td>
             <td><span class="sucuriscan-monospace">%%SUCURI.ScanningFrequency%%</span></td>
             <td class="td-with-button">
@@ -110,17 +136,6 @@
         </thead>
 
         <tbody>
-
-            <tr>
-                <td colspan="3">
-                    <div>
-                        <label>
-                            <span>Send notifications to this e-mail:</span>
-                            <input type="text" name="sucuriscan_notify_to" value="%%SUCURI.NotificationEmail%%" />
-                        </label>
-                    </div>
-                </td>
-            </tr>
 
             %%SUCURI.NotificationOptions%%
 
