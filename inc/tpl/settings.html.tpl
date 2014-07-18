@@ -90,6 +90,20 @@
         </tr>
 
         <tr class="alternate">
+            <td>Consider brute-force after</td>
+            <td>%%SUCURI.MaximumFailedLogins%%</td>
+            <td class="td-with-button">
+                <form method="post">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <select name="sucuriscan_maximum_failed_logins">
+                        %%SUCURI.MaximumFailedLoginsOptions%%
+                    </select>
+                    <button type="submit" class="button-primary">Change</button>
+                </form>
+            </td>
+        </tr>
+
+        <tr>
             <td>Scanning frequency</td>
             <td><span class="sucuriscan-monospace">%%SUCURI.ScanningFrequency%%</span></td>
             <td class="td-with-button">
@@ -103,7 +117,7 @@
             </td>
         </tr>
 
-        <tr class="sucuriscan-%%SUCURI.ScanningInterfaceVisibility%%">
+        <tr class="alternate sucuriscan-%%SUCURI.ScanningInterfaceVisibility%%">
             <td>Scanning interface</td>
             <td><span class="sucuriscan-monospace">%%SUCURI.ScanningInterface%%</span></td>
             <td class="td-with-button">

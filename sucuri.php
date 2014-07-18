@@ -1489,26 +1489,55 @@ function is_valid_email( $email='' ){
 }
 
 /**
+ * Check whether the email notifications will be sent in HTML or Plain/Text.
+ *
+ * @return boolean Whether the emails will be in HTML or Plain/Text.
+ */
+function sucuriscan_prettify_mails(){
+    return ( sucuriscan_get_option('sucuriscan_prettify_mails') == 'enabled' );
+}
+
+/**
  * Send a message to a specific email address.
  *
  * @param  string  $email    The email address of the recipient that will receive the message.
  * @param  string  $subject  The reason of the message that will be sent.
  * @param  string  $message  Body of the message that will be sent.
  * @param  array   $data_set Optional parameter to add more information to the notification.
- * @param  boolean $debug    TRUE if you want to test the function printing the email before sending it.
  * @return boolean           Whether the email contents were sent successfully.
  */
-function sucuriscan_send_mail( $email='', $subject='', $message='', $data_set=array(), $debug=FALSE ){
+function sucuriscan_send_mail( $email='', $subject='', $message='', $data_set=array() ){
     $headers = array();
     $subject = ucwords(strtolower($subject));
     $wp_domain = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : get_option('siteurl');
+    $force = FALSE;
+    $debug = FALSE;
 
-    if( sucuriscan_get_option('sucuriscan_prettify_mails') == 'enabled' ){
+    // Check whether the mail will be printed in the site instead of sent.
+    if(
+        isset($data_set['Debug'])
+        && $data_set['Debug'] == TRUE
+    ){
+        $debug = TRUE;
+        unset($data_set['Debug']);
+    }
+
+    // Check whether the mail will be even if the limit per hour was reached or not.
+    if(
+        isset($data_set['Force'])
+        && $data_set['Force'] == TRUE
+    ){
+        $force = TRUE;
+        unset($data_set['Force']);
+    }
+
+    // Check whether the email notifications will be sent in HTML or Plain/Text.
+    if( sucuriscan_prettify_mails() ){
         $headers = array( 'Content-type: text/html' );
         $data_set['PrettifyType'] = 'pretty';
     }
 
-    if( !sucuriscan_emails_per_hour_reached() || $debug ){
+    if( !sucuriscan_emails_per_hour_reached() || $force || $debug ){
         $message = sucuriscan_prettify_mail($subject, $message, $data_set);
 
         if( $debug ){ die($message); }
@@ -2037,6 +2066,19 @@ function sucuriscan_get_remoteaddr(){
 }
 
 /**
+ * Retrieve the user-agent from the current request.
+ *
+ * @return string The user-agent from the current request.
+ */
+function sucuriscan_get_useragent(){
+    if( isset($_SERVER['HTTP_USER_AGENT']) ){
+        return esc_attr($_SERVER['HTTP_USER_AGENT']);
+    }
+
+    return FALSE;
+}
+
+/**
  * Check whether the site is behing the Sucuri CloudProxy network.
  *
  * @return boolean Either TRUE or FALSE if the site is behind CloudProxy.
@@ -2326,6 +2368,7 @@ function sucuriscan_get_default_options( $settings='' ){
         'sucuriscan_notify_failed_login' => 'enabled',
         'sucuriscan_notify_post_publication' => 'enabled',
         'sucuriscan_notify_theme_editor' => 'enabled',
+        'sucuriscan_maximum_failed_logins' => 30,
     );
 
     if( is_array($settings) ){
@@ -3412,11 +3455,14 @@ function sucuriscan_notify_event( $event='', $content='' ){
     $event_name = 'sucuriscan_notify_' . $event;
     $notify = sucuriscan_get_option($event_name);
     $email = sucuriscan_get_option('sucuriscan_notify_to');
+    $email_params = array();
 
     if( $notify == 'enabled' ){
         if( $event == 'post_publication' ){
             $event = 'post_update';
-        } elseif( $event == 'failed_login' ){
+        }
+
+        elseif( $event == 'failed_login' ){
             $content .= '<br><br><em>Explanation: Someone failed to login to your site. If you
                 are getting too many of these messages, it is likely your site is under a brute
                 force attack. You can disable the notifications for failed logins from
@@ -3425,8 +3471,13 @@ function sucuriscan_notify_event( $event='', $content='' ){
                 target="_blank">Password Guessing Brute Force Attacks</a>.</em>';
         }
 
+        // Send a notification even if the limit of emails per hour was reached.
+        elseif( $event == 'bruteforce_attack' ){
+            $email_params['Force'] = TRUE;
+        }
+
         $title = sprintf( 'Sucuri notification (%s)', str_replace('_', chr(32), $event) );
-        $mail_sent = sucuriscan_send_mail( $email, $title, $content );
+        $mail_sent = sucuriscan_send_mail( $email, $title, $content, $email_params );
 
         return $mail_sent;
     }
@@ -3758,6 +3809,249 @@ function sucuriscan_hook_wp_login_failed( $title='' ){
     $message = 'User authentication failed: '.$title;
     sucuriscan_report_event( 2, 'core', $message );
     sucuriscan_notify_event( 'failed_login', $message );
+
+    // Log the failed login in the internal datastore for future reports.
+    $logged = sucuriscan_log_failed_login($title);
+
+    // Check if the quantity of failed logins will be considered as a brute-force attack.
+    if( $logged ){
+        $failed_logins = sucuriscan_get_failed_logins();
+
+        if( $failed_logins ){
+            $max_time = 3600;
+            $maximum_failed_logins = sucuriscan_get_option('sucuriscan_maximum_failed_logins');
+
+            /**
+             * If the time passed is within the hour, and the quantity of failed logins
+             * registered in the datastore file is bigger than the maximum quantity of
+             * failed logins allowed per hour (value configured by the administrator in the
+             * settings page), then send an email notification reporting the event and
+             * specifying that it may be a brute-force attack against the login page.
+             */
+            if(
+                $failed_logins['diff_time'] <= $max_time
+                && $failed_logins['count'] >= $maximum_failed_logins
+            ){
+                sucuriscan_report_failed_logins($failed_logins);
+            }
+
+            /**
+             * If there time passed is superior to the hour, then reset the content of the
+             * datastore file containing the failed logins so far, any entry in that file
+             * will not be considered as part of a brute-force attack (if it exists) because
+             * the time passed between the first and last login attempt is big enough to
+             * mitigate the attack. We will consider the current failed login event as the
+             * first entry of that file in case of future attempts during the next sixty
+             * minutes.
+             */
+            elseif( $failed_logins['diff_time'] > $max_time ){
+                sucuriscan_reset_failed_logins();
+                sucuriscan_log_failed_login($title);
+            }
+        }
+    }
+}
+
+/**
+ * Find the full path of the file where the information of the failed logins
+ * will be stored, it will be created automatically if does not exists (and if
+ * the destination folder has permissions to write). This function can also be
+ * used to reset the content of the datastore file.
+ *
+ * @see sucuriscan_reset_failed_logins()
+ *
+ * @param  boolean $reset Whether the file will be resetted or not.
+ * @return string         The full (relative) path where the file is located.
+ */
+function sucuriscan_failed_logins_datastore_path( $reset=FALSE ){
+    $datastore_path = sucuriscan_dir_filepath('sucuri-failedlogins.php');
+    $default_content = sucuriscan_failed_logins_default_content();
+
+    // Create the file if it does not exists.
+    if( !file_exists($datastore_path) || $reset ){
+        @file_put_contents( $datastore_path, $default_content, LOCK_EX );
+    }
+
+    // Return the datastore path if the file exists (or was created).
+    if(
+        file_exists($datastore_path)
+        && is_readable($datastore_path)
+    ){
+        return $datastore_path;
+    }
+
+    return FALSE;
+}
+
+/**
+ * Default content of the datastore file where the failed logins are being kept.
+ *
+ * @return string Default content of the file.
+ */
+function sucuriscan_failed_logins_default_content(){
+    $default_content = "<?php exit(0); ?>\n";
+
+    return $default_content;
+}
+
+/**
+ * Read and parse the content of the datastore file where the failed logins are
+ * being kept. This function will also calculate the difference in time between
+ * the first and last login attempt registered in the file to later decide if
+ * there is a brute-force attack in progress (and send an email notification
+ * with the report) or reset the file after considering it a normal behavior of
+ * the site.
+ *
+ * @return array Information and entries gathered from the failed logins datastore file.
+ */
+function sucuriscan_get_failed_logins(){
+    $datastore_path = sucuriscan_failed_logins_datastore_path();
+    $default_content = sucuriscan_failed_logins_default_content();
+    $default_content_n = substr_count($default_content, "\n");
+
+    if( $datastore_path ){
+        $lines = @file($datastore_path);
+
+        if( $lines ){
+            $failed_logins = array(
+                'count' => 0,
+                'first_attempt' => 0,
+                'last_attempt' => 0,
+                'diff_time' => 0,
+                'entries' => array(),
+            );
+
+            // Read and parse all the entries found in the datastore file.
+            foreach( $lines as $i => $line ){
+                if( $i >= $default_content_n ){
+                    $login_data = json_decode( trim($line), TRUE );
+                    $login_data['attempt_date'] = date('r', $login_data['attempt_time']);
+
+                    if( !$login_data['user_agent'] ){
+                        $login_data['user_agent'] = 'Unknown';
+                    }
+
+                    $failed_logins['entries'][] = $login_data;
+                    $failed_logins['count'] += 1;
+                }
+            }
+
+            // Calculate the different time between the first and last attempt.
+            if( $failed_logins['count'] > 0 ){
+                $z = abs($failed_logins['count'] - 1);
+                $failed_logins['last_attempt'] = $failed_logins['entries'][$z]['attempt_time'];
+                $failed_logins['first_attempt'] = $failed_logins['entries'][0]['attempt_time'];
+                $failed_logins['diff_time'] = abs( $failed_logins['last_attempt'] - $failed_logins['first_attempt'] );
+
+                return $failed_logins;
+            }
+        }
+    }
+
+    return FALSE;
+}
+
+
+/**
+ * Add a new entry in the datastore file where the failed logins are being kept,
+ * this entry will contain the username, timestamp of the login attempt, remote
+ * address of the computer sending the request, and the user-agent.
+ *
+ * @param  string  $user_login Information from the current failed login event.
+ * @return boolean             Whether the information of the current failed login event was stored or not.
+ */
+function sucuriscan_log_failed_login( $user_login='' ){
+    $datastore_path = sucuriscan_failed_logins_datastore_path();
+
+    if( $datastore_path ){
+        $login_data = json_encode(array(
+            'user_login' => $user_login,
+            'attempt_time' => time(),
+            'remote_addr' => sucuriscan_get_remoteaddr(),
+            'user_agent' => sucuriscan_get_useragent(),
+        ));
+
+        $logged = @file_put_contents( $datastore_path, $login_data . "\n", FILE_APPEND );
+
+        return $logged;
+    }
+
+    return FALSE;
+}
+
+/**
+ * Read and parse all the entries in the datastore file where the failed logins
+ * are being kept, this will loop through all these items and generate a table
+ * in HTML code to send as a report via email according to the plugin settings
+ * for the email notifications.
+ *
+ * @param  array   $failed_logins Information and entries gathered from the failed logins datastore file.
+ * @return boolean                Whether the report was sent via email or not.
+ */
+function sucuriscan_report_failed_logins( $failed_logins=array() ){
+    if( $failed_logins && $failed_logins['count'] > 0 ){
+        $prettify_mails = sucuriscan_prettify_mails();
+        $mail_content = '';
+
+        if( $prettify_mails ){
+            $table_html  = '<table border="1" cellspacing="0" cellpadding="0">';
+
+            // Add the table headers.
+            $table_html .= '<thead>';
+            $table_html .= '<tr>';
+            $table_html .= '<th>Username</th>';
+            $table_html .= '<th>IP Address</th>';
+            $table_html .= '<th>Attempt Timestamp</th>';
+            $table_html .= '<th>Attempt Date/Time</th>';
+            $table_html .= '</tr>';
+            $table_html .= '</thead>';
+
+            $table_html .= '<tbody>';
+        }
+
+        foreach( $failed_logins['entries'] as $login_data ){
+            if( $prettify_mails ){
+                $table_html .= '<tr>';
+                $table_html .= '<td>' . esc_attr($login_data['user_login']) . '</td>';
+                $table_html .= '<td>' . esc_attr($login_data['remote_addr']) . '</td>';
+                $table_html .= '<td>' . $login_data['attempt_time'] . '</td>';
+                $table_html .= '<td>' . $login_data['attempt_date'] . '</td>';
+                $table_html .= '</tr>';
+            } else {
+                $mail_content .= "\n";
+                $mail_content .= 'Username: ' . $login_data['user_login'] . "\n";
+                $mail_content .= 'IP Address: ' . $login_data['remote_addr'] . "\n";
+                $mail_content .= 'Attempt Timestamp: ' . $login_data['attempt_time'] . "\n";
+                $mail_content .= 'Attempt Date/Time: ' . $login_data['attempt_date'] . "\n";
+            }
+        }
+
+        if( $prettify_mails ){
+            $table_html .= '</tbody>';
+            $table_html .= '</table>';
+            $mail_content = $table_html;
+        }
+
+        if( sucuriscan_notify_event( 'bruteforce_attack', $mail_content ) ){
+            sucuriscan_reset_failed_logins();
+
+            return TRUE;
+        }
+    }
+
+    return FALSE;
+}
+
+/**
+ * Remove all the entries in the datastore file where the failed logins are
+ * being kept. The execution of this function will not delete the file (which is
+ * likely the best move) but rather will clean its content and append the
+ * default code defined by another function above.
+ *
+ * @return boolean Whether the datastore file was resetted or not.
+ */
+function sucuriscan_reset_failed_logins(){
+    return (bool) sucuriscan_failed_logins_datastore_path(TRUE);
 }
 
 /**
@@ -3767,7 +4061,7 @@ function sucuriscan_hook_wp_login_failed( $title='' ){
  * @return void
  */
 function sucuriscan_hook_login_form_resetpass(){
-    // Detecting wordpress 2.8.3 vulnerability - $key is array.
+    // Detecting WordPress 2.8.3 vulnerability - $key is array.
     if( isset($_GET['key']) && is_array($_GET['key']) ){
         sucuriscan_report_event( 3, 'core', 'Attempt to reset password by attacking WP/2.8.3 bug' );
     }
@@ -5922,9 +6216,7 @@ function sucuriscan_lastlogins_all(){
  * @return string Absolute filepath where the user's last login information is stored.
  */
 function sucuriscan_lastlogins_datastore_filepath(){
-    $plugin_upload_folder = sucuriscan_dir_filepath();
-    $datastore_filepath = rtrim($plugin_upload_folder,'/').'/sucuri-lastlogins.php';
-    return $datastore_filepath;
+    return sucuriscan_dir_filepath( 'sucuri-lastlogins.php' );
 }
 
 /**
@@ -6611,6 +6903,7 @@ $sucuriscan_notify_options = array(
     'sucuriscan_notify_user_registration' => 'Enable email alerts for new user registration',
     'sucuriscan_notify_success_login' => 'Enable email alerts for successful logins',
     'sucuriscan_notify_failed_login' => 'Enable email alerts for failed logins',
+    'sucuriscan_notify_bruteforce_attack' => 'Enable email alerts for login brute-force attack',
     'sucuriscan_notify_post_publication' => 'Enable email alerts for new site content',
     'sucuriscan_notify_theme_editor' => 'Enable email alerts when a file is modified via the theme/plugin editor',
     'sucuriscan_notify_website_updated' => 'Enable email alerts when your website is updated',
@@ -6652,6 +6945,14 @@ $sucuriscan_emails_per_hour = array(
     'unlimited' => 'Unlimited',
 );
 
+$sucuriscan_maximum_failed_logins = array(
+    '30' => '30 failed logins per hour',
+    '60' => '60 failed logins per hour',
+    '120' => '120 failed logins per hour',
+    '240' => '240 failed logins per hour',
+    '480' => '480 failed logins per hour',
+);
+
 /**
  * Print a HTML code with the settings of the plugin.
  *
@@ -6662,7 +6963,8 @@ function sucuriscan_settings_page(){
     global $sucuriscan_schedule_allowed,
         $sucuriscan_interface_allowed,
         $sucuriscan_notify_options,
-        $sucuriscan_emails_per_hour;
+        $sucuriscan_emails_per_hour,
+        $sucuriscan_maximum_failed_logins;
 
     // Check the nonce here to populate the value through other functions.
     $page_nonce = sucuriscan_check_page_nonce();
@@ -6694,6 +6996,7 @@ function sucuriscan_settings_page(){
     $scan_freq = sucuriscan_get_option('sucuriscan_scan_frequency');
     $scan_interface = sucuriscan_get_option('sucuriscan_scan_interface');
     $emails_per_hour = sucuriscan_get_option('sucuriscan_emails_per_hour');
+    $maximum_failed_logins = sucuriscan_get_option('sucuriscan_maximum_failed_logins');
     $runtime_scan = sucuriscan_get_option('sucuriscan_runtime');
     $runtime_scan_human = date( 'd/M/Y H:i:s', $runtime_scan );
 
@@ -6724,6 +7027,18 @@ function sucuriscan_settings_page(){
     foreach( $sucuriscan_emails_per_hour as $per_hour => $per_hour_label ){
         $selected = ( $emails_per_hour == $per_hour ? 'selected="selected"' : '' );
         $emails_per_hour_options .= sprintf(
+            '<option value="%s" %s>%s</option>',
+            $per_hour,
+            $selected,
+            $per_hour_label
+        );
+    }
+
+    // Generate the HTML code to configure the emails per hour.
+    $maximum_failed_logins_options = '';
+    foreach( $sucuriscan_maximum_failed_logins as $per_hour => $per_hour_label ){
+        $selected = ( $maximum_failed_logins == $per_hour ? 'selected="selected"' : '' );
+        $maximum_failed_logins_options .= sprintf(
             '<option value="%s" %s>%s</option>',
             $per_hour,
             $selected,
@@ -6765,12 +7080,22 @@ function sucuriscan_settings_page(){
         'NotificationOptions' => $notification_options,
         'ModalWhenAPIRegistered' => $api_registered_modal,
         'NotifyTo' => sucuriscan_get_option('sucuriscan_notify_to'),
-        'EmailsPerHour' => $sucuriscan_emails_per_hour[$emails_per_hour],
+        'EmailsPerHour' => 'Undefined',
         'EmailsPerHourOptions' => $emails_per_hour_options,
+        'MaximumFailedLogins' => 'Undefined',
+        'MaximumFailedLoginsOptions' => $maximum_failed_logins_options,
     );
 
     if( array_key_exists($scan_freq, $sucuriscan_schedule_allowed) ){
         $template_variables['ScanningFrequency'] = $sucuriscan_schedule_allowed[$scan_freq];
+    }
+
+    if( array_key_exists($emails_per_hour, $sucuriscan_emails_per_hour) ){
+        $template_variables['EmailsPerHour'] = $sucuriscan_emails_per_hour[$emails_per_hour];
+    }
+
+    if( array_key_exists($maximum_failed_logins, $sucuriscan_maximum_failed_logins) ){
+        $template_variables['MaximumFailedLogins'] = $sucuriscan_maximum_failed_logins[$maximum_failed_logins];
     }
 
     echo sucuriscan_get_template('settings', $template_variables);
@@ -6789,7 +7114,8 @@ function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
     global $sucuriscan_schedule_allowed,
         $sucuriscan_interface_allowed,
         $sucuriscan_notify_options,
-        $sucuriscan_emails_per_hour;
+        $sucuriscan_emails_per_hour,
+        $sucuriscan_maximum_failed_logins;
 
     // Use this conditional to avoid double checking.
     if( is_null($page_nonce) ){
@@ -6877,6 +7203,22 @@ function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
                 sucuriscan_info( 'All the event notifications will be sent to the email specified.' );
             } else {
                 sucuriscan_error( 'Email format not supported.' );
+            }
+        }
+
+        // Update the maximum failed logins per hour before consider it a brute-force attack.
+        if( isset($_POST['sucuriscan_maximum_failed_logins']) ){
+            $failed_logins = esc_attr($_POST['sucuriscan_maximum_failed_logins']);
+
+            if( array_key_exists($failed_logins, $sucuriscan_maximum_failed_logins) ){
+                update_option( 'sucuriscan_maximum_failed_logins', $failed_logins );
+                sucuriscan_notify_event( 'plugin_change', 'Maximum failed logins before consider it a brute-force attack was changed' );
+                sucuriscan_info(
+                    'A brute-force attack event will be reported if there are more than '
+                    . '<code>' . $failed_logins . '</code> failed logins per hour.'
+                );
+            } else {
+                sucuriscan_error( 'Invalid value for the maximum failed logins per hour before consider it a brute-force attack.' );
             }
         }
 
