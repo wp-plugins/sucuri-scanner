@@ -6868,13 +6868,16 @@ function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
         }
 
         // Update the email where the event notifications will be sent.
-        if(
-            isset($_POST['sucuriscan_notify_to'])
-            && is_valid_email($_POST['sucuriscan_notify_to'])
-        ){
-            update_option( 'sucuriscan_notify_to', $_POST['sucuriscan_notify_to'] );
-            sucuriscan_notify_event( 'plugin_change', 'Email address to get the event notifications was changed' );
-            sucuriscan_info( 'All the event notifications will be sent to the email specified.' );
+        if( isset($_POST['sucuriscan_notify_to']) ){
+            $new_email = esc_attr($_POST['sucuriscan_notify_to']);
+
+            if( is_valid_email($new_email) ){
+                update_option( 'sucuriscan_notify_to', $new_email );
+                sucuriscan_notify_event( 'plugin_change', 'Email address to get the event notifications was changed' );
+                sucuriscan_info( 'All the event notifications will be sent to the email specified.' );
+            } else {
+                sucuriscan_error( 'Email format not supported.' );
+            }
         }
 
         // Update the notification settings.
