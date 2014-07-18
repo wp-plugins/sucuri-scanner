@@ -3417,9 +3417,11 @@ function sucuriscan_notify_event( $event='', $content='' ){
         if( $event == 'post_publication' ){
             $event = 'post_update';
         } elseif( $event == 'failed_login' ){
-            $content .= '<br><br><em>Explanation: Someone failed to login to your site. If you are getting
-                too many of these messages, it is likely your site is under a brute force attack. More
-                details at <a href="http://kb.sucuri.net/definitions/attacks/brute-force/password-guessing"
+            $content .= '<br><br><em>Explanation: Someone failed to login to your site. If you
+                are getting too many of these messages, it is likely your site is under a brute
+                force attack. You can disable the notifications for failed logins from
+                <a href="' . sucuriscan_get_url('settings') . '" target="_blank">here</a>.
+                More details at <a href="http://kb.sucuri.net/definitions/attacks/brute-force/password-guessing"
                 target="_blank">Password Guessing Brute Force Attacks</a>.</em>';
         }
 
