@@ -1508,7 +1508,7 @@ function sucuriscan_send_mail( $email='', $subject='', $message='', $data_set=ar
         $data_set['PrettifyType'] = 'pretty';
     }
 
-    if( !sucuriscan_emails_per_hour_reached() ){
+    if( !sucuriscan_emails_per_hour_reached() || $debug ){
         $message = sucuriscan_prettify_mail($subject, $message, $data_set);
 
         if( $debug ){ die($message); }
@@ -3416,6 +3416,11 @@ function sucuriscan_notify_event( $event='', $content='' ){
     if( $notify == 'enabled' ){
         if( $event == 'post_publication' ){
             $event = 'post_update';
+        } elseif( $event == 'failed_login' ){
+            $content .= '<br><br><em>Explanation: Someone failed to login to your site. If you are getting
+                too many of these messages, it is likely your site is under a brute force attack. More
+                details at <a href="http://kb.sucuri.net/definitions/attacks/brute-force/password-guessing"
+                target="_blank">Password Guessing Brute Force Attacks</a>.</em>';
         }
 
         $title = sprintf( 'Sucuri notification (%s)', str_replace('_', chr(32), $event) );
