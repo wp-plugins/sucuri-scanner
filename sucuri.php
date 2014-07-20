@@ -4946,18 +4946,18 @@ function sucuriscan_harden_version(){
     global $wp_version;
 
     $updates = get_core_updates();
-    if(
-        !is_array($updates)
-        || empty($updates)
-        || $updates[0]->response == 'latest'
-    ){
-        $cp = 1;
-    } else {
-        $cp = 0;
+    $cp = ( !is_array($updates) || empty($updates) ? 1 : 0 );
+
+    if( isset($updates[0]) && $updates[0] instanceof stdClass ){
+        if(
+            $updates[0]->response == 'latest'
+            || $updates[0]->response == 'development'
+        ){
+            $cp = 1;
+        }
     }
 
-    if(strcmp($wp_version, "3.7") < 0)
-    {
+    if( strcmp($wp_version, '3.7') < 0 ){
         $cp = 0;
     }
 
