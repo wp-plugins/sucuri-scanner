@@ -5630,28 +5630,35 @@ function sucuriscan_auditlogs(){
 function sucuriscan_wordpress_outdated(){
     global $wp_version;
 
-    $cp = 0;
     $updates = get_core_updates();
+    $cp = ( !is_array($updates) || empty($updates) ? 1 : 0 );
 
-    if(
-        !is_array($updates)
-        || empty($updates)
-        || $updates[0]->response=='latest'
-    ){
-        $cp = 1;
+    $template_variables = array(
+        'WordPress.Version' => htmlspecialchars($wp_version),
+        'WordPress.UpgradeURL' => admin_url('update-core.php'),
+        'WordPress.UpdateVisibility' => 'hidden',
+        'WordPressBeta.Visibility' => 'hidden',
+        'WordPressBeta.Version' => '0.0.0',
+        'WordPressBeta.UpdateURL' => admin_url('update-core.php'),
+        'WordPressBeta.DownloadURL' => '#',
+    );
+
+    if( isset($updates[0]) && $updates[0] instanceof stdClass ){
+        if( $updates[0]->response == 'latest' ){
+            $cp = 1;
+        }
+
+        elseif( $updates[0]->response == 'development' ){
+            $cp = 1;
+            $template_variables['WordPressBeta.Visibility'] = 'visible';
+            $template_variables['WordPressBeta.Version'] = $updates[0]->version;
+            $template_variables['WordPressBeta.DownloadURL'] = $updates[0]->download;
+        }
     }
 
     if( strcmp($wp_version, '3.7') < 0 ){
         $cp = 0;
     }
-
-    $template_variables = array(
-        'WordPress.Version' => $wp_version,
-        'WordPress.UpgradeURL' => admin_url('update-core.php'),
-        'WordPress.UpdateVisibility' => 'hidden',
-    );
-
-    $wp_version = htmlspecialchars($wp_version);
 
     if( $cp == 0 ){
         $template_variables['WordPress.UpdateVisibility'] = 'visible';
