@@ -32,6 +32,14 @@
 .sucuriscan-modal-close{display:inline-block;position:absolute;top:0;right:0;font-size:16px;font-weight:bold;text-decoration:none;line-height:39px;padding:0 15px;border-left:1px solid #ddd}
 .sucuriscan-modal-inside p:first-child{margin-top:0}
 .sucuriscan-modal-inside p:last-child{margin-bottom:0}
+/* Label and Tags */
+.sucuriscan-label, .sucuriscan-label-default, .sucuriscan-label-primary, .sucuriscan-label-success, .sucuriscan-label-info, .sucuriscan-label-warning, .sucuriscan-label-danger{display:inline;font-size:75%;font-weight:700;line-height:1;color:#fff;text-align:center;white-space:nowrap;vertical-align:baseline;padding:0.2em 0.6em 0.3em;border-radius:0.25em}
+.sucuriscan-label-default{background:#777}
+.sucuriscan-label-primary{background:#428bca}
+.sucuriscan-label-success{background:#5cb85c}
+.sucuriscan-label-info{background:#5bc0de}
+.sucuriscan-label-warning{background:#f0ad4e}
+.sucuriscan-label-danger{background:#d9534f}
 /* Interface Wrapper */
 .sucuriscan-wrap{margin-top:20px}
 .sucuriscan-wrap .sucuriscan-maincontent{margin:20px 0}
@@ -165,6 +173,11 @@ div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:1
 .sucuriscan-hstatus-1{background-color:#dff0d8;color:#3c763d;border-color:#d6e9c6}
 .sucuriscan-hstatus-0{background-color:#f2dede;color:#a94442;border-color:#ebccd1}
 .sucuriscan-hstatus .button-primary, .sucuriscan-hstatus .button-secondary{position:absolute;top:5px;right:5px}
+/* Settings Page Styles */
+.sucuriscan-settings-ignorerules{}
+.sucuriscan-settings-ignorerules-disabled{}
+.sucuriscan-settings-ignorerules-enabled{border-left-width:1px !important;box-shadow:none}
+.sucuriscan-settings-ignorerules-enabled .inside{border-bottom:0 !important}
 /* About Page */
 .sucuriscan-about ul{margin-left:20px}
 .sucuriscan-about ul li{list-style:initial}

@@ -2369,6 +2369,7 @@ function sucuriscan_get_default_options( $settings='' ){
         'sucuriscan_notify_post_publication' => 'enabled',
         'sucuriscan_notify_theme_editor' => 'enabled',
         'sucuriscan_maximum_failed_logins' => 30,
+        'sucuriscan_ignored_events' => '',
     );
 
     if( is_array($settings) ){
@@ -2431,6 +2432,82 @@ function sucuriscan_what_options_were_changed( $request=array() ){
         }
     }
     return $options_changed;
+}
+
+/**
+ * Get a list of the post types ignored to receive email notifications when the
+ * "new site content" hook is triggered.
+ *
+ * @return array List of ignored posts-types to send notifications.
+ */
+function sucuriscan_get_ignored_events(){
+    $post_types = sucuriscan_get_option('sucuriscan_ignored_events');
+    $post_types_arr = @unserialize($post_types);
+
+    if( !is_array($post_types_arr) ){ $post_types_arr = array(); }
+
+    return $post_types_arr;
+}
+
+/**
+ * Add a new post type to the list of ignored events to send notifications.
+ *
+ * @param  string  $event_name Unique post-type name.
+ * @return boolean             Whether the event was ignored or not.
+ */
+function sucuriscan_add_ignored_event( $event_name='' ){
+    $post_types = get_post_types();
+
+    // Check if the event is a registered post-type.
+    if( array_key_exists($event_name, $post_types) ){
+        $ignored_events = sucuriscan_get_ignored_events();
+
+        // Check if the event is not ignored already.
+        if( !array_key_exists($event_name, $ignored_events) ){
+            $ignored_events[$event_name] = time();
+            $saved = update_option( 'sucuriscan_ignored_events', serialize($ignored_events) );
+
+            return $saved;
+        }
+    }
+
+    return FALSE;
+}
+
+/**
+ * Remove a post type from the list of ignored events to send notifications.
+ *
+ * @param  string  $event_name Unique post-type name.
+ * @return boolean             Whether the event was removed from the list or not.
+ */
+function sucuriscan_remove_ignored_event( $event_name='' ){
+    $ignored_events = sucuriscan_get_ignored_events();
+
+    if( array_key_exists($event_name, $ignored_events) ){
+        unset( $ignored_events[$event_name] );
+        $saved = update_option( 'sucuriscan_ignored_events', serialize($ignored_events) );
+
+        return $saved;
+    }
+
+    return FALSE;
+}
+
+/**
+ * Check whether an event is being ignored to send notifications or not.
+ *
+ * @param  string  $event_name Unique post-type name.
+ * @return boolean             Whether an event is being ignored or not.
+ */
+function sucuriscan_is_ignored_event( $event_name='' ){
+    $event_name = strtolower($event_name);
+    $ignored_events = sucuriscan_get_ignored_events();
+
+    if( array_key_exists($event_name, $ignored_events) ){
+        return TRUE;
+    }
+
+    return FALSE;
 }
 
 if( !function_exists('sucuriscan_plugin_setup_notice') ){
@@ -3222,7 +3299,8 @@ function sucuriscan_send_log( $event='' ){
 /**
  * Retrieve the event logs registered by the API service.
  *
- * @return string The response of the API service.
+ * @param  integer $lines How many lines from the log file will be retrieved.
+ * @return string         The response of the API service.
  */
 function sucuriscan_get_logs( $lines=50 ){
     $response = sucuriscan_api_call_wordpress( 'GET', array(
@@ -3646,9 +3724,12 @@ function sucuriscan_hook_private_to_published( $id=0 ){
         $p_type = 'Publication';
     }
 
-    $message = $p_type.' changed from private to published #'.$id.' ('.$title.')';
-    sucuriscan_report_event( 2, 'core', $message );
-    sucuriscan_notify_event( 'post_publication', $message );
+    // Check whether the post-type is being ignored to send notifications.
+    if( !sucuriscan_is_ignored_event($p_type) ){
+        $message = $p_type.' changed from private to published #'.$id.' ('.$title.')';
+        sucuriscan_report_event( 2, 'core', $message );
+        sucuriscan_notify_event( 'post_publication', $message );
+    }
 }
 
 /**
@@ -7175,10 +7256,34 @@ function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
             sucuriscan_info( 'All plugin options were resetted successfully' );
         }
 
+        // Ignore a new event for email notifications.
+        if(
+            isset($_POST['sucuriscan_ignorerule_action'])
+            && isset($_POST['sucuriscan_ignorerule'])
+        ){
+            if( $_POST['sucuriscan_ignorerule_action'] == 'add' ){
+                $event_ignored = sucuriscan_add_ignored_event( $_POST['sucuriscan_ignorerule'] );
+
+                if( $event_ignored ){
+                    sucuriscan_info( 'Post-type ignored successfully.' );
+                } else {
+                    sucuriscan_error( 'The post-type is invalid or it may be already ignored.' );
+                }
+            } else {
+                sucuriscan_remove_ignored_event( $_POST['sucuriscan_ignorerule'] );
+                sucuriscan_info( 'Post-type removed from the list successfully.' );
+            }
+        }
+
     }
 
 }
 
+/**
+ * Read and parse the content of the general settings template.
+ *
+ * @return string Parsed HTML code for the general settings panel.
+ */
 function sucuriscan_settings_general(){
 
     global $sucuriscan_schedule_allowed,
@@ -7303,9 +7408,9 @@ function sucuriscan_settings_general(){
 }
 
 /**
- * Generate HTML code to configure the notifications of the plugin.
+ * Read and parse the content of the notification settings template.
  *
- * @return string The HTML code for the notification settings panel.
+ * @return string Parsed HTML code for the notification settings panel.
  */
 function sucuriscan_settings_notifications(){
     global $sucuriscan_notify_options;
@@ -7333,6 +7438,64 @@ function sucuriscan_settings_notifications(){
     return sucuriscan_get_section('settings-notifications', $template_variables);
 }
 
+/**
+ * Read and parse the content of the ignored-rules settings template.
+ *
+ * @return string Parsed HTML code for the ignored-rules settings panel.
+ */
 function sucuriscan_settings_ignore_rules(){
+    $notify_new_site_content = sucuriscan_get_option('sucuriscan_notify_post_publication');
+
+    $template_variables = array(
+        'IgnoreRules.MessageVisibility' => 'visible',
+        'IgnoreRules.TableVisibility' => 'hidden',
+        'IgnoreRules.PostTypes' => '',
+    );
+
+    if( $notify_new_site_content == 'enabled' ){
+        $post_types = get_post_types();
+        $ignored_events = sucuriscan_get_ignored_events();
+
+        $template_variables['IgnoreRules.MessageVisibility'] = 'hidden';
+        $template_variables['IgnoreRules.TableVisibility'] = 'visible';
+        $counter = 0;
+
+        foreach( $post_types as $post_type => $post_type_object ){
+            $counter += 1;
+            $css_class = ( $counter % 2 == 0 ) ? 'alternate' : '';
+            $post_type_title = ucwords( str_replace('_', chr(32), $post_type) );
+
+            if( array_key_exists($post_type, $ignored_events) ){
+                $is_ignored_text = 'YES';
+                $was_ignored_at = @date('d/M/Y - H:i:s', $ignored_events[$post_type]);
+                $is_ignored_class = 'danger';
+                $button_action = 'remove';
+                $button_class = 'button-primary';
+                $button_text = 'Allow';
+            } else {
+                $is_ignored_text = 'NO';
+                $button_action = 'add';
+                $was_ignored_at = 'Not ignored';
+                $is_ignored_class = 'success';
+                $button_class = 'button-primary button-danger';
+                $button_text = 'Ignore';
+            }
+
+            $template_variables['IgnoreRules.PostTypes'] .= sucuriscan_get_snippet('settings-ignorerules', array(
+                'IgnoreRules.CssClass' => $css_class,
+                'IgnoreRules.Num' => $counter,
+                'IgnoreRules.PostTypeTitle' => $post_type_title,
+                'IgnoreRules.IsIgnored' => $is_ignored_text,
+                'IgnoreRules.WasIgnoredAt' => $was_ignored_at,
+                'IgnoreRules.IsIgnoredClass' => $is_ignored_class,
+                'IgnoreRules.PostType' => $post_type,
+                'IgnoreRules.Action' => $button_action,
+                'IgnoreRules.ButtonClass' => 'button ' . $button_class,
+                'IgnoreRules.ButtonText' => $button_text,
+            ));
+        }
+    }
+
+    return sucuriscan_get_section('settings-ignorerules', $template_variables);
 }
 

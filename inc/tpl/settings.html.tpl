@@ -8,7 +8,7 @@
             <a href="#" data-tabname="settings-notifications">Notification Settings</a>
         </li>
         <li>
-            <a href="#" data-tabname="settings-ignorerules">Ignore Rules</a>
+            <a href="#" data-tabname="settings-ignorerules">Ignore Notifications</a>
         </li>
     </ul>
 
