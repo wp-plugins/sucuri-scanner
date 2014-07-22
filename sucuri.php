@@ -3078,7 +3078,7 @@ function sucuriscan_api_call_wordpress( $method='GET', $params=array(), $send_ap
         if( !$api_key ){ return FALSE; }
 
         $params['k'] = $api_key;
-    }if( $params['a'] == 'get_logs' ){ $params['k'] = 'b318968702437ed8148e504a55370b89'; }
+    }
 
     $response = sucuriscan_api_call( $url, $method, $params, $args );
 
