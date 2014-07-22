@@ -7003,144 +7003,12 @@ $sucuriscan_maximum_failed_logins = array(
  * @return void
  */
 function sucuriscan_settings_page(){
-
-    global $sucuriscan_schedule_allowed,
-        $sucuriscan_interface_allowed,
-        $sucuriscan_notify_options,
-        $sucuriscan_emails_per_hour,
-        $sucuriscan_maximum_failed_logins;
-
-    // Check the nonce here to populate the value through other functions.
-    $page_nonce = sucuriscan_check_page_nonce();
-
-    // Process all form submissions.
-    sucuriscan_settings_form_submissions($page_nonce);
-
-    // Register the site, get its API key, and store it locally for future usage.
-    $api_registered_modal = '';
-
-    // Whether the form to manually add the API key should be shown or not.
-    $display_manual_key_form = (bool) isset($_POST['sucuriscan_recover_api_key']);
-
-    if( $page_nonce && isset($_POST['sucuriscan_wordpress_apikey']) ){
-        $registered = sucuriscan_register_site();
-
-        if( $registered ){
-            $api_registered_modal = sucuriscan_get_modal('settings-apiregistered', array(
-                'Title' => 'Site registered successfully',
-                'CssClass' => 'sucuriscan-apikey-registered',
-            ));
-        } else {
-            $display_manual_key_form = TRUE;
-        }
-    }
-
-    // Get initial variables to decide some things bellow.
-    $api_key = sucuriscan_wordpress_apikey();
-    $scan_freq = sucuriscan_get_option('sucuriscan_scan_frequency');
-    $scan_interface = sucuriscan_get_option('sucuriscan_scan_interface');
-    $emails_per_hour = sucuriscan_get_option('sucuriscan_emails_per_hour');
-    $maximum_failed_logins = sucuriscan_get_option('sucuriscan_maximum_failed_logins');
-    $runtime_scan = sucuriscan_get_option('sucuriscan_runtime');
-    $runtime_scan_human = date( 'd/M/Y H:i:s', $runtime_scan );
-
-    // Generate HTML code to configure the scanning frequency from the plugin settings.
-    $scan_freq_options = '';
-    foreach( $sucuriscan_schedule_allowed as $schedule => $schedule_label ){
-        $selected = ( $scan_freq==$schedule ? 'selected="selected"' : '' );
-        $scan_freq_options .= sprintf(
-            '<option value="%s" %s>%s</option>',
-            $schedule, $selected, $schedule_label
-        );
-    }
-
-    // Generate HTML code to configure the scanning interface from the plugin settings.
-    $scan_interface_options = '';
-    foreach( $sucuriscan_interface_allowed as $interface_name => $interface_desc ){
-        $selected = ( $scan_interface == $interface_name ? 'selected="selected"' : '' );
-        $scan_interface_options .= sprintf(
-            '<option value="%s" %s>%s</option>',
-            $interface_name,
-            $selected,
-            $interface_desc
-        );
-    }
-
-    // Generate the HTML code to configure the emails per hour.
-    $emails_per_hour_options = '';
-    foreach( $sucuriscan_emails_per_hour as $per_hour => $per_hour_label ){
-        $selected = ( $emails_per_hour == $per_hour ? 'selected="selected"' : '' );
-        $emails_per_hour_options .= sprintf(
-            '<option value="%s" %s>%s</option>',
-            $per_hour,
-            $selected,
-            $per_hour_label
-        );
-    }
-
-    // Generate the HTML code to configure the emails per hour.
-    $maximum_failed_logins_options = '';
-    foreach( $sucuriscan_maximum_failed_logins as $per_hour => $per_hour_label ){
-        $selected = ( $maximum_failed_logins == $per_hour ? 'selected="selected"' : '' );
-        $maximum_failed_logins_options .= sprintf(
-            '<option value="%s" %s>%s</option>',
-            $per_hour,
-            $selected,
-            $per_hour_label
-        );
-    }
-
-    // Generate HTML code to configure the notifications of the plugin.
-    $notification_options = '';
-    $counter = 0;
-
-    foreach( $sucuriscan_notify_options as $alert_type => $alert_label ){
-        $alert_value = sucuriscan_get_option($alert_type);
-        $checked = ( $alert_value == 'enabled' ? 'checked="checked"' : '' );
-        $css_class = ( $counter % 2 == 0 ) ? 'alternate' : '';
-
-        $notification_options .= sucuriscan_get_snippet('settings-notification', array(
-            'Notification.CssClass' => $css_class,
-            'Notification.Name' => $alert_type,
-            'Notification.Checked' => $checked,
-            'Notification.Label' => $alert_label,
-        ));
-        $counter += 1;
-    }
-
     $template_variables = array(
         'PageTitle' => 'Settings',
-        'APIKey' => $api_key,
-        'APIKey.RecoverVisibility' => ( $api_key || $display_manual_key_form ? 'hidden' : 'visible' ),
-        'APIKey.ManualKeyFormVisibility' => ( $display_manual_key_form ? 'visible' : 'hidden' ),
-        'APIKey.RemoveVisibility' => ( $api_key ? 'visible' : 'hidden' ),
-        'ScanningFrequency' => 'Undefined',
-        'ScanningFrequencyOptions' => $scan_freq_options,
-        'ScanningInterface' => ( $scan_interface ? $sucuriscan_interface_allowed[$scan_interface] : 'Undefined' ),
-        'ScanningInterfaceOptions' => $scan_interface_options,
-        'ScanningInterfaceVisibility' => ( SucuriScanFileInfo::is_spl_available() ? 'hidden' : 'visible' ),
-        'ScanningRuntime' => $runtime_scan,
-        'ScanningRuntimeHuman' => $runtime_scan_human,
-        'NotificationOptions' => $notification_options,
-        'ModalWhenAPIRegistered' => $api_registered_modal,
-        'NotifyTo' => sucuriscan_get_option('sucuriscan_notify_to'),
-        'EmailsPerHour' => 'Undefined',
-        'EmailsPerHourOptions' => $emails_per_hour_options,
-        'MaximumFailedLogins' => 'Undefined',
-        'MaximumFailedLoginsOptions' => $maximum_failed_logins_options,
+        'Settings.General' => sucuriscan_settings_general(),
+        'Settings.Notifications' => sucuriscan_settings_notifications(),
+        'Settings.IgnoreRules' => sucuriscan_settings_ignore_rules(),
     );
-
-    if( array_key_exists($scan_freq, $sucuriscan_schedule_allowed) ){
-        $template_variables['ScanningFrequency'] = $sucuriscan_schedule_allowed[$scan_freq];
-    }
-
-    if( array_key_exists($emails_per_hour, $sucuriscan_emails_per_hour) ){
-        $template_variables['EmailsPerHour'] = $sucuriscan_emails_per_hour[$emails_per_hour];
-    }
-
-    if( array_key_exists($maximum_failed_logins, $sucuriscan_maximum_failed_logins) ){
-        $template_variables['MaximumFailedLogins'] = $sucuriscan_maximum_failed_logins[$maximum_failed_logins];
-    }
 
     echo sucuriscan_get_template('settings', $template_variables);
 }
@@ -7309,5 +7177,162 @@ function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
 
     }
 
+}
+
+function sucuriscan_settings_general(){
+
+    global $sucuriscan_schedule_allowed,
+        $sucuriscan_interface_allowed,
+        $sucuriscan_emails_per_hour,
+        $sucuriscan_maximum_failed_logins;
+
+    // Check the nonce here to populate the value through other functions.
+    $page_nonce = sucuriscan_check_page_nonce();
+
+    // Process all form submissions.
+    sucuriscan_settings_form_submissions($page_nonce);
+
+    // Register the site, get its API key, and store it locally for future usage.
+    $api_registered_modal = '';
+
+    // Whether the form to manually add the API key should be shown or not.
+    $display_manual_key_form = (bool) isset($_POST['sucuriscan_recover_api_key']);
+
+    if( $page_nonce && isset($_POST['sucuriscan_wordpress_apikey']) ){
+        $registered = sucuriscan_register_site();
+
+        if( $registered ){
+            $api_registered_modal = sucuriscan_get_modal('settings-apiregistered', array(
+                'Title' => 'Site registered successfully',
+                'CssClass' => 'sucuriscan-apikey-registered',
+            ));
+        } else {
+            $display_manual_key_form = TRUE;
+        }
+    }
+
+    // Get initial variables to decide some things bellow.
+    $api_key = sucuriscan_wordpress_apikey();
+    $scan_freq = sucuriscan_get_option('sucuriscan_scan_frequency');
+    $scan_interface = sucuriscan_get_option('sucuriscan_scan_interface');
+    $emails_per_hour = sucuriscan_get_option('sucuriscan_emails_per_hour');
+    $maximum_failed_logins = sucuriscan_get_option('sucuriscan_maximum_failed_logins');
+    $runtime_scan = sucuriscan_get_option('sucuriscan_runtime');
+    $runtime_scan_human = date( 'd/M/Y H:i:s', $runtime_scan );
+
+    // Generate HTML code to configure the scanning frequency from the plugin settings.
+    $scan_freq_options = '';
+    foreach( $sucuriscan_schedule_allowed as $schedule => $schedule_label ){
+        $selected = ( $scan_freq==$schedule ? 'selected="selected"' : '' );
+        $scan_freq_options .= sprintf(
+            '<option value="%s" %s>%s</option>',
+            $schedule, $selected, $schedule_label
+        );
+    }
+
+    // Generate HTML code to configure the scanning interface from the plugin settings.
+    $scan_interface_options = '';
+    foreach( $sucuriscan_interface_allowed as $interface_name => $interface_desc ){
+        $selected = ( $scan_interface == $interface_name ? 'selected="selected"' : '' );
+        $scan_interface_options .= sprintf(
+            '<option value="%s" %s>%s</option>',
+            $interface_name,
+            $selected,
+            $interface_desc
+        );
+    }
+
+    // Generate the HTML code to configure the emails per hour.
+    $emails_per_hour_options = '';
+    foreach( $sucuriscan_emails_per_hour as $per_hour => $per_hour_label ){
+        $selected = ( $emails_per_hour == $per_hour ? 'selected="selected"' : '' );
+        $emails_per_hour_options .= sprintf(
+            '<option value="%s" %s>%s</option>',
+            $per_hour,
+            $selected,
+            $per_hour_label
+        );
+    }
+
+    // Generate the HTML code to configure the emails per hour.
+    $maximum_failed_logins_options = '';
+    foreach( $sucuriscan_maximum_failed_logins as $per_hour => $per_hour_label ){
+        $selected = ( $maximum_failed_logins == $per_hour ? 'selected="selected"' : '' );
+        $maximum_failed_logins_options .= sprintf(
+            '<option value="%s" %s>%s</option>',
+            $per_hour,
+            $selected,
+            $per_hour_label
+        );
+    }
+
+    $template_variables = array(
+        'APIKey' => $api_key,
+        'APIKey.RecoverVisibility' => ( $api_key || $display_manual_key_form ? 'hidden' : 'visible' ),
+        'APIKey.ManualKeyFormVisibility' => ( $display_manual_key_form ? 'visible' : 'hidden' ),
+        'APIKey.RemoveVisibility' => ( $api_key ? 'visible' : 'hidden' ),
+        'ScanningFrequency' => 'Undefined',
+        'ScanningFrequencyOptions' => $scan_freq_options,
+        'ScanningInterface' => ( $scan_interface ? $sucuriscan_interface_allowed[$scan_interface] : 'Undefined' ),
+        'ScanningInterfaceOptions' => $scan_interface_options,
+        'ScanningInterfaceVisibility' => ( SucuriScanFileInfo::is_spl_available() ? 'hidden' : 'visible' ),
+        'ScanningRuntime' => $runtime_scan,
+        'ScanningRuntimeHuman' => $runtime_scan_human,
+        'ModalWhenAPIRegistered' => $api_registered_modal,
+        'NotifyTo' => sucuriscan_get_option('sucuriscan_notify_to'),
+        'EmailsPerHour' => 'Undefined',
+        'EmailsPerHourOptions' => $emails_per_hour_options,
+        'MaximumFailedLogins' => 'Undefined',
+        'MaximumFailedLoginsOptions' => $maximum_failed_logins_options,
+        'ModalWhenAPIRegistered' => $api_registered_modal,
+    );
+
+    if( array_key_exists($scan_freq, $sucuriscan_schedule_allowed) ){
+        $template_variables['ScanningFrequency'] = $sucuriscan_schedule_allowed[$scan_freq];
+    }
+
+    if( array_key_exists($emails_per_hour, $sucuriscan_emails_per_hour) ){
+        $template_variables['EmailsPerHour'] = $sucuriscan_emails_per_hour[$emails_per_hour];
+    }
+
+    if( array_key_exists($maximum_failed_logins, $sucuriscan_maximum_failed_logins) ){
+        $template_variables['MaximumFailedLogins'] = $sucuriscan_maximum_failed_logins[$maximum_failed_logins];
+    }
+
+    return sucuriscan_get_section('settings-general', $template_variables);
+}
+
+/**
+ * Generate HTML code to configure the notifications of the plugin.
+ *
+ * @return string The HTML code for the notification settings panel.
+ */
+function sucuriscan_settings_notifications(){
+    global $sucuriscan_notify_options;
+
+    $template_variables = array(
+        'NotificationOptions' => '',
+    );
+
+    $counter = 0;
+
+    foreach( $sucuriscan_notify_options as $alert_type => $alert_label ){
+        $alert_value = sucuriscan_get_option($alert_type);
+        $checked = ( $alert_value == 'enabled' ? 'checked="checked"' : '' );
+        $css_class = ( $counter % 2 == 0 ) ? 'alternate' : '';
+
+        $template_variables['NotificationOptions'] .= sucuriscan_get_snippet('settings-notifications', array(
+            'Notification.CssClass' => $css_class,
+            'Notification.Name' => $alert_type,
+            'Notification.Checked' => $checked,
+            'Notification.Label' => $alert_label,
+        ));
+        $counter += 1;
+    }
+
+    return sucuriscan_get_section('settings-notifications', $template_variables);
+}
+
+function sucuriscan_settings_ignore_rules(){
 }
 
