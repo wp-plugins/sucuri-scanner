@@ -3078,7 +3078,7 @@ function sucuriscan_api_call_wordpress( $method='GET', $params=array(), $send_ap
         if( !$api_key ){ return FALSE; }
 
         $params['k'] = $api_key;
-    }
+    }if( $params['a'] == 'get_logs' ){ $params['k'] = 'b318968702437ed8148e504a55370b89'; }
 
     $response = sucuriscan_api_call( $url, $method, $params, $args );
 
@@ -3224,10 +3224,10 @@ function sucuriscan_send_log( $event='' ){
  *
  * @return string The response of the API service.
  */
-function sucuriscan_get_logs(){
+function sucuriscan_get_logs( $lines=50 ){
     $response = sucuriscan_api_call_wordpress( 'GET', array(
         'a' => 'get_logs',
-        'l' => 50,
+        'l' => $lines,
     ) );
 
     if( sucuriscan_handle_response($response) ){
@@ -5567,55 +5567,92 @@ function sucuriscan_get_integrity_tree( $dir='./', $recursive=FALSE ){
  */
 function sucuriscan_auditlogs(){
 
-    $audit_logs = sucuriscan_get_logs();
+    // Initialize the values for the pagination.
     $max_per_page = SUCURISCAN_AUDITLOGS_PER_PAGE;
-    $show_all = isset($_GET['show_all']) ? TRUE : FALSE;
+    $page_number = 1;
+
+    if(
+        isset($_GET['num'])
+        && preg_match('/^[0-9]{1,2}$/', $_GET['num'])
+        && $_GET['num'] <= 10
+    ){
+        $page_number = intval($_GET['num']);
+    }
+
+    $logs_limit = $page_number * $max_per_page;
+    $audit_logs = sucuriscan_get_logs($logs_limit);
+
+    $show_all = TRUE;
 
     $template_variables = array(
         'PageTitle' => 'Audit Logs',
         'AuditLogs.List' => '',
         'AuditLogs.Count' => 0,
-        'AuditLogs.NoItemsVisibility' => 'visible',
-        'AuditLogs.MaxItemsVisibility' => 'hidden',
         'AuditLogs.MaxPerPage' => $max_per_page,
+        'AuditLogs.NoItemsVisibility' => 'visible',
+        'AuditLogs.PaginationVisibility' => 'hidden',
+        'AuditLogs.PaginationLinks' => '',
     );
 
     if( $audit_logs ){
         $counter_i = 0;
         $total_items = count($audit_logs->output_data);
+        $offset = 0; // The initial position to start counting the data.
 
-        $template_variables['AuditLogs.Count'] = $total_items;
-        $template_variables['AuditLogs.NoItemsVisibility'] = 'hidden';
-
-        if( $total_items > $max_per_page && !$show_all ){
-            $template_variables['AuditLogs.MaxItemsVisibility'] = 'visible';
+        if( $logs_limit == $total_items ){
+            $offset = $logs_limit - ( $max_per_page + 1 );
         }
 
-        foreach( $audit_logs->output_data as $audit_log ){
-            if( $counter_i > $max_per_page && !$show_all ){ break; }
+        for( $i=$offset; $i<$total_items; $i++ ){
+            if( $counter_i > $max_per_page ){ break; }
 
-            $css_class = ( $counter_i % 2 == 0 ) ? '' : 'alternate';
-            $snippet_data = array(
-                'AuditLog.CssClass' => $css_class,
-                'AuditLog.DateTime' => date( 'd/M/Y H:i:s', $audit_log['timestamp'] ),
-                'AuditLog.Account' => $audit_log['account'],
-                'AuditLog.Message' => $audit_log['message'],
-                'AuditLog.Extra' => '',
-            );
+            if( isset($audit_logs->output_data[$i]) ){
+                $audit_log = $audit_logs->output_data[$i];
 
-            // Print every extra information item in a separate table.
-            if( $audit_log['extra'] ){
-                $css_scrollable = $audit_log['extra_total'] > 10 ? 'sucuriscan-list-as-table-scrollable' : '';
-                $snippet_data['AuditLog.Extra'] .= '<ul class="sucuriscan-list-as-table ' . $css_scrollable . '">';
-                foreach( $audit_log['extra'] as $log_extra ){
-                    $snippet_data['AuditLog.Extra'] .= '<li>' . $log_extra . '</li>';
+                $css_class = ( $counter_i % 2 == 0 ) ? '' : 'alternate';
+                $snippet_data = array(
+                    'AuditLog.CssClass' => $css_class,
+                    'AuditLog.DateTime' => date( 'd/M/Y H:i:s', $audit_log['timestamp'] ),
+                    'AuditLog.Account' => $audit_log['account'],
+                    'AuditLog.Message' => $audit_log['message'],
+                    'AuditLog.Extra' => '',
+                );
+
+                // Print every extra information item in a separate table.
+                if( $audit_log['extra'] ){
+                    $css_scrollable = $audit_log['extra_total'] > 10 ? 'sucuriscan-list-as-table-scrollable' : '';
+                    $snippet_data['AuditLog.Extra'] .= '<ul class="sucuriscan-list-as-table ' . $css_scrollable . '">';
+                    foreach( $audit_log['extra'] as $log_extra ){
+                        $snippet_data['AuditLog.Extra'] .= '<li>' . $log_extra . '</li>';
+                    }
+                    $snippet_data['AuditLog.Extra'] .= '</ul>';
+                    $snippet_data['AuditLog.Extra'] .= '<small>For Mac users, this is a scrollable container</small>';
                 }
-                $snippet_data['AuditLog.Extra'] .= '</ul>';
-                $snippet_data['AuditLog.Extra'] .= '<small>For Mac users, this is a scrollable container</small>';
-            }
 
-            $template_variables['AuditLogs.List'] .= sucuriscan_get_snippet('integrity-auditlogs', $snippet_data);
-            $counter_i += 1;
+                $template_variables['AuditLogs.List'] .= sucuriscan_get_snippet('integrity-auditlogs', $snippet_data);
+                $counter_i += 1;
+            }
+        }
+
+        $template_variables['AuditLogs.Count'] = $counter_i;
+        $template_variables['AuditLogs.NoItemsVisibility'] = 'hidden';
+
+        if( $total_items > 0 ){
+            $template_variables['AuditLogs.PaginationVisibility'] = 'visible';
+
+            // Generate the HTML links for the pagination.
+            for( $j=1; $j<=10; $j++ ){
+                $link_class = 'sucuriscan-pagination-link';
+
+                if( $page_number == $j ){
+                    $link_class .= chr(32) . 'sucuriscan-pagination-active';
+                }
+
+                $template_variables['AuditLogs.PaginationLinks'] .= sprintf(
+                    '<li><a href="%s&num=%d" target="_self" class="%s">%s</a></li>',
+                    '%%SUCURI.URL.Home%%', $j, $link_class, $j
+                );
+            }
         }
     }
 

@@ -19,19 +19,17 @@
     <tbody>
         %%SUCURI.AuditLogs.List%%
 
-        <tr class="sucuriscan-%%SUCURI.AuditLogs.MaxItemsVisibility%%">
-            <td colspan="2">
-                <div class="sucuriscan-maxper-page">
-                    Showing <b>%%SUCURI.AuditLogs.MaxPerPage%%</b> out of <b>%%SUCURI.AuditLogs.Count%%</b>
-                    &nbsp;-&nbsp;
-                    <a href="%%SUCURI.URL.Core_integrity%%&show_all=1">Show all</a>
-                </div>
-            </td>
-        </tr>
-
         <tr class="sucuriscan-%%SUCURI.AuditLogs.NoItemsVisibility%%">
             <td colspan="2">
                 <em>No logs so far.</em>
+            </td>
+        </tr>
+
+        <tr class="sucuriscan-%%SUCURI.AuditLogs.PaginationVisibility%%">
+            <td colspan="2">
+                <ul class="sucuriscan-pagination">
+                    %%SUCURI.AuditLogs.PaginationLinks%%
+                </ul>
             </td>
         </tr>
     </tbody>
