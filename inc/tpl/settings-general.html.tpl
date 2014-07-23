@@ -104,6 +104,20 @@
         </tr>
 
         <tr>
+            <td>Verify SSL Cert</td>
+            <td>%%SUCURI.VerifySSLCert%%</td>
+            <td class="td-with-button">
+                <form method="post">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <select name="sucuriscan_verify_ssl_cert">
+                        %%SUCURI.VerifySSLCertOptions%%
+                    </select>
+                    <button type="submit" class="button-primary">Change</button>
+                </form>
+            </td>
+        </tr>
+
+        <tr class="alternate">
             <td>Scanning frequency</td>
             <td><span class="sucuriscan-monospace">%%SUCURI.ScanningFrequency%%</span></td>
             <td class="td-with-button">
@@ -117,7 +131,7 @@
             </td>
         </tr>
 
-        <tr class="alternate sucuriscan-%%SUCURI.ScanningInterfaceVisibility%%">
+        <tr class="sucuriscan-%%SUCURI.ScanningInterfaceVisibility%%">
             <td>Scanning interface</td>
             <td><span class="sucuriscan-monospace">%%SUCURI.ScanningInterface%%</span></td>
             <td class="td-with-button">

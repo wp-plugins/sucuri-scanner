@@ -1494,7 +1494,18 @@ function is_valid_email( $email='' ){
  * @return boolean Whether the emails will be in HTML or Plain/Text.
  */
 function sucuriscan_prettify_mails(){
-    return ( sucuriscan_get_option('sucuriscan_prettify_mails') == 'enabled' );
+    return ( sucuriscan_get_option('sucuriscan_prettify_mails') === 'enabled' );
+}
+
+/**
+ * Check whether the SSL certificates will be verified while executing a HTTP
+ * request or not. This is only for customization of the administrator, in fact
+ * not verifying the SSL certificates can lead to a "Man in the Middle" attack.
+ *
+ * @return boolean Whether the SSL certs will be verified while sending a request.
+ */
+function sucuriscan_verify_ssl_cert(){
+    return ( sucuriscan_get_option('sucuriscan_verify_ssl_cert') === 'true' );
 }
 
 /**
@@ -2370,6 +2381,7 @@ function sucuriscan_get_default_options( $settings='' ){
         'sucuriscan_notify_theme_editor' => 'enabled',
         'sucuriscan_maximum_failed_logins' => 30,
         'sucuriscan_ignored_events' => '',
+        'sucuriscan_verify_ssl_cert' => 'true',
     );
 
     if( is_array($settings) ){
@@ -2996,7 +3008,7 @@ function sucuriscan_api_call( $url='', $method='GET', $params=array(), $args=arr
         'cookies' => array(),
         'compress' => FALSE,
         'decompress' => FALSE,
-        'sslverify' => TRUE,
+        'sslverify' => sucuriscan_verify_ssl_cert(),
     );
 
     // Update the request arguments with the values passed tot he function.
@@ -7055,9 +7067,9 @@ $sucuriscan_schedule_allowed = array(
 );
 
 $sucuriscan_interface_allowed = array(
-    'spl' => 'SPL (Standard PHP Library)',
-    'opendir' => 'OpenDir (Medium performance)',
-    'glob' => 'Glob (Low performance)',
+    'spl' => 'SPL (high performance)',
+    'opendir' => 'OpenDir (medium)',
+    'glob' => 'Glob (low)',
 );
 
 $sucuriscan_emails_per_hour = array(
@@ -7076,6 +7088,11 @@ $sucuriscan_maximum_failed_logins = array(
     '120' => '120 failed logins per hour',
     '240' => '240 failed logins per hour',
     '480' => '480 failed logins per hour',
+);
+
+$sucuriscan_verify_ssl_cert = array(
+    'true' => 'Verify peer\'s cert',
+    'false' => 'Stop peer\'s cert verification',
 );
 
 /**
@@ -7108,7 +7125,8 @@ function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
         $sucuriscan_interface_allowed,
         $sucuriscan_notify_options,
         $sucuriscan_emails_per_hour,
-        $sucuriscan_maximum_failed_logins;
+        $sucuriscan_maximum_failed_logins,
+        $sucuriscan_verify_ssl_cert;
 
     // Use this conditional to avoid double checking.
     if( is_null($page_nonce) ){
@@ -7215,6 +7233,22 @@ function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
             }
         }
 
+        // Update the configuration for the SSL certificate verification.
+        if( isset($_POST['sucuriscan_verify_ssl_cert']) ){
+            $verify_ssl_cert = esc_attr($_POST['sucuriscan_verify_ssl_cert']);
+
+            if( array_key_exists($verify_ssl_cert, $sucuriscan_verify_ssl_cert) ){
+                update_option( 'sucuriscan_verify_ssl_cert', $verify_ssl_cert );
+                $message = 'SSL certificates will not be verified when executing a HTTP request '
+                    . 'while communicating with the Sucuri API service, nor the official '
+                    . 'WordPress API.';
+                sucuriscan_notify_event( 'plugin_change', $message );
+                sucuriscan_info( $message );
+            } else {
+                sucuriscan_error( 'Invalid value for the SSL certificate verification.' );
+            }
+        }
+
         // Update the notification settings.
         if(
             isset($_POST['sucuriscan_save_notification_settings'])
@@ -7289,7 +7323,8 @@ function sucuriscan_settings_general(){
     global $sucuriscan_schedule_allowed,
         $sucuriscan_interface_allowed,
         $sucuriscan_emails_per_hour,
-        $sucuriscan_maximum_failed_logins;
+        $sucuriscan_maximum_failed_logins,
+        $sucuriscan_verify_ssl_cert;
 
     // Check the nonce here to populate the value through other functions.
     $page_nonce = sucuriscan_check_page_nonce();
@@ -7322,6 +7357,7 @@ function sucuriscan_settings_general(){
     $scan_interface = sucuriscan_get_option('sucuriscan_scan_interface');
     $emails_per_hour = sucuriscan_get_option('sucuriscan_emails_per_hour');
     $maximum_failed_logins = sucuriscan_get_option('sucuriscan_maximum_failed_logins');
+    $verify_ssl_cert = sucuriscan_get_option('sucuriscan_verify_ssl_cert');
     $runtime_scan = sucuriscan_get_option('sucuriscan_runtime');
     $runtime_scan_human = date( 'd/M/Y H:i:s', $runtime_scan );
 
@@ -7371,6 +7407,18 @@ function sucuriscan_settings_general(){
         );
     }
 
+    // Generate the HTML code to configure the emails per hour.
+    $verify_ssl_cert_options = '';
+    foreach( $sucuriscan_verify_ssl_cert as $verify => $verify_label ){
+        $selected = ( $verify_ssl_cert == $verify ? 'selected="selected"' : '' );
+        $verify_ssl_cert_options .= sprintf(
+            '<option value="%s" %s>%s</option>',
+            $verify,
+            $selected,
+            $verify_label
+        );
+    }
+
     $template_variables = array(
         'APIKey' => $api_key,
         'APIKey.RecoverVisibility' => ( $api_key || $display_manual_key_form ? 'hidden' : 'visible' ),
@@ -7389,6 +7437,8 @@ function sucuriscan_settings_general(){
         'EmailsPerHourOptions' => $emails_per_hour_options,
         'MaximumFailedLogins' => 'Undefined',
         'MaximumFailedLoginsOptions' => $maximum_failed_logins_options,
+        'VerifySSLCert' => 'Undefined',
+        'VerifySSLCertOptions' => $verify_ssl_cert_options,
         'ModalWhenAPIRegistered' => $api_registered_modal,
     );
 
@@ -7402,6 +7452,10 @@ function sucuriscan_settings_general(){
 
     if( array_key_exists($maximum_failed_logins, $sucuriscan_maximum_failed_logins) ){
         $template_variables['MaximumFailedLogins'] = $sucuriscan_maximum_failed_logins[$maximum_failed_logins];
+    }
+
+    if( array_key_exists($verify_ssl_cert, $sucuriscan_verify_ssl_cert) ){
+        $template_variables['VerifySSLCert'] = $sucuriscan_verify_ssl_cert[$verify_ssl_cert];
     }
 
     return sucuriscan_get_section('settings-general', $template_variables);
