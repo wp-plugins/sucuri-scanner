@@ -1,5 +1,4 @@
 
-
 <div class="sucuriscan-tabs">
     <ul>
         <li>
@@ -7,6 +6,9 @@
         </li>
         <li>
             <a href="#" data-tabname="reset-users-password">Reset User's Password</a>
+        </li>
+        <li>
+            <a href="#" data-tabname="reset-plugins">Reset Plugins</a>
         </li>
     </ul>
 
@@ -17,6 +19,10 @@
 
         <div id="sucuriscan-reset-users-password">
             %%SUCURI.ResetPassword%%
+        </div>
+
+        <div id="sucuriscan-reset-plugins">
+            %%SUCURI.ResetPlugins%%
         </div>
     </div>
 </div>

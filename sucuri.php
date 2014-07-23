@@ -109,6 +109,11 @@ define('SUCURISCAN_MINIMUM_RUNTIME', 10800);
 define('SUCURISCAN_SITECHECK_LIFETIME', 1200);
 
 /**
+ * The life time of the cache for the results of the get_plugins function.
+ */
+define('SUCURISCAN_GET_PLUGINS_LIFETIME', 1800);
+
+/**
  * Miscellaneous library.
  *
  * Multiple and generic functions that will be used through out the code of
@@ -1489,6 +1494,23 @@ function is_valid_email( $email='' ){
 }
 
 /**
+ * Cut a long text to the length specified, and append suspensive points at the end.
+ *
+ * @param  string  $text   String of characters that will be cut.
+ * @param  integer $length Maximum length of the returned string, default is 10.
+ * @return string          Short version of the text specified.
+ */
+function sucuriscan_excerpt( $text='', $length=10 ){
+    $text_length = strlen($text);
+
+    if( $text_length > $length ){
+        return substr( $text, 0, $length ) . '...';
+    }
+
+    return $text;
+}
+
+/**
  * Check whether the email notifications will be sent in HTML or Plain/Text.
  *
  * @return boolean Whether the emails will be in HTML or Plain/Text.
@@ -2543,6 +2565,118 @@ if( !function_exists('sucuriscan_plugin_setup_notice') ){
 
     $sucuriscan_admin_notice_name = sucuriscan_is_multisite() ? 'network_admin_notices' : 'admin_notices';
     add_action( $sucuriscan_admin_notice_name, 'sucuriscan_plugin_setup_notice' );
+}
+
+/**
+ * Check the plugins directory and retrieve all plugin files with plugin data.
+ * This function will also retrieve the URL and name of the repository/page
+ * where it is being published at the WordPress plugins market.
+ *
+ * @return array Key is the plugin file path and the value is an array of the plugin data.
+ */
+function sucuriscan_get_plugins(){
+    $sucuri_cache = new SucuriScanCache('plugindata');
+    $cached_data = $sucuri_cache->get( 'plugins', SUCURISCAN_GET_PLUGINS_LIFETIME, 'array' );
+
+    // Return the previously cached results of this function.
+    if( $cached_data !== FALSE ){
+        return $cached_data;
+    }
+
+    // Get the plugin's basic information from WordPress transient data.
+    $plugins = get_plugins();
+    $pattern = '/^http:\/\/wordpress\.org\/plugins\/(.*)\/$/';
+    $wp_market = 'http://wordpress.org/plugins/%s/';
+
+    // Loop through each plugin data and complement its information with more attributes.
+    foreach( $plugins as $plugin_path => $plugin_data ){
+        // Default values for the plugin extra attributes.
+        $repository = '';
+        $repository_name = '';
+        $is_free_plugin = FALSE;
+
+        // If the plugin's info object has already a plugin_uri.
+        if(
+            isset($plugin_data['PluginURI'])
+            && preg_match($pattern, $plugin_data['PluginURI'], $match)
+        ){
+            $repository = $match[0];
+            $repository_name = $match[1];
+            $is_free_plugin = TRUE;
+        }
+
+        // Retrieve the WordPress plugin page from the plugin's filename.
+        else {
+            if( strpos($plugin_path, '/') !== FALSE ){
+                $plugin_path_parts = explode('/', $plugin_path, 2);
+            } else {
+                $plugin_path_parts = explode('.', $plugin_path, 2);
+            }
+
+            if( isset($plugin_path_parts[0]) ){
+                $possible_repository = sprintf($wp_market, $plugin_path_parts[0]);
+                $resp = wp_remote_head($possible_repository);
+
+                if(
+                    !is_wp_error($resp)
+                    && $resp['response']['code'] == 200
+                ){
+                    $repository = $possible_repository;
+                    $repository_name = $plugin_path_parts[0];
+                    $is_free_plugin = TRUE;
+                }
+            }
+        }
+
+        // Complement the plugin's information with these attributes.
+        $plugins[$plugin_path]['Repository'] = $repository;
+        $plugins[$plugin_path]['RepositoryName'] = $repository_name;
+        $plugins[$plugin_path]['IsFreePlugin'] = $is_free_plugin;
+        $plugins[$plugin_path]['PluginType'] = ( $is_free_plugin ? 'free' : 'premium' );
+        $plugins[$plugin_path]['IsPluginActive'] = FALSE;
+
+        if( is_plugin_active($plugin_path) ){
+            $plugins[$plugin_path]['IsPluginActive'] = TRUE;
+        }
+    }
+
+    // Add the information of the plugins to the file-based cache.
+    $sucuri_cache->add( 'plugins', $plugins );
+
+    return $plugins;
+}
+
+/**
+ * Retrieve plugin installer pages from WordPress Plugins API.
+ *
+ * It is possible for a plugin to override the Plugin API result with three
+ * filters. Assume this is for plugins, which can extend on the Plugin Info to
+ * offer more choices. This is very powerful and must be used with care, when
+ * overriding the filters.
+ *
+ * The first filter, 'plugins_api_args', is for the args and gives the action as
+ * the second parameter. The hook for 'plugins_api_args' must ensure that an
+ * object is returned.
+ *
+ * The second filter, 'plugins_api', is the result that would be returned.
+ *
+ * @param  string $repository_name Frienly name of the plugin.
+ * @return object                  Object on success, WP_Error on failure.
+ */
+function sucuriscan_get_remote_plugin_data( $repository_name='' ){
+    $repository_base = 'http://api.wordpress.org/plugins/info/1.0/%s/';
+    $repository_url = sprintf( $repository_base, $repository_name );
+    $resp = wp_remote_get($repository_url);
+
+    if( !is_wp_error($resp) ){
+        $plugin_data = @unserialize($resp['body']);
+
+        if( $plugin_data instanceof stdClass ){
+            return $plugin_data;
+        }
+    }
+
+    return FALSE;
 }
 
 /**
@@ -6078,6 +6212,7 @@ function sucuriscan_posthack_page(){
         'PageTitle' => 'Post-Hack',
         'UpdateSecretKeys' => sucuriscan_update_secret_keys($process_form),
         'ResetPassword' => sucuriscan_posthack_users($process_form),
+        'ResetPlugins' => sucuriscan_posthack_plugins($process_form),
     );
 
     echo sucuriscan_get_template('posthack', $template_variables);
@@ -6164,7 +6299,7 @@ function sucuriscan_posthack_users( $process_form=FALSE ){
             $user->user_registered_formatted = date('D, M/Y H:i', $user->user_registered_timestamp);
             $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
 
-            $user_snippet = sucuriscan_get_snippet('resetpassword', array(
+            $user_snippet = sucuriscan_get_snippet('posthack-resetpassword', array(
                 'ResetPassword.UserId' => $user->ID,
                 'ResetPassword.Username' => $user->user_login,
                 'ResetPassword.Displayname' => $user->display_name,
@@ -6213,6 +6348,102 @@ function sucuriscan_reset_user_password( $process_form=FALSE ){
             }
         } else {
             sucuriscan_error( 'You did not select a user from the list.' );
+        }
+    }
+}
+
+/**
+ * Reset all the FREE plugins, even if they are not activated.
+ *
+ * @param  boolean $process_form Whether a form was submitted or not.
+ * @return void
+ */
+function sucuriscan_posthack_plugins( $process_form=FALSE ){
+    $template_variables = array(
+        'ResetPlugin.PluginList' => '',
+    );
+
+    sucuriscan_posthack_reinstall_plugins($process_form);
+    $all_plugins = sucuriscan_get_plugins();
+    $counter = 0;
+
+    foreach( $all_plugins as $plugin_path => $plugin_data ){
+        $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
+        $plugin_type_class = ( $plugin_data['PluginType'] == 'free' ) ? 'primary' : 'warning';
+        $input_disabled = ( $plugin_data['PluginType'] == 'free' ) ? '' : 'disabled="disabled"';
+        $plugin_status = $plugin_data['IsPluginActive'] ? 'active' : 'not active';
+        $plugin_status_class = $plugin_data['IsPluginActive'] ? 'success' : 'default';
+
+        $template_variables['ResetPlugin.PluginList'] .= sucuriscan_get_snippet('posthack-resetplugins', array(
+            'ResetPlugin.CssClass' => $css_class,
+            'ResetPlugin.Disabled' => $input_disabled,
+            'ResetPlugin.PluginPath' => $plugin_path,
+            'ResetPlugin.Plugin' => sucuriscan_excerpt($plugin_data['Name'], 35),
+            'ResetPlugin.Version' => $plugin_data['Version'],
+            'ResetPlugin.Type' => $plugin_data['PluginType'],
+            'ResetPlugin.TypeClass' => $plugin_type_class,
+            'ResetPlugin.Status' => $plugin_status,
+            'ResetPlugin.StatusClass' => $plugin_status_class,
+        ));
+
+        $counter += 1;
+    }
+
+    return sucuriscan_get_section('posthack-resetplugins', $template_variables);
+}
+
+/**
+ * Process the request that will start the execution of the plugin
+ * reinstallation, it will check if the plugins submitted are (in fact)
+ * installed in the system, then check if they are free download from the
+ * WordPress market place, and finally download and install them.
+ *
+ * @param  boolean $process_form Whether a form was submitted or not.
+ * @return void
+ */
+function sucuriscan_posthack_reinstall_plugins( $process_form=FALSE ){
+    if( $process_form && isset($_POST['sucuriscan_reset_plugins']) ){
+        include_once( ABSPATH . 'wp-admin/includes/class-wp-upgrader.php' );
+        include_once( ABSPATH . 'wp-admin/includes/plugin-install.php' ); // For plugins_api.
+
+        if(
+            isset($_POST['plugin_path'])
+            && !empty($_POST['plugin_path'])
+        ){
+            // Create an instance of the FileInfo interface.
+            $sucuri_fileinfo = new SucuriScanFileInfo();
+            $sucuri_fileinfo->ignore_files = FALSE;
+            $sucuri_fileinfo->ignore_directories = FALSE;
+
+            // Get (possible) cached information from the installed plugins.
+            $all_plugins = sucuriscan_get_plugins();
+
+            // Loop through all the installed plugins.
+            foreach( $_POST['plugin_path'] as $plugin_path ){
+                if( array_key_exists($plugin_path, $all_plugins) ){
+                    $plugin_data = $all_plugins[$plugin_path];
+
+                    // Check if the plugin can be downloaded from the free market.
+                    if( $plugin_data['IsFreePlugin'] === TRUE ){
+                        $plugin_info = sucuriscan_get_remote_plugin_data($plugin_data['RepositoryName']);
+
+                        if( $plugin_info ){
+                            // First, remove all files/sub-folders from the plugin's directory.
+                            $plugin_directory = dirname( WP_PLUGIN_DIR . '/' . $plugin_path );
+                            $sucuri_fileinfo->remove_directory_tree($plugin_directory);
+
+                            // Install a fresh copy of the plugin's files.
+                            $upgrader_skin = new Plugin_Installer_Skin();
+                            $upgrader = new Plugin_Upgrader($upgrader_skin);
+                            $upgrader->install($plugin_info->download_link);
+                        } else {
+                            sucuriscan_error( 'Could not establish a stable connection with the WordPress plugins market.' );
+                        }
+                    }
+                }
+            }
+        } else {
+            sucuriscan_error( 'You did not select a free plugin to reinstall.' );
         }
     }
 }
