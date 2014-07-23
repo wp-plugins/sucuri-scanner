@@ -8,9 +8,6 @@
         <li>
             <a href="#" data-tabname="reset-users-password">Reset User's Password</a>
         </li>
-        <li>
-            <a href="#" data-tabname="database-backups">Database Backups</a>
-        </li>
     </ul>
 
     <div class="sucuriscan-tab-containers">
@@ -20,10 +17,6 @@
 
         <div id="sucuriscan-reset-users-password">
             %%SUCURI.ResetPassword%%
-        </div>
-
-        <div id="sucuriscan-database-backups">
-            %%SUCURI.DatabaseBackups%%
         </div>
     </div>
 </div>
