@@ -2,13 +2,7 @@
 <table class="wp-list-table widefat sucuriscan-table sucuriscan-table-double-title sucuriscan-auditlogs">
     <thead>
         <tr>
-            <th colspan="2" class="thead-with-button">
-                <span>Audit Logs (%%SUCURI.AuditLogs.Count%% logs)</span>
-                <form action="%%SUCURI.URL.Home%%" method="post" class="thead-topright-action">
-                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
-                    <button type="submit" name="sucuriscan_force_scan" class="button-primary">Force Scan</button>
-                </form>
-            </th>
+            <th colspan="2">Audit Logs (%%SUCURI.AuditLogs.Count%% latest logs)</th>
         </tr>
         <tr>
             <th width="150">Date &amp; Time</th>
