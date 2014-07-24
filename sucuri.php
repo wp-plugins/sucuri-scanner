@@ -91,7 +91,7 @@ define('SUCURISCAN_CLOUDPROXY_API_VERSION', 'v2');
 /**
  * The maximum quantity of entries that will be displayed in the last login page.
  */
-define('SUCURISCAN_LASTLOGINS_USERSLIMIT', 50);
+define('SUCURISCAN_LASTLOGINS_USERSLIMIT', 25);
 
 /**
  * The maximum quantity of entries that will be displayed in the audit logs page.
@@ -2677,6 +2677,57 @@ function sucuriscan_get_remote_plugin_data( $repository_name='' ){
     }
 
     return FALSE;
+}
+
+/**
+ * Detect which number in a pagination was clicked.
+ *
+ * @return integer Page number of the link clicked in a pagination.
+ */
+function sucuriscan_get_page_number(){
+    $page_number = 1;
+
+    // Check if there page was specified in the request.
+    if(
+        isset($_GET['num'])
+        && preg_match('/^[0-9]{1,2}$/', $_GET['num'])
+        && $_GET['num'] <= 10
+    ){
+        $page_number = intval($_GET['num']);
+    }
+
+    return $page_number;
+}
+
+/**
+ * Generate the HTML code to display a pagination.
+ *
+ * @param  string  $base_url     Base URL for the links before the page number.
+ * @param  integer $total_items  Total quantity of items retrieved from a query.
+ * @param  integer $max_per_page Maximum number of items that will be shown per page.
+ * @return string                HTML code for a pagination generated using the provided data.
+ */
+function sucuriscan_generate_pagination( $base_url='', $total_items=0, $max_per_page=1 ){
+    // Calculate the number of links for the pagination.
+    $html_links = '';
+    $page_number = sucuriscan_get_page_number();
+    $max_pages = ceil($total_items / $max_per_page);
+
+    // Generate the HTML links for the pagination.
+    for( $j=1; $j<=$max_pages; $j++ ){
+        $link_class = 'sucuriscan-pagination-link';
+
+        if( $page_number == $j ){
+            $link_class .= chr(32) . 'sucuriscan-pagination-active';
+        }
+
+        $html_links .= sprintf(
+            '<li><a href="%s&num=%d" class="%s">%s</a></li>',
+            $base_url, $j, $link_class, $j
+        );
+    }
+
+    return $html_links;
 }
 
 /**
@@ -5796,16 +5847,7 @@ function sucuriscan_auditlogs(){
 
     // Initialize the values for the pagination.
     $max_per_page = SUCURISCAN_AUDITLOGS_PER_PAGE;
-    $page_number = 1;
-
-    if(
-        isset($_GET['num'])
-        && preg_match('/^[0-9]{1,2}$/', $_GET['num'])
-        && $_GET['num'] <= 10
-    ){
-        $page_number = intval($_GET['num']);
-    }
-
+    $page_number = sucuriscan_get_page_number();
     $logs_limit = $page_number * $max_per_page;
     $audit_logs = sucuriscan_get_logs($logs_limit);
 
@@ -5866,20 +5908,11 @@ function sucuriscan_auditlogs(){
 
         if( $total_items > 0 ){
             $template_variables['AuditLogs.PaginationVisibility'] = 'visible';
-
-            // Generate the HTML links for the pagination.
-            for( $j=1; $j<=10; $j++ ){
-                $link_class = 'sucuriscan-pagination-link';
-
-                if( $page_number == $j ){
-                    $link_class .= chr(32) . 'sucuriscan-pagination-active';
-                }
-
-                $template_variables['AuditLogs.PaginationLinks'] .= sprintf(
-                    '<li><a href="%s&num=%d" target="_self" class="%s">%s</a></li>',
-                    '%%SUCURI.URL.Home%%', $j, $link_class, $j
-                );
-            }
+            $template_variables['AuditLogs.PaginationLinks'] = sucuriscan_generate_pagination(
+                '%%SUCURI.URL.Home%%',
+                $max_per_page * 5, /* Temporary value while we get the total logs. */
+                $max_per_page
+            );
         }
     }
 
@@ -6489,13 +6522,15 @@ function sucuriscan_lastlogins_admins(){
     $user_query = new WP_User_Query(array( 'role' => 'Administrator' ));
     $admins = $user_query->get_results();
 
-    foreach( (array)$admins as $admin ){
-        $admin->lastlogins = sucuriscan_get_logins(5, $admin->ID);
+    foreach( (array) $admins as $admin ){
+        $last_logins = sucuriscan_get_logins(5, 0, $admin->ID);
+        $admin->lastlogins = $last_logins['entries'];
 
         $user_snippet = array(
             'AdminUsers.Username' => $admin->user_login,
             'AdminUsers.Email' => $admin->user_email,
             'AdminUsers.LastLogins' => '',
+            'AdminUsers.RegisteredAt' => 'Undefined',
             'AdminUsers.UserURL' => admin_url('user-edit.php?user_id='.$admin->ID),
             'AdminUsers.NoLastLogins' => 'visible',
             'AdminUsers.NoLastLoginsTable' => 'hidden',
@@ -6504,6 +6539,7 @@ function sucuriscan_lastlogins_admins(){
         if( !empty($admin->lastlogins) ){
             $user_snippet['AdminUsers.NoLastLogins'] = 'hidden';
             $user_snippet['AdminUsers.NoLastLoginsTable'] = 'visible';
+            $user_snippet['AdminUsers.RegisteredAt'] = $admin->user_registered;
             $counter = 0;
 
             foreach( $admin->lastlogins as $lastlogin ){
@@ -6531,27 +6567,38 @@ function sucuriscan_lastlogins_admins(){
  * @return string Last-logings for all user accounts.
  */
 function sucuriscan_lastlogins_all(){
+    $max_per_page = SUCURISCAN_LASTLOGINS_USERSLIMIT;
+    $page_number = sucuriscan_get_page_number();
+    $offset = ($max_per_page * $page_number) - $max_per_page;
+
     $template_variables = array(
         'UserList' => '',
-        'UserListLimit' => SUCURISCAN_LASTLOGINS_USERSLIMIT,
+        'UserList.Limit' => $max_per_page,
+        'UserList.Total' => 0,
+        'UserList.Pagination' => '',
+        'UserList.PaginationVisibility' => 'hidden',
+        'UserList.NoItemsVisibility' => 'visible',
     );
 
     if( !sucuriscan_lastlogins_datastore_is_writable() ){
         sucuriscan_error( 'Last-logins datastore file is not writable: <code>'.sucuriscan_lastlogins_datastore_filepath().'</code>' );
     }
 
-    $limit = isset($_GET['limit']) ? intval($_GET['limit']) : SUCURISCAN_LASTLOGINS_USERSLIMIT;
-    $template_variables['UserList.ShowAll'] = $limit>0 ? 'visible' : 'hidden';
-
     $counter = 0;
-    $user_list = sucuriscan_get_logins($limit);
+    $last_logins = sucuriscan_get_logins( $max_per_page, $offset );
+    $template_variables['UserList.Total'] = $last_logins['total'];
 
-    foreach( $user_list as $user ){
+    if( $last_logins['total'] > $max_per_page ){
+        $template_variables['UserList.PaginationVisibility'] = 'visible';
+        $template_variables['UserList.NoItemsVisibility'] = 'hidden';
+    }
+
+    foreach( $last_logins['entries'] as $user ){
         $counter += 1;
         $css_class = ( $counter % 2 == 0 ) ? 'alternate' : '';
 
         $user_dataset = array(
-            'UserList.Number' => $counter,
+            'UserList.Number' => $user->line_num,
             'UserList.UserId' => $user->user_id,
             'UserList.Username' => '<em>Unknown</em>',
             'UserList.Displayname' => '',
@@ -6574,6 +6621,13 @@ function sucuriscan_lastlogins_all(){
 
         $template_variables['UserList'] .= sucuriscan_get_snippet('lastlogins-all', $user_dataset);
     }
+
+    // Generate the pagination for the list.
+    $template_variables['UserList.Pagination'] = sucuriscan_generate_pagination(
+        '%%SUCURI.URL.Lastlogins%%',
+        $last_logins['total'],
+        $max_per_page
+    );
 
     return sucuriscan_get_section('lastlogins-all', $template_variables);
 }
@@ -6671,58 +6725,86 @@ if( !function_exists('sucuri_set_lastlogin') ){
  * or limiting the quantity of entries.
  *
  * @param  integer $limit   How many entries will be returned from the operation.
+ * @param  integer $offset  Initial point where the logs will be start counting.
  * @param  integer $user_id Optional user identifier to filter the results.
- * @return array            The list of all the user logins through the time until now.
+ * @return array            The list of all the user logins, and total of entries registered.
  */
-function sucuriscan_get_logins( $limit=10, $user_id=0 ){
-    $lastlogins = array();
+function sucuriscan_get_logins( $limit=10, $offset=0, $user_id=0 ){
     $datastore_filepath = sucuriscan_lastlogins_datastore_is_readable();
+    $last_logins = array(
+        'total' => 0,
+        'entries' => array(),
+    );
 
     if( $datastore_filepath ){
         $parsed_lines = 0;
         $data_lines = @file($datastore_filepath);
-        $lastlogins_lines = $data_lines ? array_reverse($data_lines) : array();
 
-        foreach( $lastlogins_lines as $line ){
-            $line = str_replace("\n", '', $line);
+        if( $data_lines ){
+            /**
+             * This count will not be 100% accurate considering that we are checking the
+             * syntax of each line in the loop bellow, there may be some lines without the
+             * right syntax which will differ from the total entries returned, but there's
+             * not other EASY way to do this without affect the performance of the code.
+             *
+             * @var integer
+             */
+            $total_lines = count($data_lines);
+            $last_logins['total'] = $total_lines;
 
-            if( preg_match('/^a:/', $line) ){
-                $user_lastlogin = unserialize($line);
+            // Get a list with the latest entries in the first positions.
+            $reversed_lines = array_reverse($data_lines);
 
-                /* Only administrators can see all login stats */
-                if( !current_user_can('manage_options') ){
-                    $current_user = wp_get_current_user();
-                    if( $current_user->user_login!=$user_lastlogin['user_login'] ){ continue; }
-                }
+            /**
+             * Only the user accounts with administrative privileges can see the logs of all
+             * the users, for the rest of the accounts they will only see their own logins.
+             *
+             * @var object
+             */
+            $current_user = wp_get_current_user();
+            $is_admin_user = (bool) current_user_can('manage_options');
 
-                /* If an User_Id was specified when this function was called, filter by that number */
-                if( $user_id>0 ){
-                    if( $user_lastlogin['user_id']!=$user_id ){ continue; }
-                }
+            for( $i=$offset; $i<$total_lines; $i++ ){
+                $line = $reversed_lines[$i] ? trim($reversed_lines[$i]) : '';
 
-                /* Get the WP_User object and add extra information from the last-login data */
-                $user_lastlogin['user_exists'] = FALSE;
-                $user_account = get_userdata($user_lastlogin['user_id']);
+                if( preg_match('/^a:/', $line) ){
+                    $last_login = @unserialize($line);
 
-                if( $user_account ){
-                    $user_lastlogin['user_exists'] = TRUE;
-
-                    foreach( $user_account->data as $var_name=>$var_value ){
-                        $user_lastlogin[$var_name] = $var_value;
+                    // Only administrators can see all login stats.
+                    if( !$is_admin_user && $current_user->user_login != $last_login['user_login'] ){
+                        continue;
                     }
+
+                    // Filter the user identifiers using the value passed tot his function.
+                    if( $user_id > 0 && $last_login['user_id'] != $user_id ){
+                        continue;
+                    }
+
+                    // Get the WP_User object and add extra information from the last-login data.
+                    $last_login['user_exists'] = FALSE;
+                    $user_account = get_userdata($last_login['user_id']);
+
+                    if( $user_account ){
+                        $last_login['user_exists'] = TRUE;
+
+                        foreach( $user_account->data as $var_name=>$var_value ){
+                            $last_login[$var_name] = $var_value;
+                        }
+                    }
+
+                    $last_login['line_num'] = $i + 1;
+                    $last_logins['entries'][] = (object) $last_login;
+                    $parsed_lines += 1;
                 }
 
-                $lastlogins[] = (object)$user_lastlogin;
-                $parsed_lines += 1;
-            }
-
-            if( preg_match('/^([0-9]+)$/', $limit) && $limit>0 ){
-                if( $parsed_lines>=$limit ){ break; }
+                if( preg_match('/^([0-9]+)$/', $limit) && $limit>0 ){
+                    if( $parsed_lines >= $limit ){ break; }
+                }
             }
         }
     }
 
-    return $lastlogins;
+    return $last_logins;
 }
 
 if( !function_exists('sucuri_login_redirect') ){
@@ -6762,17 +6844,19 @@ if( !function_exists('sucuri_get_user_lastlogin') ){
             $current_user = wp_get_current_user();
 
             // Select the penultimate entry, not the last one.
-            $user_lastlogins = sucuriscan_get_logins(2, $current_user->ID);
-            $row = isset($user_lastlogins[1]) ? $user_lastlogins[1] : FALSE;
+            $last_logins = sucuriscan_get_logins(2, 0, $current_user->ID);
 
-            if($row){
-                $message_tpl  = 'The last time you logged in was: %s, from %s - %s';
-                $lastlogin_message = sprintf( $message_tpl, date('Y/M/d'), $row->user_remoteaddr, $row->user_hostname );
-                $lastlogin_message .= chr(32).'(<a href="'.site_url('wp-admin/admin.php?page='.SUCURISCAN.'_lastlogins').'">View Last-Logins</a>)';
+            if( isset($last_logins['entries'][1]) ){
+                $row = $last_logins['entries'][1];
+
+                $message_tpl  = 'Last time you logged in was at <code>%s</code> from <code>%s</code> - <code>%s</code>';
+                $lastlogin_message = sprintf( $message_tpl, date('d/M/Y H:i'), $row->user_remoteaddr, $row->user_hostname );
+                $lastlogin_message .= chr(32).'(<a href="'.site_url('wp-admin/admin.php?page='.SUCURISCAN.'_lastlogins').'">view all logs</a>)';
                 sucuriscan_info( $lastlogin_message );
             }
         }
     }
+
     add_action('admin_notices', 'sucuriscan_get_user_lastlogin');
 }
 

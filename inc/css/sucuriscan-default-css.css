@@ -173,6 +173,10 @@ div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:1
 .sucuriscan-hstatus-1{background-color:#dff0d8;color:#3c763d;border-color:#d6e9c6}
 .sucuriscan-hstatus-0{background-color:#f2dede;color:#a94442;border-color:#ebccd1}
 .sucuriscan-hstatus .button-primary, .sucuriscan-hstatus .button-secondary{position:absolute;top:5px;right:5px}
+/* Last Logins Styles */
+.sucuriscan-lastlogin-outof{font-style:italic;color:#999;margin-right:10px}
+.sucuriscan-admins-lastlogins .sucuriscan-ellipsis{width:170px}
+.sucuriscan-admins-lastlogins td{padding:4px 8px}
 /* Settings Page Styles */
 .sucuriscan-settings-ignorerules{}
 .sucuriscan-settings-ignorerules-disabled{}
@@ -230,7 +234,6 @@ div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:1
 .sucuriscan-maincontent #poststuff{min-width:initial;padding-top:0}
 .sucuriscan-maincontent .widefat tbody th.check-column{padding:6px 0 3px 0}
 .sucuriscan-maincontent .hardening-box .primary-secondary{margin:0 0 0 10px}
-.sucuriscan-maincontent a.lastlogins-showall{display:inline-block;float:right}
 .sucuri-inline-error{font-weight:bold;color:red}
 .sucuriscan-maincontent .alternate{background:#f5f5f5}
 .sucuriscan-maincontent hr{border:none;border-top:1px solid #999}
