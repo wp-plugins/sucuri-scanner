@@ -1,3 +1,4 @@
+
 <tr class="%%SUCURI.LoggedInUsers.CssClass%%">
     <td>%%SUCURI.LoggedInUsers.Id%%</td>
     <td><a href="mailto:%%SUCURI.LoggedInUsers.UserEmail%%">%%SUCURI.LoggedInUsers.UserLogin%%</a></td>
