@@ -1,6 +1,6 @@
 
 <div id="poststuff">
-    <div class="postbox sucuriscan-settings-ignorerules-disabled sucuriscan-border sucuriscan-border-bad sucuriscan-%%SUCURI.IgnoreRules.MessageVisibility%%">
+    <div class="postbox sucuriscan-border sucuriscan-border-bad sucuriscan-%%SUCURI.IgnoreRules.MessageVisibility%%">
         <h3>Ignore Notifications</h3>
 
         <div class="inside">
@@ -16,7 +16,7 @@
 </div>
 
 <div id="poststuff">
-    <div class="postbox sucuriscan-settings-ignorerules-enabled sucuriscan-border sucuriscan-%%SUCURI.IgnoreRules.TableVisibility%%">
+    <div class="postbox sucuriscan-border sucuriscan-table-description sucuriscan-%%SUCURI.IgnoreRules.TableVisibility%%">
         <h3>Ignore Notifications</h3>
 
         <div class="inside">

@@ -71,6 +71,8 @@
 .sucuriscan-table-double-title tr:first-child th{border-bottom:0}
 .sucuriscan-table-triple-title tr:first-child th, .sucuriscan-table-triple-title tr:first-child + tr th{border-bottom:0}
 .sucuriscan-table-quad-title tr:first-child th, .sucuriscan-table-quad-title tr:first-child + tr th, .sucuriscan-table-quad-title tr:first-child + tr + tr th{border-bottom:0}
+.sucuriscan-table-description{border-left-width:1px !important;box-shadow:none}
+.sucuriscan-table-description .inside{border-bottom:0 !important}
 .sucuriscan-maincontent .sucuriscan-lastmodified td{font-family:Monospace, Courier, serif;font-weight:bold}
 .widefat td.td-with-button{text-align:right;padding:3px 10px}
 .widefat td.td-with-button button{min-width:90px}
@@ -95,6 +97,10 @@
 /* WordPress Alerts */
 div.sucuriscan-alert{position:relative;margin:0 0 20px 0}
 div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:18px;font-weight:bold;text-decoration:none}
+.sucuriscan-inline-alert, .sucuriscan-inline-alert-updated, .sucuriscan-inline-alert-error{background:#fff;box-shadow:0 1px 1px 0 rgba(0,0,0,.1);padding:0;border-left:4px solid #ddd}
+.sucuriscan-inline-alert > p, .sucuriscan-inline-alert-updated > p, .sucuriscan-inline-alert-error > p{margin:0;padding:8px 12px;border:1px solid #ddd;border-left:0}
+.sucuriscan-inline-alert-updated{border-left-color:#7ad03a}
+.sucuriscan-inline-alert-error{border-left-color:#dd3d36}
 /* Tabulation Panels */
 .sucuriscan-tabs{}
 .sucuriscan-tabs > ul{margin:0}
@@ -177,11 +183,7 @@ div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:1
 .sucuriscan-lastlogin-outof{font-style:italic;color:#999;margin-right:10px}
 .sucuriscan-admins-lastlogins .sucuriscan-ellipsis{width:170px}
 .sucuriscan-admins-lastlogins td{padding:4px 8px}
-/* Settings Page Styles */
-.sucuriscan-settings-ignorerules{}
-.sucuriscan-settings-ignorerules-disabled{}
-.sucuriscan-settings-ignorerules-enabled{border-left-width:1px !important;box-shadow:none}
-.sucuriscan-settings-ignorerules-enabled .inside{border-bottom:0 !important}
+.sucuriscan-lastlogins-failed{}
 /* About Page */
 .sucuriscan-about ul{margin-left:20px}
 .sucuriscan-about ul li{list-style:initial}

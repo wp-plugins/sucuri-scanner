@@ -4131,208 +4131,6 @@ function sucuriscan_hook_wp_login_failed( $title='' ){
 }
 
 /**
- * Find the full path of the file where the information of the failed logins
- * will be stored, it will be created automatically if does not exists (and if
- * the destination folder has permissions to write). This function can also be
- * used to reset the content of the datastore file.
- *
- * @see sucuriscan_reset_failed_logins()
- *
- * @param  boolean $reset Whether the file will be resetted or not.
- * @return string         The full (relative) path where the file is located.
- */
-function sucuriscan_failed_logins_datastore_path( $reset=FALSE ){
-    $datastore_path = sucuriscan_dir_filepath('sucuri-failedlogins.php');
-    $default_content = sucuriscan_failed_logins_default_content();
-
-    // Create the file if it does not exists.
-    if( !file_exists($datastore_path) || $reset ){
-        @file_put_contents( $datastore_path, $default_content, LOCK_EX );
-    }
-
-    // Return the datastore path if the file exists (or was created).
-    if(
-        file_exists($datastore_path)
-        && is_readable($datastore_path)
-    ){
-        return $datastore_path;
-    }
-
-    return FALSE;
-}
-
-/**
- * Default content of the datastore file where the failed logins are being kept.
- *
- * @return string Default content of the file.
- */
-function sucuriscan_failed_logins_default_content(){
-    $default_content = "<?php exit(0); ?>\n";
-
-    return $default_content;
-}
-
-/**
- * Read and parse the content of the datastore file where the failed logins are
- * being kept. This function will also calculate the difference in time between
- * the first and last login attempt registered in the file to later decide if
- * there is a brute-force attack in progress (and send an email notification
- * with the report) or reset the file after considering it a normal behavior of
- * the site.
- *
- * @return array Information and entries gathered from the failed logins datastore file.
- */
-function sucuriscan_get_failed_logins(){
-    $datastore_path = sucuriscan_failed_logins_datastore_path();
-    $default_content = sucuriscan_failed_logins_default_content();
-    $default_content_n = substr_count($default_content, "\n");
-
-    if( $datastore_path ){
-        $lines = @file($datastore_path);
-
-        if( $lines ){
-            $failed_logins = array(
-                'count' => 0,
-                'first_attempt' => 0,
-                'last_attempt' => 0,
-                'diff_time' => 0,
-                'entries' => array(),
-            );
-
-            // Read and parse all the entries found in the datastore file.
-            foreach( $lines as $i => $line ){
-                if( $i >= $default_content_n ){
-                    $login_data = json_decode( trim($line), TRUE );
-                    $login_data['attempt_date'] = date('r', $login_data['attempt_time']);
-
-                    if( !$login_data['user_agent'] ){
-                        $login_data['user_agent'] = 'Unknown';
-                    }
-
-                    $failed_logins['entries'][] = $login_data;
-                    $failed_logins['count'] += 1;
-                }
-            }
-
-            // Calculate the different time between the first and last attempt.
-            if( $failed_logins['count'] > 0 ){
-                $z = abs($failed_logins['count'] - 1);
-                $failed_logins['last_attempt'] = $failed_logins['entries'][$z]['attempt_time'];
-                $failed_logins['first_attempt'] = $failed_logins['entries'][0]['attempt_time'];
-                $failed_logins['diff_time'] = abs( $failed_logins['last_attempt'] - $failed_logins['first_attempt'] );
-
-                return $failed_logins;
-            }
-        }
-    }
-
-    return FALSE;
-}
-
-
-/**
- * Add a new entry in the datastore file where the failed logins are being kept,
- * this entry will contain the username, timestamp of the login attempt, remote
- * address of the computer sending the request, and the user-agent.
- *
- * @param  string  $user_login Information from the current failed login event.
- * @return boolean             Whether the information of the current failed login event was stored or not.
- */
-function sucuriscan_log_failed_login( $user_login='' ){
-    $datastore_path = sucuriscan_failed_logins_datastore_path();
-
-    if( $datastore_path ){
-        $login_data = json_encode(array(
-            'user_login' => $user_login,
-            'attempt_time' => time(),
-            'remote_addr' => sucuriscan_get_remoteaddr(),
-            'user_agent' => sucuriscan_get_useragent(),
-        ));
-
-        $logged = @file_put_contents( $datastore_path, $login_data . "\n", FILE_APPEND );
-
-        return $logged;
-    }
-
-    return FALSE;
-}
-
-/**
- * Read and parse all the entries in the datastore file where the failed logins
- * are being kept, this will loop through all these items and generate a table
- * in HTML code to send as a report via email according to the plugin settings
- * for the email notifications.
- *
- * @param  array   $failed_logins Information and entries gathered from the failed logins datastore file.
- * @return boolean                Whether the report was sent via email or not.
- */
-function sucuriscan_report_failed_logins( $failed_logins=array() ){
-    if( $failed_logins && $failed_logins['count'] > 0 ){
-        $prettify_mails = sucuriscan_prettify_mails();
-        $mail_content = '';
-
-        if( $prettify_mails ){
-            $table_html  = '<table border="1" cellspacing="0" cellpadding="0">';
-
-            // Add the table headers.
-            $table_html .= '<thead>';
-            $table_html .= '<tr>';
-            $table_html .= '<th>Username</th>';
-            $table_html .= '<th>IP Address</th>';
-            $table_html .= '<th>Attempt Timestamp</th>';
-            $table_html .= '<th>Attempt Date/Time</th>';
-            $table_html .= '</tr>';
-            $table_html .= '</thead>';
-
-            $table_html .= '<tbody>';
-        }
-
-        foreach( $failed_logins['entries'] as $login_data ){
-            if( $prettify_mails ){
-                $table_html .= '<tr>';
-                $table_html .= '<td>' . esc_attr($login_data['user_login']) . '</td>';
-                $table_html .= '<td>' . esc_attr($login_data['remote_addr']) . '</td>';
-                $table_html .= '<td>' . $login_data['attempt_time'] . '</td>';
-                $table_html .= '<td>' . $login_data['attempt_date'] . '</td>';
-                $table_html .= '</tr>';
-            } else {
-                $mail_content .= "\n";
-                $mail_content .= 'Username: ' . $login_data['user_login'] . "\n";
-                $mail_content .= 'IP Address: ' . $login_data['remote_addr'] . "\n";
-                $mail_content .= 'Attempt Timestamp: ' . $login_data['attempt_time'] . "\n";
-                $mail_content .= 'Attempt Date/Time: ' . $login_data['attempt_date'] . "\n";
-            }
-        }
-
-        if( $prettify_mails ){
-            $table_html .= '</tbody>';
-            $table_html .= '</table>';
-            $mail_content = $table_html;
-        }
-
-        if( sucuriscan_notify_event( 'bruteforce_attack', $mail_content ) ){
-            sucuriscan_reset_failed_logins();
-
-            return TRUE;
-        }
-    }
-
-    return FALSE;
-}
-
-/**
- * Remove all the entries in the datastore file where the failed logins are
- * being kept. The execution of this function will not delete the file (which is
- * likely the best move) but rather will clean its content and append the
- * default code defined by another function above.
- *
- * @return boolean Whether the datastore file was resetted or not.
- */
-function sucuriscan_reset_failed_logins(){
-    return (bool) sucuriscan_failed_logins_datastore_path(TRUE);
-}
-
-/**
  * Send to Sucuri servers an alert advising that an attempt to reset the password
  * of an user account was executed.
  *
@@ -6498,7 +6296,8 @@ function sucuriscan_lastlogins_page(){
         'PageTitle' => 'Last Logins',
         'LastLogins.Admins' => sucuriscan_lastlogins_admins(),
         'LastLogins.AllUsers' => sucuriscan_lastlogins_all(),
-        'LoggedInUsers' => sucuriscan_lastlogins_loggedin(),
+        'LoggedInUsers' => sucuriscan_loggedin_users_panel(),
+        'FailedLogins' => sucuriscan_failed_logins_panel(),
     );
 
     echo sucuriscan_get_template('lastlogins', $template_variables);
@@ -6863,7 +6662,7 @@ if( !function_exists('sucuri_get_user_lastlogin') ){
  *
  * @return string The HTML code displaying a list of all the users logged in at the moment.
  */
-function sucuriscan_lastlogins_loggedin(){
+function sucuriscan_loggedin_users_panel(){
     // Get user logged in list.
     $template_variables = array(
         'LoggedInUsers.List' => '',
@@ -7054,6 +6853,258 @@ if( !function_exists('sucuriscan_set_online_user') ){
     }
 
     add_action('wp_login', 'sucuriscan_set_online_user', 10, 2);
+}
+
+/**
+ * Print a list with the failed logins occurred during the last hour.
+ *
+ * @return string A list with the failed logins occurred during the last hour.
+ */
+function sucuriscan_failed_logins_panel(){
+    $template_variables = array(
+        'FailedLogins.List' => '',
+        'FailedLogins.Total' => '',
+        'FailedLogins.MaxFailedLogins' => 0,
+        'FailedLogins.NoItemsVisibility' => 'visible',
+        'FailedLogins.WarningVisibility' => 'visible',
+    );
+
+    $max_failed_logins = sucuriscan_get_option('sucuriscan_maximum_failed_logins');
+    $notify_bruteforce_attack = sucuriscan_get_option('sucuriscan_notify_bruteforce_attack');
+    $failed_logins = sucuriscan_get_failed_logins();
+
+    if( $failed_logins ){
+        $counter = 0;
+
+        foreach( $failed_logins['entries'] as $login_data ){
+            $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
+
+            $template_variables['FailedLogins.List'] .= sucuriscan_get_snippet('lastlogins-failedlogins', array(
+                'FailedLogins.CssClass' => $css_class,
+                'FailedLogins.Num' => ($counter + 1),
+                'FailedLogins.Username' => $login_data['user_login'],
+                'FailedLogins.RemoteAddr' => $login_data['remote_addr'],
+                'FailedLogins.Datetime' => date('d/M/Y H:i', $login_data['attempt_time']),
+                'FailedLogins.UserAgent' => esc_attr($login_data['user_agent']),
+            ));
+
+            $counter += 1;
+        }
+
+        if( $counter > 0 ){
+            $template_variables['FailedLogins.NoItemsVisibility'] = 'hidden';
+        }
+    }
+
+    $template_variables['FailedLogins.MaxFailedLogins'] = $max_failed_logins;
+
+    if( $notify_bruteforce_attack == 'enabled' ){
+        $template_variables['FailedLogins.WarningVisibility'] = 'hidden';
+    }
+
+    return sucuriscan_get_section('lastlogins-failedlogins', $template_variables);
+}
+
+/**
+ * Find the full path of the file where the information of the failed logins
+ * will be stored, it will be created automatically if does not exists (and if
+ * the destination folder has permissions to write). This function can also be
+ * used to reset the content of the datastore file.
+ *
+ * @see sucuriscan_reset_failed_logins()
+ *
+ * @param  boolean $reset Whether the file will be resetted or not.
+ * @return string         The full (relative) path where the file is located.
+ */
+function sucuriscan_failed_logins_datastore_path( $reset=FALSE ){
+    $datastore_path = sucuriscan_dir_filepath('sucuri-failedlogins.php');
+    $default_content = sucuriscan_failed_logins_default_content();
+
+    // Create the file if it does not exists.
+    if( !file_exists($datastore_path) || $reset ){
+        @file_put_contents( $datastore_path, $default_content, LOCK_EX );
+    }
+
+    // Return the datastore path if the file exists (or was created).
+    if(
+        file_exists($datastore_path)
+        && is_readable($datastore_path)
+    ){
+        return $datastore_path;
+    }
+
+    return FALSE;
+}
+
+/**
+ * Default content of the datastore file where the failed logins are being kept.
+ *
+ * @return string Default content of the file.
+ */
+function sucuriscan_failed_logins_default_content(){
+    $default_content = "<?php exit(0); ?>\n";
+
+    return $default_content;
+}
+
+/**
+ * Read and parse the content of the datastore file where the failed logins are
+ * being kept. This function will also calculate the difference in time between
+ * the first and last login attempt registered in the file to later decide if
+ * there is a brute-force attack in progress (and send an email notification
+ * with the report) or reset the file after considering it a normal behavior of
+ * the site.
+ *
+ * @return array Information and entries gathered from the failed logins datastore file.
+ */
+function sucuriscan_get_failed_logins(){
+    $datastore_path = sucuriscan_failed_logins_datastore_path();
+    $default_content = sucuriscan_failed_logins_default_content();
+    $default_content_n = substr_count($default_content, "\n");
+
+    if( $datastore_path ){
+        $lines = @file($datastore_path);
+
+        if( $lines ){
+            $failed_logins = array(
+                'count' => 0,
+                'first_attempt' => 0,
+                'last_attempt' => 0,
+                'diff_time' => 0,
+                'entries' => array(),
+            );
+
+            // Read and parse all the entries found in the datastore file.
+            foreach( $lines as $i => $line ){
+                if( $i >= $default_content_n ){
+                    $login_data = json_decode( trim($line), TRUE );
+                    $login_data['attempt_date'] = date('r', $login_data['attempt_time']);
+
+                    if( !$login_data['user_agent'] ){
+                        $login_data['user_agent'] = 'Unknown';
+                    }
+
+                    $failed_logins['entries'][] = $login_data;
+                    $failed_logins['count'] += 1;
+                }
+            }
+
+            // Calculate the different time between the first and last attempt.
+            if( $failed_logins['count'] > 0 ){
+                $z = abs($failed_logins['count'] - 1);
+                $failed_logins['last_attempt'] = $failed_logins['entries'][$z]['attempt_time'];
+                $failed_logins['first_attempt'] = $failed_logins['entries'][0]['attempt_time'];
+                $failed_logins['diff_time'] = abs( $failed_logins['last_attempt'] - $failed_logins['first_attempt'] );
+
+                return $failed_logins;
+            }
+        }
+    }
+
+    return FALSE;
+}
+
+
+/**
+ * Add a new entry in the datastore file where the failed logins are being kept,
+ * this entry will contain the username, timestamp of the login attempt, remote
+ * address of the computer sending the request, and the user-agent.
+ *
+ * @param  string  $user_login Information from the current failed login event.
+ * @return boolean             Whether the information of the current failed login event was stored or not.
+ */
+function sucuriscan_log_failed_login( $user_login='' ){
+    $datastore_path = sucuriscan_failed_logins_datastore_path();
+
+    if( $datastore_path ){
+        $login_data = json_encode(array(
+            'user_login' => $user_login,
+            'attempt_time' => time(),
+            'remote_addr' => sucuriscan_get_remoteaddr(),
+            'user_agent' => sucuriscan_get_useragent(),
+        ));
+
+        $logged = @file_put_contents( $datastore_path, $login_data . "\n", FILE_APPEND );
+
+        return $logged;
+    }
+
+    return FALSE;
+}
+
+/**
+ * Read and parse all the entries in the datastore file where the failed logins
+ * are being kept, this will loop through all these items and generate a table
+ * in HTML code to send as a report via email according to the plugin settings
+ * for the email notifications.
+ *
+ * @param  array   $failed_logins Information and entries gathered from the failed logins datastore file.
+ * @return boolean                Whether the report was sent via email or not.
+ */
+function sucuriscan_report_failed_logins( $failed_logins=array() ){
+    if( $failed_logins && $failed_logins['count'] > 0 ){
+        $prettify_mails = sucuriscan_prettify_mails();
+        $mail_content = '';
+
+        if( $prettify_mails ){
+            $table_html  = '<table border="1" cellspacing="0" cellpadding="0">';
+
+            // Add the table headers.
+            $table_html .= '<thead>';
+            $table_html .= '<tr>';
+            $table_html .= '<th>Username</th>';
+            $table_html .= '<th>IP Address</th>';
+            $table_html .= '<th>Attempt Timestamp</th>';
+            $table_html .= '<th>Attempt Date/Time</th>';
+            $table_html .= '</tr>';
+            $table_html .= '</thead>';
+
+            $table_html .= '<tbody>';
+        }
+
+        foreach( $failed_logins['entries'] as $login_data ){
+            if( $prettify_mails ){
+                $table_html .= '<tr>';
+                $table_html .= '<td>' . esc_attr($login_data['user_login']) . '</td>';
+                $table_html .= '<td>' . esc_attr($login_data['remote_addr']) . '</td>';
+                $table_html .= '<td>' . $login_data['attempt_time'] . '</td>';
+                $table_html .= '<td>' . $login_data['attempt_date'] . '</td>';
+                $table_html .= '</tr>';
+            } else {
+                $mail_content .= "\n";
+                $mail_content .= 'Username: ' . $login_data['user_login'] . "\n";
+                $mail_content .= 'IP Address: ' . $login_data['remote_addr'] . "\n";
+                $mail_content .= 'Attempt Timestamp: ' . $login_data['attempt_time'] . "\n";
+                $mail_content .= 'Attempt Date/Time: ' . $login_data['attempt_date'] . "\n";
+            }
+        }
+
+        if( $prettify_mails ){
+            $table_html .= '</tbody>';
+            $table_html .= '</table>';
+            $mail_content = $table_html;
+        }
+
+        if( sucuriscan_notify_event( 'bruteforce_attack', $mail_content ) ){
+            sucuriscan_reset_failed_logins();
+
+            return TRUE;
+        }
+    }
+
+    return FALSE;
+}
+
+/**
+ * Remove all the entries in the datastore file where the failed logins are
+ * being kept. The execution of this function will not delete the file (which is
+ * likely the best move) but rather will clean its content and append the
+ * default code defined by another function above.
+ *
+ * @return boolean Whether the datastore file was resetted or not.
+ */
+function sucuriscan_reset_failed_logins(){
+    return (bool) sucuriscan_failed_logins_datastore_path(TRUE);
 }
 
 /**
