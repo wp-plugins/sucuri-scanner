@@ -7,7 +7,7 @@
                 <form action="%%SUCURI.URL.Monitoring%%#monitoring-settings" method="post" class="sucuriscan-monitoring-apikey-form">
                     <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
                     <input type="text" name="sucuriscan_cloudproxy_apikey" value="%%SUCURI.Monitoring.APIKey%%" class="input-text" />
-                    <input type="submit" value="Save" class="button button-primary" />
+                    <input type="submit" value="Activate" class="button button-primary" />
                 </form>
             </td>
         </tr>

@@ -12,7 +12,7 @@ Author URI: http://sucuri.net
 /**
  * Main file to control the plugin.
  *
- * @package   Sucuri Plugin - SiteCheck Malware Scanner
+ * @package   Sucuri Security
  * @author    Yorman Arias <yorman.arias@sucuri.net>
  * @author    Daniel Cid   <dcid@sucuri.net>
  * @copyright Since 2010-2014 Sucuri Inc.
@@ -22,21 +22,51 @@ Author URI: http://sucuri.net
  */
 
 
-/* No direct access. */
-if(!function_exists('add_action'))
-{
-    exit(0);
+/**
+ * Plugin dependencies.
+ *
+ * List of required functions for the execution of this plugin, we are assuming
+ * that this site was built on top of the WordPress project, and that it is
+ * being loaded through a pluggable system, these functions most be defined
+ * before to continue.
+ *
+ * @var array
+ */
+$sucuriscan_dependencies = array(
+	'wp',
+	'wp_die',
+	'add_action',
+	'remove_action',
+	'wp_remote_get',
+	'wp_remote_post',
+);
+
+// Terminate execution if any of the functions mentioned above is not defined.
+foreach( $sucuriscan_dependencies as $dependency ){
+	if( !function_exists($dependency) ){
+		exit(0);
+	}
 }
+
+/**
+ * Plugin's constants.
+ *
+ * These constants will hold the basic information of the plugin, file/folder
+ * paths, version numbers, read-only variables that will affect the functioning
+ * of the rest of the code. The conditional will act as a container helping in
+ * the readability of the code considering the total number of lines that this
+ * file will have.
+ */
 
 /**
  * Unique name of the plugin through out all the code.
  */
-define('SUCURISCAN','sucuriscan');
+define('SUCURISCAN', 'sucuriscan');
 
 /**
  * Current version of the plugin's code.
  */
-define('SUCURISCAN_VERSION','1.6.3');
+define('SUCURISCAN_VERSION', '1.6.3');
 
 /**
  * The local URL where the plugin's files and assets are served.
@@ -114,6 +144,184 @@ define('SUCURISCAN_SITECHECK_LIFETIME', 1200);
 define('SUCURISCAN_GET_PLUGINS_LIFETIME', 1800);
 
 /**
+ * Plugin's global variables.
+ *
+ * These variables will be defined globally to allow the inclusion in multiple
+ * functions and classes defined in the libraries loaded by this plugin. The
+ * conditional will act as a container helping in the readability of the code
+ * considering the total number of lines that this file will have.
+ */
+if( defined('SUCURISCAN') ){
+
+    /**
+     * List an associative array with the sub-pages of this plugin.
+     *
+     * @return array
+     */
+    $sucuriscan_pages = array(
+        'sucuriscan' => 'Dashboard',
+        'sucuriscan_scanner' => 'Malware Scan',
+        'sucuriscan_monitoring' => 'Firewall (WAF)',
+        'sucuriscan_hardening' => 'Hardening',
+        'sucuriscan_posthack' => 'Post-Hack',
+        'sucuriscan_lastlogins' => 'Last Logins',
+        'sucuriscan_settings' => 'Settings',
+        'sucuriscan_infosys' => 'Site Info',
+    );
+
+    /**
+     * Settings options.
+     *
+     * The following global variables are mostly associative arrays where the key is
+     * linked to an option that will be stored in the database, and their
+     * correspondent values are the description of the option. These variables will
+     * be used in the settings page to offer the user a way to configure the
+     * behaviour of the plugin.
+     *
+     * @var array
+     */
+
+    $sucuriscan_notify_options = array(
+        'sucuriscan_notify_user_registration' => 'Enable email alerts for new user registration',
+        'sucuriscan_notify_success_login' => 'Enable email alerts for successful logins',
+        'sucuriscan_notify_failed_login' => 'Enable email alerts for failed logins',
+        'sucuriscan_notify_bruteforce_attack' => 'Enable email alerts for login brute-force attack',
+        'sucuriscan_notify_post_publication' => 'Enable email alerts for new site content',
+        'sucuriscan_notify_theme_editor' => 'Enable email alerts when a file is modified via the theme/plugin editor',
+        'sucuriscan_notify_website_updated' => 'Enable email alerts when your website is updated',
+        'sucuriscan_notify_settings_updated' => 'Enable email alerts when your website settings are updated',
+        'sucuriscan_notify_theme_switched' => 'Enable email alerts when the website theme is switched',
+        'sucuriscan_notify_theme_updated' => 'Enable email alerts when a theme is updated',
+        'sucuriscan_notify_widget_added' => 'Enable email alerts when a widget is added to a sidebar',
+        'sucuriscan_notify_widget_deleted' => 'Enable email alerts when a widget is deleted from a sidebar',
+        'sucuriscan_notify_plugin_change' => 'Enable email alerts for Sucuri plugin changes',
+        'sucuriscan_notify_plugin_activated' => 'Enable email alerts when a plugin is activated',
+        'sucuriscan_notify_plugin_deactivated' => 'Enable email alerts when a plugin is deactivated',
+        'sucuriscan_notify_plugin_updated' => 'Enable email alerts when a plugin is updated',
+        'sucuriscan_notify_plugin_installed' => 'Enable email alerts when a plugin is installed',
+        'sucuriscan_notify_plugin_deleted' => 'Enable email alerts when a plugin is deleted',
+        'sucuriscan_prettify_mails' => 'Enable email alerts in HTML (uncheck to get email in text/plain)',
+        'sucuriscan_lastlogin_redirection' => 'Allow redirection after login to report the last-login information',
+    );
+
+    $sucuriscan_schedule_allowed = array(
+        'hourly' => 'Every three hours (3 hours)',
+        'twicedaily' => 'Twice daily (12 hours)',
+        'daily' => 'Once daily (24 hours)',
+        '_oneoff' => 'Never',
+    );
+
+    $sucuriscan_interface_allowed = array(
+        'spl' => 'SPL (high performance)',
+        'opendir' => 'OpenDir (medium)',
+        'glob' => 'Glob (low)',
+    );
+
+    $sucuriscan_emails_per_hour = array(
+        '5' => 'Maximum 5 per hour',
+        '10' => 'Maximum 10 per hour',
+        '20' => 'Maximum 20 per hour',
+        '40' => 'Maximum 40 per hour',
+        '80' => 'Maximum 80 per hour',
+        '160' => 'Maximum 160 per hour',
+        'unlimited' => 'Unlimited',
+    );
+
+    $sucuriscan_maximum_failed_logins = array(
+        '30' => '30 failed logins per hour',
+        '60' => '60 failed logins per hour',
+        '120' => '120 failed logins per hour',
+        '240' => '240 failed logins per hour',
+        '480' => '480 failed logins per hour',
+    );
+
+    $sucuriscan_verify_ssl_cert = array(
+        'true' => 'Verify peer\'s cert',
+        'false' => 'Stop peer\'s cert verification',
+    );
+
+    /**
+     * Remove the WordPress generator meta-tag from the source code.
+     */
+    remove_action( 'wp_head', 'wp_generator' );
+
+    /**
+     * Run a specific function defined in the plugin's code to locate every
+     * directory and file, collect their checksum and file size, and send this
+     * information to the Sucuri API service where a security and integrity scan
+     * will be performed against the hashes provided and the official versions.
+     */
+    add_action('sucuriscan_scheduled_scan', 'SucuriScanEvent::filesystem_scan');
+
+    /**
+     * Initialize the execute of the main plugin's functions.
+     *
+     * This will load the menu options in the WordPress administrator panel, and
+     * execute the bootstrap function of the plugin.
+     */
+    add_action( 'init', 'SucuriScanInterface::initialize', 1 );
+    add_action( 'admin_init', 'SucuriScanInterface::create_datastore_folder' );
+    add_action( 'admin_init', 'SucuriScanInterface::handle_old_plugins' );
+    add_action( 'admin_enqueue_scripts', 'SucuriScanInterface::enqueue_scripts', 1 );
+    add_action( 'admin_menu', 'SucuriScanInterface::add_interface_menu' );
+
+    /**
+     * Function call interceptors.
+     *
+     * Define the names for the hooks that will intercept specific function calls in
+     * the admin interface and parts of the external site, an event report will be
+     * sent to the API service and an email notification to the administrator of the
+     * site.
+     *
+     * @see Class SucuriScanHook
+     */
+    if( class_exists('SucuriScanHook') ){
+        $sucuriscan_hooks = array(
+            // Passes.
+            'add_attachment',
+            'add_link',
+            'create_category',
+            'delete_post',
+            'delete_user',
+            'login_form_resetpass',
+            'private_to_published',
+            'publish_page',
+            'publish_post',
+            'publish_phone',
+            'xmlrpc_publish_post',
+            'retrieve_password',
+            'switch_theme',
+            'user_register',
+            'wp_login',
+            'wp_login_failed',
+        );
+
+        foreach( $sucuriscan_hooks as $hook_name ){
+            $hook_func = 'SucuriScanHook::hook_' . $hook_name;
+            add_action( $hook_name, $hook_func, 50 );
+        }
+
+        add_action( 'admin_init', 'SucuriScanHook::hook_undefined_actions' );
+        add_action( 'login_form', 'SucuriScanHook::hook_undefined_actions' );
+    } else {
+        SucuriScanInterface::error( 'Function call interceptors are not working properly.' );
+    }
+
+    /**
+     * Display a message if the plugin is not activated.
+     *
+     * Display a message at the top of the administration panel with a button that
+     * once clicked will send the site's email and domain name to the Sucuri API
+     * service where an API key will be generated for the site, this key will allow
+     * the plugin to execute the filesystem scans, the project integrity, and the
+     * email notifications.
+     */
+    $sucuriscan_admin_notice_name = SucuriScan::is_multisite() ? 'network_admin_notices' : 'admin_notices';
+    add_action( $sucuriscan_admin_notice_name, 'SucuriScanInterface::setup_notice' );
+
+}
+
+/**
  * Miscellaneous library.
  *
  * Multiple and generic functions that will be used through out the code of
@@ -126,6 +334,43 @@ class SucuriScan {
      * Class constructor.
      */
     public function __construct(){
+    }
+
+    /**
+     * Return name of a variable with the plugin's prefix (if needed).
+     *
+     * To facilitate the development, you can prefix the name of the key in the
+     * request (when accessing it) with a single colon, this function will
+     * automatically replace that character with the unique identifier of the
+     * plugin.
+     *
+     * @param  string $var_name Name of a variable with an optional colon at the beginning.
+     * @return string           Full name of the variable with the extra characters (if needed).
+     */
+    public static function variable_prefix( $var_name='' ){
+        if( preg_match('/^:(.*)/', $var_name, $match) ){
+            $var_name = sprintf( '%s_%s', SUCURISCAN, $match[1] );
+        }
+
+        return $var_name;
+    }
+
+    /**
+     * Encodes the less-than, greater-than, ampersand, double quote and single quote
+     * characters, will never double encode entities.
+     *
+     * @param  string $text The text which is to be encoded.
+     * @return string       The encoded text with HTML entities.
+     */
+    public static function escape( $text='' ){
+        // Escape the value of the variable using a built-in function if possible.
+        if( function_exists('esc_attr') ){
+            $text = esc_attr($text);
+        } else {
+            $text = htmlspecialchars($text);
+        }
+
+        return $text;
     }
 
     /**
@@ -176,49 +421,379 @@ class SucuriScan {
     }
 
     /**
-     * Check the nonce comming from any of the settings pages.
+     * Check whether the current site is working as a multi-site instance.
      *
-     * @return boolean TRUE if the nonce is valid, FALSE otherwise.
+     * @return boolean Either TRUE or FALSE in case WordPress is being used as a multi-site instance.
      */
-    public static function sucuriscan_check_options_wpnonce(){
-        // Create the option_page value if permalink submission.
+    public static function is_multisite(){
         if(
-            !isset($_POST['option_page'])
-            && isset($_POST['permalink_structure'])
+            function_exists('is_multisite')
+            && is_multisite()
         ){
-            $_POST['option_page'] = 'permalink';
+            return TRUE;
         }
 
-        // Check if the option_page has an allowed value.
-        if( isset($_POST['option_page']) ){
-            $nonce='_wpnonce';
-            $action = '';
+        return FALSE;
+    }
 
-            switch( $_POST['option_page'] ){
-                case 'general':    /* no_break */
-                case 'writing':    /* no_break */
-                case 'reading':    /* no_break */
-                case 'discussion': /* no_break */
-                case 'media':      /* no_break */
-                case 'options':    /* no_break */
-                    $action = $_POST['option_page'] . '-options';
-                    break;
-                case 'permalink':
-                    $action = 'update-permalink';
-                    break;
+    /**
+     * Find and retrieve the current version of Wordpress installed.
+     *
+     * @return string The version number of Wordpress installed.
+     */
+    public static function site_version(){
+        // Maybe the version number is in the database.
+        $version = get_option('version');
+        if( $version ){ return $version; }
+
+        // If not, then check for a specific file.
+        $wp_version_path = ABSPATH . WPINC . '/version.php';
+        if( file_exists($wp_version_path) ){
+            include($wp_version_path);
+            if( isset($wp_version) ){ return $wp_version; }
+        }
+
+        // At last, use the checksum of the main framework class.
+        return md5_file(ABSPATH . WPINC . '/class-wp.php');
+    }
+
+    /**
+     * Find and retrieve the absolute path of the WordPress configuration file.
+     *
+     * @return string Absolute path of the WordPress configuration file.
+     */
+    public static function get_wpconfig_path(){
+        if( defined('ABSPATH') ){
+            $file_path = ABSPATH . '/wp-config.php';
+
+            // if wp-config.php doesn't exist, or is not readable check one directory up.
+            if( !file_exists($file_path) ){
+                $file_path = ABSPATH . '/../wp-config.php';
             }
 
-            // Check the nonce validity.
-            if(
-                !empty($action)
-                && isset($_REQUEST[$nonce])
-                && wp_verify_nonce($_REQUEST[$nonce], $action)
-            ){
+            // Remove duplicated double slashes.
+            $file_path = realpath($file_path);
+
+            if( $file_path ){
+                return $file_path;
+            }
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Find and retrieve the absolute path of the main WordPress htaccess file.
+     *
+     * @return string Absolute path of the main WordPress htaccess file.
+     */
+    public static function get_htaccess_path(){
+        if( defined('ABSPATH') ){
+            $base_dirs = array(
+                rtrim(ABSPATH, '/'),
+                dirname(ABSPATH),
+                dirname(dirname(ABSPATH))
+            );
+
+            foreach( $base_dirs as $base_dir ){
+                $htaccess_path = sprintf('%s/.htaccess', $base_dir);
+
+                if( file_exists($htaccess_path) ){
+                    return $htaccess_path;
+                }
+            }
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Get the pattern of the definition related with a WordPress secret key.
+     *
+     * @return string Secret key definition pattern.
+     */
+    public static function secret_key_pattern(){
+        return '/define\(\'([A-Z_]+)\',([ ]+)\'(.*)\'\);/';
+    }
+
+    /**
+     * Retrieve the real ip address of the user in the current request.
+     *
+     * @return string The real ip address of the user in the current request.
+     */
+    public static function get_remote_addr(){
+        $alternatives = array(
+            'HTTP_X_REAL_IP',
+            'HTTP_CLIENT_IP',
+            'HTTP_X_FORWARDED_FOR',
+            'HTTP_X_FORWARDED',
+            'HTTP_FORWARDED_FOR',
+            'HTTP_FORWARDED',
+            'REMOTE_ADDR',
+            'SUCURI_RIP',
+        );
+
+        foreach( $alternatives as $alternative ){
+            if( isset($_SERVER[$alternative]) ){
+                $remote_addr = preg_replace('/[^0-9a-z.,: ]/', '', $_SERVER[$alternative]);
+
+                if( $remote_addr ){ break; }
+            }
+        }
+
+        if( $remote_addr == '::1' ){
+            $remote_addr = '127.0.0.1';
+        }
+
+        return $remote_addr;
+    }
+
+    /**
+     * Retrieve the user-agent from the current request.
+     *
+     * @return string The user-agent from the current request.
+     */
+    public static function get_user_agent(){
+        if( isset($_SERVER['HTTP_USER_AGENT']) ){
+            return self::escape($_SERVER['HTTP_USER_AGENT']);
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Check whether the site is behing the Sucuri CloudProxy network.
+     *
+     * @return boolean Either TRUE or FALSE if the site is behind CloudProxy.
+     */
+    public static function is_behind_cloudproxy(){
+        if( isset($_SERVER['HTTP_HOST']) ){
+            $http_host = preg_replace('/^(.*):[0-9]+/', '$1', $_SERVER['HTTP_HOST']);
+        } else {
+            $http_host = 'localhost';
+        }
+
+        $host_by_name = gethostbyname($http_host);
+        $host_by_addr = gethostbyaddr($host_by_name);
+
+        if(
+            isset($_SERVER['SUCURIREAL_REMOTE_ADDR'])
+            || preg_match('/^cloudproxy([0-9]+)\.sucuri\.net$/', $host_by_addr)
+        ){
+            return TRUE;
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Return the time passed since the specified timestamp until now.
+     *
+     * @param  integer $timestamp The Unix time number of the date/time before now.
+     * @return string             The time passed since the timestamp specified.
+     */
+    public static function time_ago( $timestamp=0 ){
+        if( !is_numeric($timestamp) ){
+            $timestamp = strtotime($timestamp);
+        }
+
+        $diff = abs( time() - intval($timestamp) );
+
+        if( $diff == 0 ){ return 'just now'; }
+
+        $intervals = array(
+            1                => array('year',   31556926),
+            $diff < 31556926 => array('month',  2628000),
+            $diff < 2629744  => array('week',   604800),
+            $diff < 604800   => array('day',    86400),
+            $diff < 86400    => array('hour',   3600),
+            $diff < 3600     => array('minute', 60),
+            $diff < 60       => array('second', 1)
+        );
+
+        $value = floor($diff/$intervals[1][1]);
+        $time_ago = sprintf(
+            '%s %s%s ago',
+            $value,
+            $intervals[1][0],
+            ( $value > 1 ? 's' : '' )
+        );
+
+        return $time_ago;
+    }
+
+    /**
+     * Convert an string of characters into a valid variable name.
+     *
+     * @see http://www.php.net/manual/en/language.variables.basics.php
+     *
+     * @param  string $text A text containing alpha-numeric and special characters.
+     * @return string       A valid variable name.
+     */
+    public static function human2var( $text='' ){
+        $text = strtolower($text);
+        $pattern = '/[^a-z0-9_]/';
+        $var_name = preg_replace($pattern, '_', $text);
+
+        return $var_name;
+    }
+
+    /**
+     * Check whether an IP address has a valid format or not.
+     *
+     * @param  string  $remote_addr The host IP address.
+     * @return boolean              Whether the IP address specified is valid or not.
+     */
+    public static function is_valid_ip( $remote_addr='' ){
+        // Check for IPv4 and IPv6.
+        if( function_exists('filter_var') ){
+            return (bool) filter_var( $remote_addr, FILTER_VALIDATE_IP );
+        }
+
+        // Assuming older version of PHP and server, so only will check for IPv4.
+        elseif( strlen($remote_addr) >= 7 ) {
+            $pattern = '/^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/';
+
+            if( preg_match($pattern, $remote_addr, $match) ){
+                for( $i=0; $i<4; $i++ ){
+                    if( $match[$i] > 255 ){ return FALSE; }
+                }
+
                 return TRUE;
             }
         }
 
         return FALSE;
+    }
+
+    /**
+     * Validate email address.
+     *
+     * This use the native PHP function filter_var which is available in PHP >=
+     * 5.2.0 if it is not found in the interpreter this function will sue regular
+     * expressions to check whether the email address passed is valid or not.
+     *
+     * @see http://www.php.net/manual/en/function.filter-var.php
+     *
+     * @param  string $email The string that will be validated as an email address.
+     * @return boolean       TRUE if the email address passed to the function is valid, FALSE if not.
+     */
+    public static function is_valid_email( $email='' ){
+        if( function_exists('filter_var') ){
+            return (bool) filter_var($email, FILTER_VALIDATE_EMAIL);
+        } else {
+            $pattern = '/^([a-z0-9\+_\-]+)(\.[a-z0-9\+_\-]+)*@([a-z0-9\-]+\.)+[a-z]{2,6}$/ix';
+            return (bool) preg_match($pattern, $email);
+        }
+    }
+
+    /**
+     * Cut a long text to the length specified, and append suspensive points at the end.
+     *
+     * @param  string  $text   String of characters that will be cut.
+     * @param  integer $length Maximum length of the returned string, default is 10.
+     * @return string          Short version of the text specified.
+     */
+    public static function excerpt( $text='', $length=10 ){
+        $text_length = strlen($text);
+
+        if( $text_length > $length ){
+            return substr( $text, 0, $length ) . '...';
+        }
+
+        return $text;
+    }
+
+}
+
+/**
+ * HTTP request handler.
+ *
+ * Function definitions to retrieve, validate, and clean the parameters during a
+ * HTTP request, generally after a form submission or while loading a URL. Use
+ * these methods at most instead of accessing an index in the global PHP
+ * variables _POST, _GET, _REQUEST since they may come with insecure data.
+ */
+class SucuriScanRequest extends SucuriScan {
+
+    /**
+     * Returns the value stored in a specific index in the global _GET, _POST or
+     * _REQUEST variables, you can specify a pattern as the second argument to
+     * match allowed values.
+     *
+     * @param  array  $list    The array where the specified key will be searched.
+     * @param  string $key     Name of the index where the requested variable is supposed to be.
+     * @param  string $pattern Optional pattern to match allowed values in the requested key.
+     * @return string          The value stored in the specified key inside the global _GET variable.
+     */
+    public static function request( $list=array(), $key='', $pattern='' ){
+        $key = self::variable_prefix($key);
+
+        if( is_array($list) && isset($list[$key]) ){
+            // Select the key from the list and escape its content.
+            $key_value = $list[$key];
+
+            // Define regular expressions for specific value types.
+            if( $pattern === '' ){
+                $pattern = '/.*/';
+            } else {
+                switch( $pattern ){
+                    case 'nonce': $pattern = '/^[a-z0-9]{10}$/'; break;
+                    case '_page': $pattern = '/^[a-z_]+$/'; break;
+                    case '_array': $pattern = '_array'; break;
+                    case '_yyyymmdd': $pattern = '/^[0-9]{4}\-[0-9]{2}\-[0-9]{2}$/'; break;
+                    default: $pattern = '/^'.$pattern.'$/'; break;
+                }
+            }
+
+            // If the request data is an array, then only cast the value.
+            if( $pattern == '_array' && is_array($key_value) ){
+                return (array) $key_value;
+            }
+
+            // Check the format of the request data with a regex defined above.
+            if( preg_match($pattern, $key_value) ){
+                return self::escape($key_value);
+            }
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Returns the value stored in a specific index in the global _GET variable,
+     * you can specify a pattern as the second argument to match allowed values.
+     *
+     * @param  string $key     Name of the index where the requested variable is supposed to be.
+     * @param  string $pattern Optional pattern to match allowed values in the requested key.
+     * @return string          The value stored in the specified key inside the global _GET variable.
+     */
+    public static function get( $key='', $pattern='' ){
+        return self::request( $_GET, $key, $pattern );
+    }
+
+    /**
+     * Returns the value stored in a specific index in the global _POST variable,
+     * you can specify a pattern as the second argument to match allowed values.
+     *
+     * @param  string $key     Name of the index where the requested variable is supposed to be.
+     * @param  string $pattern Optional pattern to match allowed values in the requested key.
+     * @return string          The value stored in the specified key inside the global _POST variable.
+     */
+    public static function post( $key='', $pattern='' ){
+        return self::request( $_POST, $key, $pattern );
+    }
+
+    /**
+     * Returns the value stored in a specific index in the global _REQUEST variable,
+     * you can specify a pattern as the second argument to match allowed values.
+     *
+     * @param  string $key     Name of the index where the requested variable is supposed to be.
+     * @param  string $pattern Optional pattern to match allowed values in the requested key.
+     * @return string          The value stored in the specified key inside the global _POST variable.
+     */
+    public static function get_or_post( $key='', $pattern='' ){
+        return self::request( $_REQUEST, $key, $pattern );
     }
 
 }
@@ -295,7 +870,8 @@ class SucuriScanFileInfo extends SucuriScan {
                     'filepath' => $filepath,
                     'checksum' => $file_checksum,
                     'filesize' => $filesize,
-                    'filetime' => filectime($filepath),
+                    'created_at' => filectime($filepath),
+                    'modified_at' => filemtime($filepath),
                 );
             } else {
                 $filepath = str_replace( $abs_path, $abs_path . '/', $filepath );
@@ -684,7 +1260,7 @@ class SucuriScanDatabase extends SucuriScan {
 
         foreach( $resp_parts as $response ){
             if( $response['process'] !== TRUE ){
-                sucuriscan_error( $response['message'] );
+                SucuriScanInterface::error( $response['message'] );
             }
         }
     }
@@ -699,7 +1275,7 @@ class SucuriScanDatabase extends SucuriScan {
         global $wpdb;
 
         $response = array( 'process'=>FALSE, 'message'=>'' );
-        $wp_config_path = sucuriscan_get_wpconfig_path();
+        $wp_config_path = $this->get_wpconfig_path();
 
         if( file_exists($wp_config_path) ){
             @chmod($wp_config_path, 0777);
@@ -1248,34 +1824,2604 @@ class SucuriScanCache extends SucuriScan {
 }
 
 /**
- * Check whether the current site is working as a multi-site instance.
+ * Plugin options handler.
  *
- * @return boolean Either TRUE or FALSE in case WordPress is being used as a multi-site instance.
+ * Options are pieces of data that WordPress uses to store various preferences
+ * and configuration settings. Listed below are the options, along with some of
+ * the default values from the current WordPress install. By using the
+ * appropriate function, options can be added, changed, removed, and retrieved,
+ * from the wp_options table.
+ *
+ * The Options API is a simple and standardized way of storing data in the
+ * database. The API makes it easy to create, access, update, and delete
+ * options. All the data is stored in the wp_options table under a given custom
+ * name. This page contains the technical documentation needed to use the
+ * Options API. A list of default options can be found in the Option Reference.
+ *
+ * Note that the _site_ functions are essentially the same as their
+ * counterparts. The only differences occur for WP Multisite, when the options
+ * apply network-wide and the data is stored in the wp_sitemeta table under the
+ * given custom name.
+ *
+ * @see http://codex.wordpress.org/Option_Reference
+ * @see http://codex.wordpress.org/Options_API
  */
-function sucuriscan_is_multisite(){
-    if( function_exists('is_multisite') && is_multisite() ){ return TRUE; }
-    return FALSE;
+class SucuriScanOption extends SucuriScanRequest {
+
+    /**
+     * Retrieve specific options from the database.
+     *
+     * Considering the case in which this plugin is installed in a multisite instance
+     * of Wordpress, the allowed values for the first parameter of this function will
+     * be treated like this:
+     *
+     * <ul>
+     *   <li>all_plugin_options: Will retrieve all the option values created by this plugin in the main site (aka. network),</li>
+     *   <li>site_options: Will retrieve all the option values stored in the current site visited by the user (aka. sub-site) excluding the transient options,</li>
+     *   <li>plugin_option: Will retrieve one specific option from the network site only if the option starts with the prefix <i>sucuri_<i>.</li>
+     * </ul>
+     *
+     * @param  string $filter_by   Criteria to filter the results, valid values: all_plugin_options, site_options, sucuri_option.
+     * @param  string $option_name Optional parameter with the name of the option that will be filtered.
+     * @return array               List of options retrieved from the query in the database.
+     */
+    public function get_options_from_db( $filter_by='', $option_name='' ){
+        global $wpdb;
+
+        $output = FALSE;
+        switch($filter_by){
+            case 'all_plugin_options':
+                $output = $wpdb->get_results("SELECT * FROM {$wpdb->options} WHERE option_name LIKE 'sucuriscan%' ORDER BY option_id ASC");
+                break;
+            case 'site_options':
+                $output = $wpdb->get_results("SELECT * FROM {$wpdb->options} WHERE option_name NOT LIKE '%_transient_%' ORDER BY option_id ASC");
+                break;
+            case 'plugin_option':
+                $row = $wpdb->get_row( $wpdb->prepare("SELECT option_value FROM {$wpdb->base_prefix}options WHERE option_name = %s LIMIT 1", $option_name) );
+                if( $row ){ $output = $row->option_value; }
+                break;
+        }
+
+        return $output;
+    }
+
+    /**
+     * Alias function for the method Common::SucuriScan_Get_Options()
+     *
+     * This function search the specified option in the database, not only the options
+     * set by the plugin but all the options set for the site. If the value retrieved
+     * is FALSE the method tries to search for a default value.
+     *
+     * To facilitate the development, you can prefix the name of the key in the
+     * request (when accessing it) with a single colon, this function will
+     * automatically replace that character with the unique identifier of the
+     * plugin.
+     *
+     * @see http://codex.wordpress.org/Function_Reference/get_option
+     *
+     * @param  string $option_name Optional parameter that you can use to filter the results to one option.
+     * @return string              The value (or default value) of the option specified.
+     */
+    public static function get_option( $option_name='' ){
+        $option_name = self::variable_prefix($option_name);
+
+        return self::get_options($option_name);
+    }
+
+    /**
+     * Update the value of an database' option.
+     *
+     * Use the function to update a named option/value pair to the options database
+     * table. The option name value is escaped with a special database method before
+     * the insert SQL statement but not the option value, this value should always
+     * be properly sanitized.
+     *
+     * @see http://codex.wordpress.org/Function_Reference/update_option
+     *
+     * @param  string  $option_name  Name of the option to update which must not exceed 64 characters.
+     * @param  string  $option_value The new value for the option, can be an integer, string, array, or object.
+     * @return boolean               True if option value has changed, false if not or if update failed.
+     */
+    public static function update_option( $option_name='', $option_value='' ){
+        if( function_exists('update_option') ){
+            $option_name = self::variable_prefix($option_name);
+
+            return update_option( $option_name, $option_value );
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Remove an option from the database.
+     *
+     * A safe way of removing a named option/value pair from the options database table.
+     *
+     * @see http://codex.wordpress.org/Function_Reference/delete_option
+     *
+     * @param  string  $option_name Name of the option to be deleted.
+     * @return boolean              True, if option is successfully deleted. False on failure, or option does not exist.
+     */
+    public static function delete_option( $option_name='' ){
+        if( function_exists('delete_option') ){
+            $option_name = self::variable_prefix($option_name);
+
+            return delete_option( $option_name );
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Retrieve all the options created by this Plugin from the Wordpress database.
+     *
+     * The function acts as an alias of WP::get_option() and if the returned value
+     * is FALSE it tries to search for a default value to complement the information.
+     *
+     * @param  string $option_name Optional parameter that you can use to filter the results to one option.
+     * @return array               Either FALSE or an Array containing all the sucuri options in the database.
+     */
+    private function get_options( $option_name='' ){
+        if( !empty($option_name) ){
+            return self::get_single_option($option_name);
+        }
+
+        $settings = array();
+        $results = self::get_options_from_db('all_plugin_options');
+
+        foreach( $results as $row ){
+            $settings[$row->option_name] = $row->option_value;
+        }
+
+        return self::get_default_options($settings);
+    }
+
+    /**
+     * Retrieve a single option from the database.
+     *
+     * @param  string $option_name Name of the option that will be retrieved.
+     * @return string              Value of the option stored in the database, FALSE if not found.
+     */
+    private function get_single_option( $option_name='' ){
+        $option_value = FALSE;
+        $is_plugin_option = preg_match('/^sucuriscan_/', $option_name) ? TRUE : FALSE;
+
+        if( self::is_multisite() && $is_plugin_option ){
+            $option_value = self::get_options_from_db('plugin_option', $option_name);
+        }
+
+        // Use framework built-in function.
+        elseif( function_exists('get_option') ){
+            $option_value = get_option($option_name);
+        }
+
+        if( $option_value === FALSE && $is_plugin_option ){
+            $option_value = self::get_default_options($option_name);
+        }
+
+        return $option_value;
+    }
+
+    /**
+     * Retrieve the default values for some specific options.
+     *
+     * @param  string|array $settings Either an array that will be complemented or a string with the name of the option.
+     * @return string|array           The default values for the specified options.
+     */
+    private function get_default_options( $settings='' ){
+        $admin_email = '';
+
+        // Use framework built-in function.
+        if( function_exists('get_option') ){
+            $admin_email = get_option('admin_email');
+        }
+
+        $default_options = array(
+            'sucuriscan_api_key' => FALSE,
+            'sucuriscan_account' => $admin_email,
+            'sucuriscan_scan_frequency' => 'hourly',
+            'sucuriscan_scan_interface' => 'spl',
+            'sucuriscan_runtime' => 0,
+            'sucuriscan_lastlogin_redirection' => 'enabled',
+            'sucuriscan_notify_to' => $admin_email,
+            'sucuriscan_emails_sent' => 0,
+            'sucuriscan_emails_per_hour' => 5,
+            'sucuriscan_last_email_at' => time(),
+            'sucuriscan_prettify_mails' => 'enabled',
+            'sucuriscan_notify_success_login' => 'enabled',
+            'sucuriscan_notify_failed_login' => 'enabled',
+            'sucuriscan_notify_post_publication' => 'enabled',
+            'sucuriscan_notify_theme_editor' => 'enabled',
+            'sucuriscan_maximum_failed_logins' => 30,
+            'sucuriscan_ignored_events' => '',
+            'sucuriscan_verify_ssl_cert' => 'true',
+        );
+
+        if( is_array($settings) ){
+            foreach( $default_options as $option_name => $option_value ){
+                if( !isset($settings[$option_name]) ){
+                    $settings[$option_name] = $option_value;
+                }
+            }
+
+            return $settings;
+        }
+
+        if( is_string($settings) ){
+            if( isset($default_options[$settings]) ){
+                return $default_options[$settings];
+            }
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Retrieve all the options stored by Wordpress in the database. The options
+     * containing the word "transient" are excluded from the results, this function
+     * is compatible with multisite instances.
+     *
+     * @return array All the options stored by Wordpress in the database, except the transient options.
+     */
+    public static function get_site_options(){
+        $settings = array();
+        $results = self::get_options_from_db('site_options');
+
+        foreach( $results as $row ){
+            $settings[$row->option_name] = $row->option_value;
+        }
+
+        return $settings;
+    }
+
+    /**
+     * Check what Wordpress options were changed comparing the values in the database
+     * with the values sent through a simple request using a GET or POST method.
+     *
+     * @param  array $request The content of the global variable GET or POST considering SERVER[REQUEST_METHOD].
+     * @return array          A list of all the options that were changes through this request.
+     */
+    public static function what_options_were_changed( $request=array() ){
+        $options_changed = array(
+            'original' => array(),
+            'changed' => array()
+        );
+
+        $site_options = self::get_site_options();
+
+        foreach( $request as $req_name => $req_value ){
+            if(
+                array_key_exists($req_name, $site_options)
+                && $site_options[$req_name] != $req_value
+            ){
+                $options_changed['original'][$req_name] = $site_options[$req_name];
+                $options_changed['changed'][$req_name] = $req_value;
+            }
+        }
+
+        return $options_changed;
+    }
+
+    /**
+     * Check the nonce comming from any of the settings pages.
+     *
+     * @return boolean TRUE if the nonce is valid, FALSE otherwise.
+     */
+    public static function check_options_nonce(){
+        // Create the option_page value if permalink submission.
+        if(
+            !isset($_POST['option_page'])
+            && isset($_POST['permalink_structure'])
+        ){
+            $_POST['option_page'] = 'permalink';
+        }
+
+        // Check if the option_page has an allowed value.
+        if( $option_page = SucuriScanRequest::post('option_page') ){
+            $nonce='_wpnonce';
+            $action = '';
+
+            switch( $option_page ){
+                case 'general':    /* no_break */
+                case 'writing':    /* no_break */
+                case 'reading':    /* no_break */
+                case 'discussion': /* no_break */
+                case 'media':      /* no_break */
+                case 'options':    /* no_break */
+                    $action = $option_page . '-options';
+                    break;
+                case 'permalink':
+                    $action = 'update-permalink';
+                    break;
+            }
+
+            // Check the nonce validity.
+            if(
+                !empty($action)
+                && isset($_REQUEST[$nonce])
+                && wp_verify_nonce($_REQUEST[$nonce], $action)
+            ){
+                return TRUE;
+            }
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Get the email address set by the administrator to receive the notifications
+     * sent by the plugin, if the email is missing the WordPress email address is
+     * chosen by default.
+     *
+     * @return string The administrator email address.
+     */
+    public static function get_site_email(){
+        $email = self::get_option('admin_email');
+
+        if( self::is_valid_email($email) ){
+            return $email;
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Get the clean version of the current domain.
+     *
+     * @return string The domain of the current site.
+     */
+    public static function get_domain(){
+        $http_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
+        $domain_name =  preg_replace( '/^www\./', '', $http_host );
+
+        return $domain_name;
+    }
+
+    /**
+     * Get a list of the post types ignored to receive email notifications when the
+     * "new site content" hook is triggered.
+     *
+     * @return array List of ignored posts-types to send notifications.
+     */
+    public static function get_ignored_events(){
+        $post_types = self::get_option(':ignored_events');
+        $post_types_arr = @unserialize($post_types);
+
+        if( !is_array($post_types_arr) ){
+            $post_types_arr = array();
+        }
+
+        return $post_types_arr;
+    }
+
+    /**
+     * Add a new post type to the list of ignored events to send notifications.
+     *
+     * @param  string  $event_name Unique post-type name.
+     * @return boolean             Whether the event was ignored or not.
+     */
+    public static function add_ignored_event( $event_name='' ){
+        if( function_exists('get_post_types') ){
+            $post_types = get_post_types();
+
+            // Check if the event is a registered post-type.
+            if( array_key_exists($event_name, $post_types) ){
+                $ignored_events = self::get_ignored_events();
+
+                // Check if the event is not ignored already.
+                if( !array_key_exists($event_name, $ignored_events) ){
+                    $ignored_events[$event_name] = time();
+                    $saved = self::update_option( ':ignored_events', serialize($ignored_events) );
+
+                    return $saved;
+                }
+            }
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Remove a post type from the list of ignored events to send notifications.
+     *
+     * @param  string  $event_name Unique post-type name.
+     * @return boolean             Whether the event was removed from the list or not.
+     */
+    public static function remove_ignored_event( $event_name='' ){
+        $ignored_events = self::get_ignored_events();
+
+        if( array_key_exists($event_name, $ignored_events) ){
+            unset( $ignored_events[$event_name] );
+            $saved = self::update_option( ':ignored_events', serialize($ignored_events) );
+
+            return $saved;
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Check whether an event is being ignored to send notifications or not.
+     *
+     * @param  string  $event_name Unique post-type name.
+     * @return boolean             Whether an event is being ignored or not.
+     */
+    public static function is_ignored_event( $event_name='' ){
+        $event_name = strtolower($event_name);
+        $ignored_events = self::get_ignored_events();
+
+        if( array_key_exists($event_name, $ignored_events) ){
+            return TRUE;
+        }
+
+        return FALSE;
+    }
+
 }
 
 /**
- * Check whether the IP address specified is a valid IPv4 format.
+ * System events, reports and actions.
  *
- * @param  string  $remote_addr The host IP address.
- * @return boolean              TRUE if the address specified is a valid IPv4 format, FALSE otherwise.
+ * An event is an action or occurrence detected by the program that may be
+ * handled by the program. Typically events are handled synchronously with the
+ * program flow, that is, the program has one or more dedicated places where
+ * events are handled, frequently an event loop. Typical sources of events
+ * include the user; another source is a hardware device such as a timer. Any
+ * program can trigger its own custom set of events as well, e.g. to communicate
+ * the completion of a task. A computer program that changes its behavior in
+ * response to events is said to be event-driven, often with the goal of being
+ * interactive.
+ *
+ * @see http://en.wikipedia.org/wiki/Event_(computing)
  */
-function sucuriscan_is_valid_ipv4( $remote_addr='' ){
-    if( preg_match('/^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/', $remote_addr, $match) ){
-        for( $i=0; $i<4; $i++ ){
-            if( $match[$i] > 255 ){ return FALSE; }
+class SucuriScanEvent extends SucuriScan {
+
+    /**
+     * Schedule the task to run the first filesystem scan.
+     *
+     * @return void
+     */
+    public static function schedule_task(){
+        $task_name = 'sucuriscan_scheduled_scan';
+
+        if( !wp_next_scheduled($task_name) ){
+            wp_schedule_event( time() + 10, 'twicedaily', $task_name );
         }
+
+        wp_schedule_single_event( time() + 300, $task_name );
+        SucuriScanInterface::info( 'The first filesystem scan was scheduled.' );
+    }
+
+    /**
+     * Checks last time we ran to avoid running twice (or too often).
+     *
+     * @param  integer $runtime    When the filesystem scan must be scheduled to run.
+     * @param  boolean $force_scan Whether the filesystem scan was forced by an administrator user or not.
+     * @return boolean             Either TRUE or FALSE representing the success or fail of the operation respectively.
+     */
+    private function verify_run( $runtime=0, $force_scan=FALSE ){
+        $option_name = ':runtime';
+        $last_run = SucuriScanOption::get_option($option_name);
+        $current_time = time();
+
+        if( $last_run && !$force_scan ){
+            $runtime_diff = $current_time - $runtime;
+
+            if( $last_run >= $runtime_diff ){
+                return FALSE;
+            }
+        }
+
+        SucuriScanOption::update_option( $option_name, $current_time );
 
         return TRUE;
     }
 
-    return FALSE;
+    /**
+     * Check whether the current WordPress version must be reported to the API
+     * service or not, this is to avoid duplicated information in the audit logs.
+     *
+     * @return boolean TRUE if the current WordPress version must be reported, FALSE otherwise.
+     */
+    private function report_site_version(){
+        $option_name = ':site_version';
+        $reported_version = SucuriScanOption::get_option($option_name);
+        $wp_version = self::site_version();
+
+        if( $reported_version != $wp_version ){
+            SucuriScanAPI::send_log( 'WordPress version: ' . $wp_version );
+            SucuriScanOption::update_option( $option_name, $wp_version );
+
+            return TRUE;
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Gather all the checksums (aka. file hashes) of this site, send them, and
+     * analyze them using the Sucuri Monitoring service, this will generate the
+     * audit logs for this site and be part of the integrity checks.
+     *
+     * @param  boolean $force_scan Whether the filesystem scan was forced by an administrator user or not.
+     * @return boolean             TRUE if the filesystem scan was successful, FALSE otherwise.
+     */
+    public static function filesystem_scan( $force_scan=FALSE ){
+        $minimum_runtime = SUCURISCAN_MINIMUM_RUNTIME;
+
+        if(
+            self::verify_run( $minimum_runtime, $force_scan )
+            && class_exists('SucuriScanFileInfo')
+            && SucuriScanAPI::get_plugin_key()
+        ){
+            self::report_site_version();
+
+            $sucuri_fileinfo = new SucuriScanFileInfo();
+            $scan_interface = SucuriScanOption::get_option(':scan_interface');
+            $signatures = $sucuri_fileinfo->get_directory_tree_md5(ABSPATH, $scan_interface);
+
+            if( $signatures ){
+                $hashes_sent = SucuriScanAPI::send_hashes( $signatures );
+
+                if( $hashes_sent ){
+                    SucuriScanInterface::info( 'Successful filesystem scan' );
+                    return TRUE;
+                } else {
+                    SucuriScanInterface::error( 'The file hashes could not be stored.' );
+                }
+            } else {
+                SucuriScanInterface::error( 'The file hashes could not be retrieved, the filesystem scan failed.' );
+            }
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Generates an audit event log (to be sent later).
+     *
+     * @param  integer $severity Importance of the event that will be reported, values from one to five.
+     * @param  string  $location In which part of the system was the event triggered.
+     * @param  string  $message  The explanation of the event.
+     * @return boolean           TRUE if the event was logged in the monitoring service, FALSE otherwise.
+     */
+    public static function report_event( $severity=0, $location='', $message='' ){
+        $user = wp_get_current_user();
+        $username = FALSE;
+        $current_time = date( 'Y-m-d H:i:s' );
+        $remote_ip = self::get_remote_addr();
+
+        // Fixing severity value.
+        $severity = (int) $severity;
+        if( $severity > 0 ){ $severity = 1; }
+        elseif( $severity > 5 ){ $severity = 5; }
+
+        // Identify current user in session.
+        if(
+            $user instanceof WP_User
+            && isset($user->user_login)
+            && !empty($user->user_login)
+        ){
+            if( $user->user_login != $user->display_name ){
+                $username = sprintf( ' %s (%s),', $user->display_name, $user->user_login );
+            } else {
+                $username = sprintf( ' %s,', $user->user_login );
+            }
+        }
+
+        // Convert the severity number into a readable string.
+        switch( $severity ){
+            case 0:  $severity_name = 'Debug';    break;
+            case 1:  $severity_name = 'Notice';   break;
+            case 2:  $severity_name = 'Info';     break;
+            case 3:  $severity_name = 'Warning';  break;
+            case 4:  $severity_name = 'Error';    break;
+            case 5:  $severity_name = 'Critical'; break;
+            default: $severity_name = 'Info';     break;
+        }
+
+        $message = str_replace( array("\n", "\r"), array('', ''), $message );
+        $event_message = sprintf(
+            '%s:%s %s; %s',
+            $severity_name,
+            $username,
+            $remote_ip,
+            $message
+        );
+
+        return SucuriScanAPI::send_log($event_message);
+    }
+
+    /**
+     * Send a notification to the administrator of the specified events, only if
+     * the administrator accepted to receive alerts for this type of events.
+     *
+     * @param  string $event   The name of the event that was triggered.
+     * @param  string $content Body of the email that will be sent to the administrator.
+     * @return void
+     */
+    public static function notify_event( $event='', $content='' ){
+        $notify = SucuriScanOption::get_option(':notify_' . $event);
+        $email = SucuriScanOption::get_option(':notify_to');
+        $email_params = array();
+
+        if( $notify == 'enabled' ){
+            if( $event == 'post_publication' ){
+                $event = 'post_update';
+            }
+
+            elseif( $event == 'failed_login' ){
+                $content .= '<br><br><em>Explanation: Someone failed to login to your site. If you
+                    are getting too many of these messages, it is likely your site is under a brute
+                    force attack. You can disable the notifications for failed logins from
+                    <a href="' . SucuriScanTemplate::get_url('settings') . '" target="_blank">here</a>.
+                    More details at <a href="http://kb.sucuri.net/definitions/attacks/brute-force/password-guessing"
+                    target="_blank">Password Guessing Brute Force Attacks</a>.</em>';
+            }
+
+            // Send a notification even if the limit of emails per hour was reached.
+            elseif( $event == 'bruteforce_attack' ){
+                $email_params['Force'] = TRUE;
+            }
+
+            $title = sprintf( 'Sucuri notification (%s)', str_replace('_', chr(32), $event) );
+            $mail_sent = SucuriScanMail::send_mail( $email, $title, $content, $email_params );
+
+            return $mail_sent;
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Generate and set a new password for a specific user not in session.
+     *
+     * @param  integer $user_id The user identifier that will be changed, this must be different than the user in session.
+     * @return boolean          Either TRUE or FALSE in case of success or error respectively.
+     */
+    public static function set_new_password( $user_id=0 ){
+        $user_id = intval($user_id);
+
+        if( $user_id > 0 && function_exists('wp_generate_password') ){
+            $user = get_userdata($user_id);
+
+            if( $user instanceof WP_User ){
+                $new_password = wp_generate_password(15, TRUE, FALSE);
+
+                $message .= 'The password for your user account <strong>"'. $user->display_name .'"</strong> '
+                    . 'in the website specified above was changed, this is the new password generated automatically '
+                    . 'by the system, please update as soon as possible.<br><div style="display:inline-block;'
+                    . 'background:#ddd;font-family:monaco,monospace,courier;font-size:30px;margin:0;padding:15px;'
+                    . 'border:1px solid #999">'. $new_password .'</div>';
+
+                SucuriScanMail::send_mail( $user->user_email, 'Password changed', $message );
+
+                wp_set_password($new_password, $user_id);
+
+                return TRUE;
+            }
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Modify the WordPress configuration file and change the keys that were defined
+     * by a new random-generated list of keys retrieved from the official WordPress
+     * API. The result of the operation will be either FALSE in case of error, or an
+     * array containing multiple indexes explaining the modification, among them you
+     * will find the old and new keys.
+     *
+     * @return false|array Either FALSE in case of error, or an array with the old and new keys.
+     */
+    public static function set_new_config_keys(){
+        $new_wpconfig = '';
+        $config_path = self::get_wpconfig_path();
+
+        if( $config_path ){
+            $pattern = self::secret_key_pattern();
+            $define_tpl = "define('%s',%s'%s');";
+            $config_lines = @file($config_path);
+            $new_keys = SucuriScanAPI::get_new_secret_keys();
+            $old_keys = array();
+            $old_keys_string = '';
+            $new_keys_string = '';
+
+            foreach( (array) $config_lines as $config_line ){
+                $config_line = str_replace("\n", '', $config_line);
+
+                if( preg_match($pattern, $config_line, $match) ){
+                    $key_name = $match[1];
+
+                    if( array_key_exists($key_name, $new_keys) ){
+                        $white_spaces = $match[2];
+                        $old_keys[$key_name] = $match[3];
+                        $config_line = sprintf( $define_tpl, $key_name, $white_spaces, $new_keys[$key_name] );
+                        $old_keys_string .= sprintf( $define_tpl, $key_name, $white_spaces, $old_keys[$key_name] ) . "\n";
+                        $new_keys_string .= $config_line . "\n";
+                    }
+                }
+
+                $new_wpconfig .= $config_line . "\n";
+            }
+
+            $response = array(
+                'updated' => is_writable($config_path),
+                'old_keys' => $old_keys,
+                'old_keys_string' => $old_keys_string,
+                'new_keys' => $new_keys,
+                'new_keys_string' => $new_keys_string,
+                'new_wpconfig' => $new_wpconfig,
+            );
+
+            if( $response['updated'] ){
+                file_put_contents($config_path, $new_wpconfig, LOCK_EX);
+            }
+
+            return $response;
+        }
+
+        return FALSE;
+    }
+
 }
 
-if( !function_exists('sucuriscan_init') ){
+/**
+ * Function call interceptors.
+ *
+ * The term hooking covers a range of techniques used to alter or augment the
+ * behavior of an operating system, of applications, or of other software
+ * components by intercepting function calls or messages or events passed
+ * between software components. Code that handles such intercepted function
+ * calls, events or messages is called a "hook".
+ *
+ * Hooking is used for many purposes, including debugging and extending
+ * functionality. Examples might include intercepting keyboard or mouse event
+ * messages before they reach an application, or intercepting operating system
+ * calls in order to monitor behavior or modify the function of an application
+ * or other component; it is also widely used in benchmarking programs.
+ */
+class SucuriScanHook extends SucuriScanEvent {
+
+    /**
+     * Send to Sucuri servers an alert advising that an attachment was added to a post.
+     *
+     * @param  integer $id The post identifier.
+     * @return void
+     */
+    public static function hook_add_attachment( $id=0 ){
+        $data = ( is_int($id) ? get_post($id) : FALSE );
+        $title = ( $data ? $data->post_title : 'Unknown' );
+
+        $message = 'Media file added #'.$id.' ('.$title.')';
+        self::report_event( 1, 'core', $message );
+        self::notify_event( 'post_publication', $message );
+    }
+
+    /**
+     * Send an alert advising that a new link was added to the bookmarks.
+     *
+     * @param  integer $id Identifier of the new link created;
+     * @return void
+     */
+    public static function hook_add_link( $id=0 ){
+        $data = ( is_int($id) ? get_bookmark($id) : FALSE );
+
+        if( $data ){
+            $title = $data->link_name;
+            $url = $data->link_url;
+        } else {
+            $title = 'Unknown';
+            $url = 'undefined/url';
+        }
+
+        $message = 'New link added #'.$id.' ('.$title.': '.$url.')';
+        self::report_event( 2, 'core', $message );
+        self::notify_event( 'post_publication', $message );
+    }
+
+    /**
+     * Send an alert advising that a category was created.
+     *
+     * @param  integer $id The identifier of the category created.
+     * @return void
+     */
+    public static function hook_create_category( $id=0 ){
+        $title = ( is_int($id) ? get_cat_name($id) : 'Unknown' );
+
+        $message = 'Category created #'.$id.' ('.$title.')';
+        self::report_event( 1, 'core', $message );
+        self::notify_event( 'post_publication', $message );
+    }
+
+    /**
+     * Send an alert advising that a post was deleted.
+     *
+     * @param  integer $id The identifier of the post deleted.
+     * @return void
+     */
+    public static function hook_delete_post( $id=0 ){
+        self::report_event( 3, 'core', 'Post deleted #'.$id );
+    }
+
+    /**
+     * Send an alert advising that a user account was deleted.
+     *
+     * @param  integer $id The identifier of the user account deleted.
+     * @return void
+     */
+    public static function hook_delete_user( $id=0 ){
+        self::report_event( 3, 'core', 'User account deleted #'.$id );
+    }
+
+    /**
+     * Send an alert advising that an attempt to reset the password
+     * of an user account was executed.
+     *
+     * @return void
+     */
+    public static function hook_login_form_resetpass(){
+        // Detecting WordPress 2.8.3 vulnerability - $key is array.
+        if( isset($_GET['key']) && is_array($_GET['key']) ){
+            self::report_event( 3, 'core', 'Attempt to reset password by attacking WP/2.8.3 bug' );
+        }
+    }
+
+    /**
+     * Send an alert advising that the state of a post was changed
+     * from private to published. This will only applies for posts not pages.
+     *
+     * @param  integer $id The identifier of the post changed.
+     * @return void
+     */
+    public static function hook_private_to_published( $id=0 ){
+        $data = ( is_int($id) ? get_post($id) : FALSE );
+
+        if( $data ){
+            $title = $data->post_title;
+            $p_type = ucwords($data->post_type);
+        } else {
+            $title = 'Unknown';
+            $p_type = 'Publication';
+        }
+
+        // Check whether the post-type is being ignored to send notifications.
+        if( !SucuriScanOption::is_ignored_event($p_type) ){
+            $message = $p_type.' changed from private to published #'.$id.' ('.$title.')';
+            self::report_event( 2, 'core', $message );
+            self::notify_event( 'post_publication', $message );
+        }
+    }
+
+    /**
+     * Send an alert advising that a post was published.
+     *
+     * @param  integer $id The identifier of the post or page published.
+     * @return void
+     */
+    public static function hook_publish( $id=0 ){
+        $data = ( is_int($id) ? get_post($id) : FALSE );
+
+        if( $data ){
+            $title = $data->post_title;
+            $p_type = ucwords($data->post_type);
+            $action = ( $data->post_date == $data->post_modified ? 'created' : 'updated' );
+        } else {
+            $title = 'Unknown';
+            $p_type = 'Publication';
+            $action = 'published';
+        }
+
+        $message = $p_type.' was '.$action.' #'.$id.' ('.$title.')';
+        self::report_event( 2, 'core', $message );
+        self::notify_event( 'post_publication', $message );
+    }
+
+    /**
+     * Alias function for hook_publish()
+     *
+     * @param  integer $id The identifier of the post or page published.
+     * @return void
+     */
+    public static function hook_publish_page( $id=0 ){
+        self::hook_publish($id);
+    }
+
+    /**
+     * Alias function for hook_publish()
+     *
+     * @param  integer $id The identifier of the post or page published.
+     * @return void
+     */
+    public static function hook_publish_post( $id=0 ){
+        self::hook_publish($id);
+    }
+
+    /**
+     * Alias function for hook_publish()
+     *
+     * @param  integer $id The identifier of the post or page published.
+     * @return void
+     */
+    public static function hook_publish_phone( $id=0 ){
+        self::hook_publish($id);
+    }
+
+    /**
+     * Alias function for hook_publish()
+     *
+     * @param  integer $id The identifier of the post or page published.
+     * @return void
+     */
+    public static function hook_xmlrpc_publish_post( $id=0 ){
+        self::hook_publish($id);
+    }
+
+    /**
+     * Send an alert advising that an attempt to retrieve the password
+     * of an user account was tried.
+     *
+     * @param  string $title The name of the user account involved in the trasaction.
+     * @return void
+     */
+    public static function hook_retrieve_password( $title='' ){
+        if( empty($title) ){ $title = 'Unknown'; }
+
+        self::report_event( 3, 'core', 'Password retrieval attempt for user: '.$title );
+    }
+
+    /**
+     * Send an alert advising that the theme of the site was changed.
+     *
+     * @param  string $title The name of the new theme selected to used through out the site.
+     * @return void
+     */
+    public static function hook_switch_theme( $title='' ){
+        if( empty($title) ){ $title = 'Unknown'; }
+
+        $message = 'Theme switched to: '.$title;
+        self::report_event( 3, 'core', $message );
+        self::notify_event( 'theme_switched', $message );
+    }
+
+    /**
+     * Send an alert advising that a new user account was created.
+     *
+     * @param  integer $id The identifier of the new user account created.
+     * @return void
+     */
+    public static function hook_user_register( $id=0 ){
+        $data = ( is_int($id) ? get_userdata($id) : FALSE );
+        $title = ( $data ? $data->display_name : 'Unknown' );
+
+        $message = 'New user account registered #'.$id.' ('.$title.')';
+        self::report_event( 3, 'core', $message );
+        self::notify_event( 'user_registration', $message );
+    }
+
+    /**
+     * Send an alert advising that an attempt to login into the
+     * administration panel was successful.
+     *
+     * @param  string $title The name of the user account involved in the transaction.
+     * @return void
+     */
+    public static function hook_wp_login( $title='' ){
+        if( empty($title) ){ $title = 'Unknown'; }
+
+        $message = 'User logged in: '.$title;
+        self::report_event( 2, 'core', $message );
+        self::notify_event( 'success_login', $message );
+    }
+
+    /**
+     * Send an alert advising that an attempt to login into the
+     * administration panel failed.
+     *
+     * @param  string $title The name of the user account involved in the transaction.
+     * @return void
+     */
+    public static function hook_wp_login_failed( $title='' ){
+        if( empty($title) ){ $title = 'Unknown'; }
+
+        $message = 'User authentication failed: '.$title;
+        self::report_event( 2, 'core', $message );
+        self::notify_event( 'failed_login', $message );
+
+        // Log the failed login in the internal datastore for future reports.
+        $logged = sucuriscan_log_failed_login($title);
+
+        // Check if the quantity of failed logins will be considered as a brute-force attack.
+        if( $logged ){
+            $failed_logins = sucuriscan_get_failed_logins();
+
+            if( $failed_logins ){
+                $max_time = 3600;
+                $maximum_failed_logins = SucuriScanOption::get_option('sucuriscan_maximum_failed_logins');
+
+                /**
+                 * If the time passed is within the hour, and the quantity of failed logins
+                 * registered in the datastore file is bigger than the maximum quantity of
+                 * failed logins allowed per hour (value configured by the administrator in the
+                 * settings page), then send an email notification reporting the event and
+                 * specifying that it may be a brute-force attack against the login page.
+                 */
+                if(
+                    $failed_logins['diff_time'] <= $max_time
+                    && $failed_logins['count'] >= $maximum_failed_logins
+                ){
+                    sucuriscan_report_failed_logins($failed_logins);
+                }
+
+                /**
+                 * If there time passed is superior to the hour, then reset the content of the
+                 * datastore file containing the failed logins so far, any entry in that file
+                 * will not be considered as part of a brute-force attack (if it exists) because
+                 * the time passed between the first and last login attempt is big enough to
+                 * mitigate the attack. We will consider the current failed login event as the
+                 * first entry of that file in case of future attempts during the next sixty
+                 * minutes.
+                 */
+                elseif( $failed_logins['diff_time'] > $max_time ){
+                    sucuriscan_reset_failed_logins();
+                    sucuriscan_log_failed_login($title);
+                }
+            }
+        }
+    }
+
+    /**
+     * Send a notifications to the administrator of some specific events that are
+     * not triggered through an hooked action, but through a simple request in the
+     * admin interface.
+     *
+     * @return integer Either one or zero representing the success or fail of the operation.
+     */
+    public static function hook_undefined_actions(){
+
+        // Plugin activation and/or deactivation.
+        if(
+            current_user_can('activate_plugins')
+            && (
+                SucuriScanRequest::get('action', '(activate|deactivate)') ||
+                SucuriScanRequest::post('action', '(activate|deactivate)-selected')
+            )
+        ){
+            $plugin_list = array();
+
+            if(
+                SucuriScanRequest::get('plugin', '.+')
+                && strpos($_SERVER['REQUEST_URI'], 'plugins.php') !== FALSE
+            ){
+                $action_d = $_GET['action'] . 'd';
+                $plugin_list[] = $_GET['plugin'];
+            }
+
+            elseif(
+                isset($_POST['checked'])
+                && is_array($_POST['checked'])
+                && !empty($_POST['checked'])
+            ){
+                $action_d = str_replace('-selected', 'd', $_POST['action']);
+                $plugin_list = $_POST['checked'];
+            }
+
+            foreach( $plugin_list as $plugin ){
+                $plugin_info = get_plugin_data( WP_PLUGIN_DIR . '/' . $plugin );
+
+                if(
+                    !empty($plugin_info['Name'])
+                    && !empty($plugin_info['Version'])
+                ){
+                    $message = sprintf(
+                        'Plugin %s: %s (v%s; %s)',
+                        $action_d,
+                        self::escape($plugin_info['Name']),
+                        self::escape($plugin_info['Version']),
+                        self::escape($plugin)
+                    );
+
+                    self::report_event( 3, 'core', $message );
+                    self::notify_event( 'plugin_' . $action_d, $message );
+                }
+            }
+        }
+
+        // Plugin update request.
+        elseif(
+            current_user_can('update_plugins')
+            && (
+                SucuriScanRequest::get('action', '(upgrade-plugin|do-plugin-upgrade)')
+                || SucuriScanRequest::post('action', 'update-selected')
+            )
+        ){
+            $plugin_list = array();
+
+            if(
+                SucuriScanRequest::get('plugin', '.+')
+                && strpos($_SERVER['REQUEST_URI'], 'wp-admin/update.php') !== FALSE
+            ){
+                $plugin_list[] = SucuriScanRequest::get('plugin', '.+');
+            }
+
+            elseif(
+                isset($_POST['checked'])
+                && is_array($_POST['checked'])
+                && !empty($_POST['checked'])
+            ){
+                $plugin_list = $_POST['checked'];
+            }
+
+            foreach( $plugin_list as $plugin ){
+                $plugin_info = get_plugin_data( WP_PLUGIN_DIR . '/' . $plugin );
+
+                if(
+                    !empty($plugin_info['Name'])
+                    && !empty($plugin_info['Version'])
+                ){
+                    $message = sprintf(
+                        'Plugin request to be updated: %s (v%s; %s)',
+                        self::escape($plugin_info['Name']),
+                        self::escape($plugin_info['Version']),
+                        self::escape($plugin)
+                    );
+
+                    self::report_event( 3, 'core', $message );
+                    self::notify_event( 'plugin_updated', $message );
+                }
+            }
+        }
+
+        // Plugin installation request.
+        elseif(
+            current_user_can('install_plugins')
+            && SucuriScanRequest::get('action', '(install|upload)-plugin')
+        ){
+            if( isset($_FILES['pluginzip']) ){
+                $plugin = self::escape($_FILES['pluginzip']['name']);
+            } else {
+                $plugin = SucuriScanRequest::get('plugin', '.+');
+
+                if( !$plugin ){ $plugin = 'Unknown'; }
+            }
+
+            $message = 'Plugin request to be installed: ' . self::escape($plugin);
+            self::report_event( 3, 'core', $message );
+            self::notify_event( 'plugin_installed', $message );
+        }
+
+        // Plugin deletion request.
+        elseif(
+            current_user_can('delete_plugins')
+            && SucuriScanRequest::post('action', 'delete-selected')
+            && SucuriScanRequest::post('verify-delete', '1')
+        ){
+            $plugin_list = (array) $_POST['checked'];
+
+            foreach( $plugin_list as $plugin ){
+                $plugin_info = get_plugin_data( WP_PLUGIN_DIR . '/' . $plugin );
+
+                if(
+                    !empty($plugin_info['Name'])
+                    && !empty($plugin_info['Version'])
+                ){
+                    $message = sprintf(
+                        'Plugin request to be deleted: %s (v%s; %s)',
+                        self::escape($plugin_info['Name']),
+                        self::escape($plugin_info['Version']),
+                        self::escape($plugin)
+                    );
+
+                    self::report_event( 3, 'core', $message );
+                    self::notify_event( 'plugin_deleted', $message );
+                }
+            }
+        }
+
+        // Plugin editor request.
+        elseif(
+            current_user_can('edit_plugins')
+            && SucuriScanRequest::post('action', 'update')
+            && SucuriScanRequest::post('plugin', '.+')
+            && SucuriScanRequest::post('file', '.+')
+            && strpos($_SERVER['REQUEST_URI'], 'plugin-editor.php') !== FALSE
+        ){
+            $message = 'Plugin editor used on: ' . SucuriScanRequest::post('file');
+            self::report_event( 3, 'core', $message );
+            self::notify_event( 'theme_editor', $message );
+        }
+
+        // Theme editor request.
+        elseif(
+            current_user_can('edit_themes')
+            && SucuriScanRequest::post('action', 'update')
+            && SucuriScanRequest::post('theme', '.+')
+            && SucuriScanRequest::post('file', '.+')
+            && strpos($_SERVER['REQUEST_URI'], 'theme-editor.php') !== FALSE
+        ){
+            $message = 'Theme editor used on: ' . SucuriScanRequest::post('theme') . '/' . SucuriScanRequest::post('file');
+            self::report_event( 3, 'core', $message );
+            self::notify_event( 'theme_editor', $message );
+        }
+
+        // Theme activation and/or deactivation (same hook for switch_theme).
+        // Theme installation request (hook not available).
+        // Theme deletion request (hook not available).
+
+        // Theme update request.
+        elseif(
+            current_user_can('update_themes')
+            && SucuriScanRequest::get('action', '(upgrade-theme|do-theme-upgrade)')
+            && SucuriScanRequest::post('checked')
+        ){
+            foreach( (array) $_POST['checked'] as $theme ){
+                $theme_info = wp_get_theme($theme);
+                $theme_name = ucwords($theme);
+                $theme_version = '0.0';
+
+                if( $theme_info->exists() ){
+                    $theme_name = $theme_info->get('Name');
+                    $theme_version = $theme_info->get('Version');
+                }
+
+                $message = sprintf(
+                    'Theme updated: %s (v%s; %s)',
+                    self::escape($theme_name),
+                    self::escape($theme_version),
+                    self::escape($theme)
+                );
+
+                self::report_event( 3, 'core', $message );
+                self::notify_event( 'theme_updated', $message );
+            }
+        }
+
+        // WordPress update request.
+        elseif(
+            current_user_can('update_core')
+            && SucuriScanRequest::get('action', '(do-core-upgrade|do-core-reinstall)')
+            && SucuriScanRequest::post('upgrade')
+        ){
+            $message = 'WordPress updated to version: ' . SucuriScanRequest::post('version');
+            self::report_event( 3, 'core', $message );
+            self::notify_event( 'website_updated', $message );
+        }
+
+        // Widget addition or deletion.
+        elseif(
+            current_user_can('edit_theme_options')
+            && SucuriScanRequest::post('action', 'save-widget')
+            && SucuriScanRequest::post('id_base') !== FALSE
+            && SucuriScanRequest::post('sidebar') !== FALSE
+        ){
+            if( SucuriScanRequest::post('delete_widget', '1') ){
+                $action_d = 'deleted';
+                $action_text = 'deleted from';
+            } else {
+                $action_d = 'added';
+                $action_text = 'added to';
+            }
+
+            $message = sprintf(
+                'Widget %s (%s) %s %s (#%d; size %dx%d)',
+                SucuriScanRequest::post('id_base'),
+                SucuriScanRequest::post('widget-id'),
+                $action_text,
+                SucuriScanRequest::post('sidebar'),
+                SucuriScanRequest::post('widget_number'),
+                SucuriScanRequest::post('widget-width'),
+                SucuriScanRequest::post('widget-height')
+            );
+
+            self::report_event( 3, 'core', $message );
+            self::notify_event( 'widget_' . $action_d, $message );
+        }
+
+        // Detect any Wordpress settings modification.
+        elseif(
+            current_user_can('manage_options')
+            && SucuriScanOption::check_options_nonce()
+        ){
+            // Get the settings available in the database and compare them with the submission.
+            $all_options = SucuriScanOption::get_site_options();
+            $options_changed = SucuriScanOption::what_options_were_changed($_POST);
+            $options_changed_str = '';
+            $options_changed_count = 0;
+
+            // Generate the list of options changed.
+            foreach( $options_changed['original'] as $option_name => $option_value ){
+                $options_changed_count += 1;
+                $options_changed_str .= sprintf(
+                    "The value of the option <b>%s</b> was changed from <b>'%s'</b> to <b>'%s'</b>.<br>\n",
+                    self::escape($option_name),
+                    self::escape($option_value),
+                    self::escape($options_changed['changed'][$option_name])
+                );
+            }
+
+            // Get the option group (name of the page where the request was originated).
+            $option_page = isset($_POST['option_page']) ? $_POST['option_page'] : 'options';
+            $page_referer = FALSE;
+
+            // Check which of these option groups where modified.
+            switch( $option_page ){
+                case 'options':
+                    $page_referer = 'Global';
+                    break;
+                case 'general':    /* no_break */
+                case 'writing':    /* no_break */
+                case 'reading':    /* no_break */
+                case 'discussion': /* no_break */
+                case 'media':      /* no_break */
+                case 'permalink':
+                    $page_referer = ucwords($option_page);
+                    break;
+                default:
+                    $page_referer = 'Common';
+                    break;
+            }
+
+            if( $page_referer && $options_changed_count > 0 ){
+                $message = $page_referer.' settings changed';
+                self::report_event( 3, 'core', $message );
+                self::notify_event( 'settings_updated', $message . "<br>\n" . $options_changed_str );
+            }
+        }
+
+    }
+
+}
+
+/**
+ * Plugin API library.
+ *
+ * When used in the context of web development, an API is typically defined as a
+ * set of Hypertext Transfer Protocol (HTTP) request messages, along with a
+ * definition of the structure of response messages, which is usually in an
+ * Extensible Markup Language (XML) or JavaScript Object Notation (JSON) format.
+ * While "web API" historically has been virtually synonymous for web service,
+ * the recent trend (so-called Web 2.0) has been moving away from Simple Object
+ * Access Protocol (SOAP) based web services and service-oriented architecture
+ * (SOA) towards more direct representational state transfer (REST) style web
+ * resources and resource-oriented architecture (ROA). Part of this trend is
+ * related to the Semantic Web movement toward Resource Description Framework
+ * (RDF), a concept to promote web-based ontology engineering technologies. Web
+ * APIs allow the combination of multiple APIs into new applications known as
+ * mashups.
+ *
+ * @see http://en.wikipedia.org/wiki/Application_programming_interface#Web_APIs
+ */
+class SucuriScanAPI extends SucuriScanOption {
+
+    /**
+     * Check whether the SSL certificates will be verified while executing a HTTP
+     * request or not. This is only for customization of the administrator, in fact
+     * not verifying the SSL certificates can lead to a "Man in the Middle" attack.
+     *
+     * @return boolean Whether the SSL certs will be verified while sending a request.
+     */
+    public static function verify_ssl_cert(){
+        return ( self::get_option(':verify_ssl_cert') === 'true' );
+    }
+
+    /**
+     * Generate an user-agent for the HTTP requests.
+     *
+     * @return string An user-agent for the HTTP requests.
+     */
+    private function user_agent(){
+        $user_agent = sprintf(
+            'WordPress/%s; %s',
+            self::site_version(),
+            self::get_domain()
+        );
+
+        return $user_agent;
+    }
+
+    /**
+     * Retrieves a URL using a changeable HTTP method, returning results in an
+     * array. Results include HTTP headers and content.
+     *
+     * @see http://codex.wordpress.org/Function_Reference/wp_remote_post
+     * @see http://codex.wordpress.org/Function_Reference/wp_remote_get
+     *
+     * @param  string $url    The target URL where the request will be sent.
+     * @param  string $method HTTP method that will be used to send the request.
+     * @param  array  $params Parameters for the request defined in an associative array of key-value.
+     * @param  array  $args   Request arguments like the timeout, redirections, headers, cookies, etc.
+     * @return array          Array of results including HTTP headers or WP_Error if the request failed.
+     */
+    private function api_call( $url='', $method='GET', $params=array(), $args=array() ){
+        if( !$url ){ return FALSE; }
+
+        $req_args = array(
+            'method' => $method,
+            'timeout' => 90,
+            'redirection' => 2,
+            'httpversion' => '1.0',
+            'user-agent' => self::user_agent(),
+            'blocking' => TRUE,
+            'headers' => array(),
+            'cookies' => array(),
+            'compress' => FALSE,
+            'decompress' => FALSE,
+            'sslverify' => self::verify_ssl_cert(),
+        );
+
+        // Update the request arguments with the values passed tot he function.
+        foreach( $args as $arg_name => $arg_value ){
+            if( array_key_exists($arg_name, $req_args) ){
+                $req_args[$arg_name] = $arg_value;
+            }
+        }
+
+        if( $method == 'GET' ){
+            if( !empty($params) ){
+                $url = sprintf( '%s?%s', $url, http_build_query($params) );
+            }
+            $response = wp_remote_get( $url, $req_args );
+        }
+
+        elseif( $method == 'POST' ){
+            $req_args['body'] = $params;
+            $response = wp_remote_post( $url, $req_args );
+        }
+
+        if( isset($response) ){
+            if( is_wp_error($response) ){
+                SucuriScanInterface::error(sprintf(
+                    'Something went wrong with an API call (%s action): %s',
+                    ( isset($params['a']) ? $params['a'] : 'unknown' ),
+                    $response->get_error_message()
+                ));
+            } else {
+                $response['body_raw'] = $response['body'];
+
+                // Check if the response data is JSON-encoded, then decode it.
+                if(
+                    isset($response['headers']['content-type'])
+                    && $response['headers']['content-type'] == 'application/json'
+                ){
+                    $response['body'] = @json_decode($response['body_raw']);
+                }
+
+                // Check if the response data is serialized, then unserialize it.
+                elseif( preg_match('/^(a|O):[0-9]+:.+/', $response['body']) ){
+                    $response['body'] = @unserialize($response['body']);
+                }
+
+                return $response;
+            }
+        } else {
+            SucuriScanInterface::error( 'HTTP method not allowed: ' . $method );
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Store the API key locally.
+     *
+     * @param  string  $api_key  An unique string of characters to identify this installation.
+     * @param  boolean $validate Whether the format of the key should be validated before store it.
+     * @return boolean           Either TRUE or FALSE if the key was saved successfully or not respectively.
+     */
+    public static function set_plugin_key( $api_key='', $validate=FALSE ){
+        if( $validate ){
+            if( !preg_match('/^([a-z0-9]{32})$/', $api_key) ){
+                SucuriScanInterface::error( 'Invalid API key format' );
+                return FALSE;
+            }
+        }
+
+        if( !empty($api_key) ){
+            SucuriScanEvent::notify_event( 'plugin_change', 'API key updated successfully: ' . $api_key );
+        }
+
+        return self::update_option( ':api_key', $api_key );
+    }
+
+    /**
+     * Retrieve the API key from the local storage.
+     *
+     * @return string|boolean The API key or FALSE if it does not exists.
+     */
+    public static function get_plugin_key(){
+        $api_key = self::get_option(':api_key');
+
+        if( $api_key && strlen($api_key) > 10 ){
+            return $api_key;
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Check and return the API key for the plugin.
+     *
+     * In this plugin the key is a pair of two strings concatenated by a single
+     * slash, the first part of it is in fact the key and the second part is the
+     * unique identifier of the site in the remote server.
+     *
+     * @return array|boolean FALSE if the key is invalid or not present, an array otherwise.
+     */
+    public static function get_cloudproxy_key(){
+        $option_name = ':cloudproxy_apikey';
+        $api_key = self::get_option($option_name);
+
+        // Check if the cloudproxy-waf plugin was previously installed.
+        if( !$api_key ){
+            $api_key = self::get_option('sucuriwaf_apikey');
+
+            if( $api_key ){
+                self::update_option( $option_name, $api_key );
+                self::delete_option('sucuriwaf_apikey');
+            }
+        }
+
+        // Check the validity of the API key.
+        $match = self::is_valid_cloudproxy_key( $api_key, TRUE );
+
+        if( $match ){
+            return array(
+                'string' => $match[1].'/'.$match[2],
+                'k' => $match[1],
+                's' => $match[2]
+            );
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Check whether the CloudProxy API key is valid or not.
+     *
+     * @param  string  $api_key      The CloudProxy API key.
+     * @param  boolean $return_match Whether the parts of the API key must be returned or not.
+     * @return boolean               TRUE if the API key specified is valid, FALSE otherwise.
+     */
+    public static function is_valid_cloudproxy_key( $api_key='', $return_match=FALSE ){
+        $pattern = '/^([a-z0-9]{32})\/([a-z0-9]{32})$/';
+
+        if( $api_key && preg_match($pattern, $api_key, $match) ){
+            if( $return_match ){ return $match; }
+
+            return TRUE;
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Call an action from the remote API interface of our WordPress service.
+     *
+     * @param  string  $method       HTTP method that will be used to send the request.
+     * @param  array   $params       Parameters for the request defined in an associative array of key-value.
+     * @param  boolean $send_api_key Whether the API key should be added to the request parameters or not.
+     * @param  array   $args         Request arguments like the timeout, redirections, headers, cookies, etc.
+     * @return array                 Array of results including HTTP headers or WP_Error if the request failed.
+     */
+    public static function api_call_wordpress( $method='GET', $params=array(), $send_api_key=TRUE, $args=array() ){
+        $url = SUCURISCAN_API;
+        $params[SUCURISCAN_API_VERSION] = 1;
+        $params['p'] = 'wordpress';
+
+        if( $send_api_key ){
+            $api_key = self::get_plugin_key();
+
+            if( !$api_key ){ return FALSE; }
+
+            $params['k'] = $api_key;
+        }
+
+        $response = self::api_call( $url, $method, $params, $args );
+
+        return $response;
+    }
+
+    /**
+     * Call an action from the remote API interface of our CloudProxy service.
+     *
+     * @param  string $method HTTP method that will be used to send the request.
+     * @param  array  $params Parameters for the request defined in an associative array of key-value.
+     * @return array          Array of results including HTTP headers or WP_Error if the request failed.
+     */
+    public static function api_call_cloudproxy( $method='GET', $params=array() ){
+        $send_request = FALSE;
+
+        if( isset($params['k']) && isset($params['s']) ){
+            $send_request = TRUE;
+        } else {
+            $api_key = self::get_cloudproxy_key();
+
+            if( $api_key ){
+                $send_request = TRUE;
+                $params['k'] = $api_key['k'];
+                $params['s'] = $api_key['s'];
+            }
+        }
+
+        if( $send_request ){
+            $url = SUCURISCAN_CLOUDPROXY_API;
+            $params[SUCURISCAN_CLOUDPROXY_API_VERSION] = 1;
+
+            $response = self::api_call( $url, $method, $params );
+
+            return $response;
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Determine whether an API response was successful or not checking the expected
+     * generic variables and types, in case of an error a notification will appears
+     * in the administrator panel explaining the result of the operation.
+     *
+     * @param  array   $response Array of results including HTTP headers or WP_Error if the request failed.
+     * @return boolean           Either TRUE or FALSE in case of success or failure of the API response (respectively).
+     */
+    private function handle_response( $response=array() ){
+        if( $response ){
+            if( $response['body'] instanceof stdClass ){
+                if( isset($response['body']->status) ){
+                    if( $response['body']->status == 1 ){
+                        return TRUE;
+                    } else {
+                        SucuriScanInterface::error( ucwords($response['body']->action) . ': ' . $response['body']->messages[0] );
+                    }
+                } else {
+                    SucuriScanInterface::error( 'Could not determine the status of an API call.' );
+                }
+            } else {
+                SucuriScanInterface::error( 'Unknown API content-type, it was not a JSON-encoded response.' );
+            }
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Send a request to the API to register this site.
+     *
+     * @return boolean TRUE if the API key was generated, FALSE otherwise.
+     */
+    public static function register_site(){
+        $response = self::api_call_wordpress( 'POST', array(
+            'e' => self::get_site_email(),
+            's' => self::get_domain(),
+            'a' => 'register_site',
+        ), FALSE );
+
+        if( self::handle_response($response) ){
+            self::set_plugin_key( $response['body']->output->api_key );
+            SucuriScanEvent::schedule_task();
+            SucuriScanEvent::notify_event( 'plugin_change', 'Site registered and API key generated' );
+            SucuriScanInterface::info( 'The API key for your site was successfully generated and saved.');
+
+            return TRUE;
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Send a request to recover a previously registered API key.
+     *
+     * @return boolean TRUE if the API key was sent to the administrator email, FALSE otherwise.
+     */
+    public static function recover_key(){
+        $clean_domain = self::get_domain();
+
+        $response = self::api_call_wordpress( 'GET', array(
+            'e' => self::get_site_email(),
+            's' => $clean_domain,
+            'a' => 'recover_key',
+        ), FALSE );
+
+        if( self::handle_response($response) ){
+            SucuriScanEvent::notify_event( 'plugin_change', 'API key recovered for domain: ' . $clean_domain );
+            SucuriScanInterface::info( $response['body']->output->message );
+
+            return TRUE;
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Send a request to the API to store and analyze the events of the site. An
+     * event can be anything from a simple request, an internal modification of the
+     * settings or files in the administrator panel, or a notification generated by
+     * this plugin.
+     *
+     * @param  string  $event The information gathered through out the normal functioning of the site.
+     * @return boolean        TRUE if the event was logged in the monitoring service, FALSE otherwise.
+     */
+    public static function send_log( $event='' ){
+        if( !empty($event) ){
+            $response = self::api_call_wordpress( 'POST', array(
+                'a' => 'send_log',
+                'm' => $event,
+            ), TRUE, array( 'timeout' => 20 ) );
+
+            if( self::handle_response($response) ){
+                return TRUE;
+            }
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Retrieve the event logs registered by the API service.
+     *
+     * @param  integer $lines How many lines from the log file will be retrieved.
+     * @return string         The response of the API service.
+     */
+    public static function get_logs( $lines=50 ){
+        $response = self::api_call_wordpress( 'GET', array(
+            'a' => 'get_logs',
+            'l' => $lines,
+        ) );
+
+        if( self::handle_response($response) ){
+            $response['body']->output_data = array();
+            $log_pattern = '/^([0-9-: ]+) (.*) : (.*)/';
+            $extra_pattern = '/(.+ \(multiple entries\):) (.+)/';
+
+            foreach( $response['body']->output as $log ){
+                if( preg_match($log_pattern, $log, $log_match) ){
+                    $log_data = array(
+                        'datetime' => $log_match[1],
+                        'timestamp' => strtotime($log_match[1]),
+                        'account' => $log_match[2],
+                        'message' => $log_match[3],
+                        'extra' => FALSE,
+                        'extra_total' => 0,
+                    );
+
+                    $log_data['message'] = str_replace( ', new size', '; new size', $log_data['message'] );
+
+                    if( preg_match($extra_pattern, $log_data['message'], $log_extra) ){
+                        $log_data['message'] = $log_extra[1];
+                        $log_data['extra'] = explode(',', $log_extra[2]);
+                        $log_data['extra_total'] = count($log_data['extra']);
+                    }
+
+                    $response['body']->output_data[] = $log_data;
+                }
+            }
+
+            return $response['body'];
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Send a request to the API to store and analyze the file's hashes of the site.
+     * This will be the core of the monitoring tools and will enhance the
+     * information of the audit logs alerting the administrator of suspicious
+     * changes in the system.
+     *
+     * @param  string  $hashes The information gathered after the scanning of the site's files.
+     * @return boolean         TRUE if the hashes were stored, FALSE otherwise.
+     */
+    public static function send_hashes( $hashes='' ){
+        if( !empty($hashes) ){
+            $response = self::api_call_wordpress( 'POST', array(
+                'a' => 'send_hashes',
+                'h' => $hashes,
+            ) );
+
+            if( self::handle_response($response) ){
+                return TRUE;
+            }
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Retrieve the public settings of the account associated with the API keys
+     * registered by the administrator of the site. This function will send a HTTP
+     * request to the remote API service and process its response, when successful
+     * it will return an array/object containing the public attributes of the site.
+     *
+     * @param  boolean $api_key The CloudProxy API key.
+     * @return array            A hash with the settings of a CloudProxy account.
+     */
+    public static function get_cloudproxy_settings( $api_key=FALSE ){
+        $params = array( 'a' => 'show_settings' );
+
+        if( $api_key ){
+            $params = array_merge( $params, $api_key );
+        }
+
+        $response = self::api_call_cloudproxy( 'GET', $params );
+
+        if( self::handle_response($response) ){
+            return $response['body']->output;
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Flush the cache of the site(s) associated with the API key.
+     *
+     * @param  boolean $api_key The CloudProxy API key.
+     * @return string           Message explaining the result of the operation.
+     */
+    public static function clear_cloudproxy_cache( $api_key=FALSE ){
+        $params = array( 'a' => 'clear_cache' );
+
+        if( $api_key ){
+            $params = array_merge( $params, $api_key );
+        }
+
+        $response = self::api_call_cloudproxy( 'GET', $params );
+
+        if( self::handle_response($response) ){
+            return $response['body'];
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Retrieve the audit logs of the account associated with the API keys
+     * registered b the administrator of the site. This function will send a HTTP
+     * request to the remote API service and process its response, when successful
+     * it will return an array/object containing a list of requests blocked by our
+     * CloudProxy.
+     *
+     * By default the logs that will be retrieved are from today, if you need to see
+     * the logs of previous days you will need to add a new parameter to the request
+     * URL named "date" with format yyyy-mm-dd.
+     *
+     * @param  boolean $api_key The CloudProxy API key.
+     * @param  string  $date    An optional date to filter the result to a specific timespan: yyyy-mm-dd.
+     * @return array            A list of objects with the detailed version of each request blocked by our service.
+     */
+    public static function get_cloudproxy_logs( $api_key=FALSE, $date='' ){
+        $params = array(
+            'a' => 'audit_trails',
+            'date' => date('Y-m-d'),
+        );
+
+        if( preg_match('/^([0-9]{4})\-([0-9]{2})\-([0-9]{2})$/', $date) ){
+            $params['date'] = $date;
+        }
+
+        if( $api_key ){
+            $params = array_merge( $params, $api_key );
+        }
+
+        $response = self::api_call_cloudproxy( 'GET', $params );
+
+        if( self::handle_response($response) ){
+            return $response['body']->output;
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Scan a website through the public SiteCheck API [1] for known malware,
+     * blacklisting status, website errors, and out-of-date software.
+     *
+     * [1] http://sitecheck.sucuri.net/
+     *
+     * @param  string $domain The clean version of the website's domain.
+     * @return object         Serialized data of the scanning results for the site specified.
+     */
+    public static function get_sitecheck_results( $domain='' ){
+        if( !empty($domain) ){
+            $url = 'http://sitecheck.sucuri.net/scanner/';
+            $response = self::api_call( $url, 'GET', array(
+                'serialized' => 1,
+                'clear' => 1,
+                'fromwp' => 2,
+                'scan' => $domain,
+            ));
+
+            if( $response ){
+                return $response['body'];
+            }
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Retrieve a new set of keys for the WordPress configuration file using the
+     * official API provided by WordPress itself.
+     *
+     * @return array A list of the new set of keys generated by WordPress API.
+     */
+    public static function get_new_secret_keys(){
+        $pattern = self::secret_key_pattern();
+        $response = self::api_call( 'https://api.wordpress.org/secret-key/1.1/salt/', 'GET' );
+
+        if( $response && preg_match_all($pattern, $response['body'], $match) ){
+            $new_keys = array();
+
+            foreach( $match[1] as $i => $value ){
+                $new_keys[$value] = $match[3][$i];
+            }
+
+            return $new_keys;
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Retrieve a list with the checksums of the files in a specific version of WordPress.
+     *
+     * @see Release Archive http://wordpress.org/download/release-archive/
+     *
+     * @param  integer $version Valid version number of the WordPress project.
+     * @return object           Associative object with the relative filepath and the checksums of the project files.
+     */
+    public static function get_official_checksums( $version=0 ){
+        $url = 'http://api.wordpress.org/core/checksums/1.0/';
+        $response = self::api_call( $url, 'GET', array(
+            'version' => $version,
+            'locale' => 'en_US',
+        ));
+
+        if( $response ){
+            if( $response['body'] instanceof stdClass ){
+                $json_data = $response['body'];
+            } else {
+                $json_data = @json_decode($response['body']);
+            }
+
+            if(
+                isset($json_data->checksums)
+                && !empty($json_data->checksums)
+            ){
+                $checksums = $json_data->checksums;
+
+                // Convert the object list to an array for better handle of the data.
+                if( $checksums instanceof stdClass ){
+                    $checksums = (array) $checksums;
+                }
+
+                return $checksums;
+            }
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Check the plugins directory and retrieve all plugin files with plugin data.
+     * This function will also retrieve the URL and name of the repository/page
+     * where it is being published at the WordPress plugins market.
+     *
+     * @return array Key is the plugin file path and the value is an array of the plugin data.
+     */
+    public static function get_plugins(){
+        // Check if the cache library was loaded.
+        $can_cache = class_exists('SucuriScanCache');
+
+        if( $can_cache ){
+            $sucuri_cache = new SucuriScanCache('plugindata');
+            $cached_data = $sucuri_cache->get( 'plugins', SUCURISCAN_GET_PLUGINS_LIFETIME, 'array' );
+
+            // Return the previously cached results of this function.
+            if( $cached_data !== FALSE ){
+                return $cached_data;
+            }
+        }
+
+        // Get the plugin's basic information from WordPress transient data.
+        $plugins = get_plugins();
+        $pattern = '/^http:\/\/wordpress\.org\/plugins\/(.*)\/$/';
+        $wp_market = 'http://wordpress.org/plugins/%s/';
+
+        // Loop through each plugin data and complement its information with more attributes.
+        foreach( $plugins as $plugin_path => $plugin_data ){
+            // Default values for the plugin extra attributes.
+            $repository = '';
+            $repository_name = '';
+            $is_free_plugin = FALSE;
+
+            // If the plugin's info object has already a plugin_uri.
+            if(
+                isset($plugin_data['PluginURI'])
+                && preg_match($pattern, $plugin_data['PluginURI'], $match)
+            ){
+                $repository = $match[0];
+                $repository_name = $match[1];
+                $is_free_plugin = TRUE;
+            }
+
+            // Retrieve the WordPress plugin page from the plugin's filename.
+            else {
+                if( strpos($plugin_path, '/') !== FALSE ){
+                    $plugin_path_parts = explode('/', $plugin_path, 2);
+                } else {
+                    $plugin_path_parts = explode('.', $plugin_path, 2);
+                }
+
+                if( isset($plugin_path_parts[0]) ){
+                    $possible_repository = sprintf($wp_market, $plugin_path_parts[0]);
+                    $resp = wp_remote_head($possible_repository);
+
+                    if(
+                        !is_wp_error($resp)
+                        && $resp['response']['code'] == 200
+                    ){
+                        $repository = $possible_repository;
+                        $repository_name = $plugin_path_parts[0];
+                        $is_free_plugin = TRUE;
+                    }
+                }
+            }
+
+            // Complement the plugin's information with these attributes.
+            $plugins[$plugin_path]['Repository'] = $repository;
+            $plugins[$plugin_path]['RepositoryName'] = $repository_name;
+            $plugins[$plugin_path]['IsFreePlugin'] = $is_free_plugin;
+            $plugins[$plugin_path]['PluginType'] = ( $is_free_plugin ? 'free' : 'premium' );
+            $plugins[$plugin_path]['IsPluginActive'] = FALSE;
+
+            if( is_plugin_active($plugin_path) ){
+                $plugins[$plugin_path]['IsPluginActive'] = TRUE;
+            }
+        }
+
+        if( $can_cache ){
+            // Add the information of the plugins to the file-based cache.
+            $sucuri_cache->add( 'plugins', $plugins );
+        }
+
+        return $plugins;
+    }
+
+    /**
+     * Retrieve plugin installer pages from WordPress Plugins API.
+     *
+     * It is possible for a plugin to override the Plugin API result with three
+     * filters. Assume this is for plugins, which can extend on the Plugin Info to
+     * offer more choices. This is very powerful and must be used with care, when
+     * overriding the filters.
+     *
+     * The first filter, 'plugins_api_args', is for the args and gives the action as
+     * the second parameter. The hook for 'plugins_api_args' must ensure that an
+     * object is returned.
+     *
+     * The second filter, 'plugins_api', is the result that would be returned.
+     *
+     * @param  string $plugin Frienly name of the plugin.
+     * @return object         Object on success, WP_Error on failure.
+     */
+    public static function get_remote_plugin_data( $plugin='' ){
+        if( !empty($plugin) ){
+            $url = sprintf( 'http://api.wordpress.org/plugins/info/1.0/%s/', $plugin );
+            $response = self::api_call( $url, 'GET' );
+
+            if( $response ){
+                if( $response['body'] instanceof stdClass ){
+                    return $response['body'];
+                }
+            }
+        }
+
+        return FALSE;
+    }
+
+}
+
+/**
+ * Process and send emails.
+ *
+ * One of the core features of the plugin is the event alerts, a list of rules
+ * will check if the site is being compromised, in which case a notification
+ * will be sent to the site email address (an address that can be configured in
+ * the settings page).
+ */
+class SucuriScanMail extends SucuriScanOption {
+
+    /**
+     * Check whether the email notifications will be sent in HTML or Plain/Text.
+     *
+     * @return boolean Whether the emails will be in HTML or Plain/Text.
+     */
+    public static function prettify_mails(){
+        return ( self::get_option(':prettify_mails') === 'enabled' );
+    }
+
+    /**
+     * Send a message to a specific email address.
+     *
+     * @param  string  $email    The email address of the recipient that will receive the message.
+     * @param  string  $subject  The reason of the message that will be sent.
+     * @param  string  $message  Body of the message that will be sent.
+     * @param  array   $data_set Optional parameter to add more information to the notification.
+     * @return boolean           Whether the email contents were sent successfully.
+     */
+    public static function send_mail( $email='', $subject='', $message='', $data_set=array() ){
+        $headers = array();
+        $subject = ucwords(strtolower($subject));
+        $wp_domain = SucuriScanOption::get_domain();
+        $force = FALSE;
+        $debug = FALSE;
+
+        // Check whether the mail will be printed in the site instead of sent.
+        if(
+            isset($data_set['Debug'])
+            && $data_set['Debug'] == TRUE
+        ){
+            $debug = TRUE;
+            unset($data_set['Debug']);
+        }
+
+        // Check whether the mail will be even if the limit per hour was reached or not.
+        if(
+            isset($data_set['Force'])
+            && $data_set['Force'] == TRUE
+        ){
+            $force = TRUE;
+            unset($data_set['Force']);
+        }
+
+        // Check whether the email notifications will be sent in HTML or Plain/Text.
+        if( self::prettify_mails() ){
+            $headers = array( 'Content-type: text/html' );
+            $data_set['PrettifyType'] = 'pretty';
+        } else {
+            $message = strip_tags($message);
+        }
+
+        if( !self::emails_per_hour_reached() || $force || $debug ){
+            $message = self::prettify_mail($subject, $message, $data_set);
+
+            if( $debug ){ die($message); }
+
+            $email_sent = wp_mail(
+                $email,
+                "Sucuri WP Notification: {$wp_domain} - {$subject}",
+                $message,
+                $headers
+            );
+
+            if( $email_sent ){
+                $emails_sent_num = (int) self::get_option(':emails_sent');
+                self::update_option( ':emails_sent', $emails_sent_num + 1 );
+                self::update_option( ':last_email_at', time() );
+
+                return TRUE;
+            }
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Generate a HTML version of the message that will be sent through an email.
+     *
+     * @param  string $subject  The reason of the message that will be sent.
+     * @param  string $message  Body of the message that will be sent.
+     * @param  array  $data_set Optional parameter to add more information to the notification.
+     * @return string           The message formatted in a HTML template.
+     */
+    private function prettify_mail( $subject='', $message='', $data_set=array() ){
+        $prettify_type = isset($data_set['PrettifyType']) ? $data_set['PrettifyType'] : 'simple';
+        $template_name = 'notification-' . $prettify_type;
+        $remote_addr = self::get_remote_addr();
+        $user = wp_get_current_user();
+        $display_name = '';
+
+        if(
+            $user instanceof WP_User
+            && isset($user->user_login)
+            && !empty($user->user_login)
+        ){
+            $display_name = sprintf( 'User: %s (%s)', $user->display_name, $user->user_login );
+        }
+
+        $mail_variables = array(
+            'TemplateTitle' => 'Sucuri Alert',
+            'Subject' => $subject,
+            'Website' => self::get_option('siteurl'),
+            'RemoteAddress' => $remote_addr,
+            'Message' => $message,
+            'User' => $display_name,
+            'Time' => date('d/M/Y H:i:s'),
+        );
+
+        foreach( $data_set as $var_key => $var_value ){
+            $mail_variables[$var_key] = $var_value;
+        }
+
+        return SucuriScanTemplate::get_section( $template_name, $mail_variables );
+    }
+
+    /**
+     * Check whether the maximum quantity of emails per hour was reached.
+     *
+     * @return boolean Whether the quota emails per hour was reached.
+     */
+    private function emails_per_hour_reached(){
+        $max_per_hour = self::get_option(':emails_per_hour');
+
+        if( $max_per_hour != 'unlimited' ){
+            // Check if we are still in that sixty minutes.
+            $current_time = time();
+            $last_email_at = self::get_option(':last_email_at');
+            $diff_time = abs( $current_time - $last_email_at );
+
+            if( $diff_time <= 3600 ){
+                // Check if the quantity of emails sent is bigger than the configured.
+                $emails_sent = (int) self::get_option(':emails_sent');
+                $max_per_hour = intval($max_per_hour);
+
+                if( $emails_sent >= $max_per_hour ){
+                    return TRUE;
+                }
+            } else {
+                // Reset the counter of emails sent.
+                self::update_option( ':emails_sent', 0 );
+            }
+        }
+
+        return FALSE;
+    }
+
+}
+
+/**
+ * Read, parse and handle everything related with the templates.
+ *
+ * A web template system uses a template processor to combine web templates to
+ * form finished web pages, possibly using some data source to customize the
+ * pages or present a large amount of content on similar-looking pages. It is a
+ * web publishing tool present in content management systems, web application
+ * frameworks, and HTML editors.
+ *
+ * Web templates can be used like the template of a form letter to either
+ * generate a large number of "static" (unchanging) web pages in advance, or to
+ * produce "dynamic" web pages on demand.
+ */
+class SucuriScanTemplate extends SucuriScanRequest {
+
+    /**
+     * Replace all pseudo-variables from a string of characters.
+     *
+     * @param  string $content The content of a template file which contains pseudo-variables.
+     * @param  array  $params  List of pseudo-variables that will be replaced in the template.
+     * @return string          The content of the template with the pseudo-variables replated.
+     */
+    private function replace_pseudovars( $content='', $params=array() ){
+        if( is_array($params) ){
+            foreach( $params as $tpl_key => $tpl_value ){
+                $tpl_key = '%%SUCURI.' . $tpl_key . '%%';
+                $content = str_replace( $tpl_key, $tpl_value, $content );
+            }
+
+            return $content;
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Gather and generate the information required globally by all the template files.
+     *
+     * @param  array $params A hash containing the pseudo-variable name as the key and the value that will replace it.
+     * @return array         A complementary list of pseudo-variables for the template files.
+     */
+    private function shared_params( $params=array() ){
+        $params = is_array($params) ? $params : array();
+
+        // Base parameters, required to render all the pages.
+        $params = self::links_and_navbar($params);
+
+        // Global parameters, used through out all the pages.
+        $params['PageTitle'] = isset($params['PageTitle']) ? '('.$params['PageTitle'].')' : '';
+        $params['PageNonce'] = wp_create_nonce('sucuriscan_page_nonce');
+        $params['PageStyleClass'] = isset($params['PageStyleClass']) ? $params['PageStyleClass'] : 'base';
+        $params['CleanDomain'] = SucuriScanOption::get_domain();
+        $params['AdminEmail'] = SucuriScanOption::get_site_email();
+
+        return $params;
+    }
+
+    /**
+     * Return a string indicating the visibility of a HTML component.
+     *
+     * @param  boolean $visible Whether the condition executed returned a positive value or not.
+     * @return string           A string indicating the visibility of a HTML component.
+     */
+    public static function visibility( $visible=FALSE ){
+        return ( $visible === TRUE ? 'visible' : 'hidden' );
+    }
+
+    /**
+     * Generate an URL pointing to the page indicated in the function and that must
+     * be loaded through the administrator panel.
+     *
+     * @param  string $page Short name of the page that will be generated.
+     * @return string       Full string containing the link of the page.
+     */
+    public static function get_url( $page='' ){
+        $url_path = admin_url('admin.php?page=sucuriscan');
+
+        if( !empty($page) ){
+            $url_path .= '_' . strtolower($page);
+        }
+
+        return $url_path;
+    }
+
+    /**
+     * Complement the list of pseudo-variables that will be used in the base
+     * template files, this will also generate the navigation bar and detect which
+     * items in it are selected by the current page.
+     *
+     * @param  array  $params A hash containing the pseudo-variable name as the key and the value that will replace it.
+     * @return array          A complementary list of pseudo-variables for the template files.
+     */
+    private function links_and_navbar( $params=array() ){
+        global $sucuriscan_pages;
+
+        $params = is_array($params) ? $params : array();
+        $sub_pages = is_array($sucuriscan_pages) ? $sucuriscan_pages : array();
+
+        $params['Navbar'] = '';
+        $params['CurrentPageFunc'] = '';
+
+        if( $_page = self::get('page', '_page') ){
+            $params['CurrentPageFunc'] = $_page;
+        }
+
+        foreach( $sub_pages as $sub_page_func => $sub_page_title ){
+            $func_parts = explode( '_', $sub_page_func, 2 );
+
+            if( isset($func_parts[1]) ){
+                $unique_name = $func_parts[1];
+                $pseudo_var = 'URL.' . ucwords($unique_name);
+            } else {
+                $unique_name = '';
+                $pseudo_var = 'URL.Home';
+            }
+
+            $params[$pseudo_var] = self::get_url($unique_name);
+
+            $navbar_item_css_class = 'nav-tab';
+
+            if( $params['CurrentPageFunc'] == $sub_page_func ){
+                $navbar_item_css_class .= chr(32) . 'nav-tab-active';
+            }
+
+            $params['Navbar'] .= sprintf(
+                '<a class="%s" href="%s">%s</a>' . "\n",
+                $navbar_item_css_class,
+                $params[$pseudo_var],
+                $sub_page_title
+            );
+        }
+
+        return $params;
+    }
+
+    /**
+     * Generate a HTML code using a template and replacing all the pseudo-variables
+     * by the dynamic variables provided by the developer through one of the parameters
+     * of the function.
+     *
+     * @param  string $html   The HTML content of a template file with its pseudo-variables parsed.
+     * @param  array  $params A hash containing the pseudo-variable name as the key and the value that will replace it.
+     * @return string         The formatted HTML content of the base template.
+     */
+    public static function get_base_template( $html='', $params=array() ){
+        $params = is_array($params) ? $params : array();
+
+        $params = self::shared_params($params);
+        $params['PageContent'] = $html;
+
+        return self::get_template( 'base', $params );
+    }
+
+    /**
+     * Generate a HTML code using a template and replacing all the pseudo-variables
+     * by the dynamic variables provided by the developer through one of the parameters
+     * of the function.
+     *
+     * @param  string  $template Filename of the template that will be used to generate the page.
+     * @param  array   $params   A hash containing the pseudo-variable name as the key and the value that will replace it.
+     * @param  boolean $type     Either page, section or snippet indicating the type of template that will be retrieved.
+     * @return string            The formatted HTML page after replace all the pseudo-variables.
+     */
+    public static function get_template( $template='', $params=array(), $type='page' ){
+        switch( $type ){
+            case 'page': /* no_break */
+            case 'section':
+                $template_path_pattern = '%s/%s/inc/tpl/%s.html.tpl';
+                break;
+            case 'snippet':
+                $template_path_pattern = '%s/%s/inc/tpl/%s.snippet.tpl';
+                break;
+        }
+
+        $template_content = '';
+        $template_path =  sprintf( $template_path_pattern, WP_PLUGIN_DIR, SUCURISCAN_PLUGIN_FOLDER, $template );
+        $params = is_array($params) ? $params : array();
+
+        if( file_exists($template_path) && is_readable($template_path) ){
+            $template_content = @file_get_contents($template_path);
+
+            $params['SucuriURL'] = SUCURI_URL;
+
+            // Detect the current page URL.
+            if( $_page = self::get('page', '_page') ){
+                $params['CurrentURL'] = admin_url('admin.php?page=' . $_page);
+            } else {
+                $params['CurrentURL'] = admin_url();
+            }
+
+            // Replace the global pseudo-variables in the section/snippets templates.
+            if(
+                $template == 'base'
+                && isset($params['PageContent'])
+                && preg_match('/%%SUCURI\.(.+)%%/', $params['PageContent'])
+            ){
+                $params['PageContent'] = self::replace_pseudovars( $params['PageContent'], $params );
+            }
+
+            $template_content = self::replace_pseudovars( $template_content, $params );
+        }
+
+        if( $template == 'base' || $type != 'page' ){
+            return $template_content;
+        }
+
+        return self::get_base_template( $template_content, $params );
+    }
+
+    /**
+     * Generate a HTML code using a template and replacing all the pseudo-variables
+     * by the dynamic variables provided by the developer through one of the parameters
+     * of the function.
+     *
+     * @param  string $template Filename of the template that will be used to generate the page.
+     * @param  array  $params   A hash containing the pseudo-variable name as the key and the value that will replace it.
+     * @return string           The formatted HTML page after replace all the pseudo-variables.
+     */
+    public static function get_section($template='', $params=array()){
+        $params = self::shared_params($params);
+
+        return self::get_template( $template, $params, 'section' );
+    }
+
+    /**
+     * Generate a HTML code using a template and replacing all the pseudo-variables
+     * by the dynamic variables provided by the developer through one of the parameters
+     * of the function.
+     *
+     * @param  string $template Filename of the template that will be used to generate the page.
+     * @param  array  $params   A hash containing the pseudo-variable name as the key and the value that will replace it.
+     * @return string           The formatted HTML page after replace all the pseudo-variables.
+     */
+    public static function get_modal($template='', $params=array()){
+        $required = array(
+            'Title' => 'Lorem ipsum dolor sit amet',
+            'CssClass' => '',
+            'Content' => '<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do
+                eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim
+                veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
+                consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse
+                cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
+                proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>',
+        );
+
+        if( !empty($template) && $template != 'none' ){
+            $params['Content'] = self::get_section($template);
+        }
+
+        foreach( $required as $param_name => $param_value ){
+            if( !isset($params[$param_name]) ){
+                $params[$param_name] = $param_value;
+            }
+        }
+
+        $params = self::shared_params($params);
+
+        return self::get_template( 'modalwindow', $params, 'section' );
+    }
+
+    /**
+     * Generate a HTML code using a template and replacing all the pseudo-variables
+     * by the dynamic variables provided by the developer through one of the parameters
+     * of the function.
+     *
+     * @param  string $template Filename of the template that will be used to generate the page.
+     * @param  array  $params   A hash containing the pseudo-variable name as the key and the value that will replace it.
+     * @return string           The formatted HTML page after replace all the pseudo-variables.
+     */
+    public static function get_snippet($template='', $params=array()){
+        return self::get_template( $template, $params, 'snippet' );
+    }
+
+    /**
+     * Generate the HTML code necessary to render a list of options in a form.
+     *
+     * @param  array  $allowed_values List with keys and values allowed for the options.
+     * @param  string $selected_val   Value of the option that will be selected by default.
+     * @return string                 Option list for a select form field.
+     */
+    public static function get_select_options( $allowed_values=array(), $selected_val='' ){
+        $options = '';
+
+        foreach( $allowed_values as $option_name => $option_label ){
+            $selected_str = '';
+
+            if( $option_name == $selected_val ){
+                $selected_str = 'selected="selected"';
+            }
+
+            $options .= sprintf(
+                '<option value="%s" %s>%s</option>',
+                $option_name, $selected_str, $option_label
+            );
+        }
+
+        return $options;
+    }
+
+    /**
+     * Detect which number in a pagination was clicked.
+     *
+     * @return integer Page number of the link clicked in a pagination.
+     */
+    public static function get_page_number(){
+        $num = self::get( 'num', '[0-9]{1,2}' );
+
+        return ( $num ? intval($num) : 1 );
+    }
+
+    /**
+     * Generate the HTML code to display a pagination.
+     *
+     * @param  string  $base_url     Base URL for the links before the page number.
+     * @param  integer $total_items  Total quantity of items retrieved from a query.
+     * @param  integer $max_per_page Maximum number of items that will be shown per page.
+     * @return string                HTML code for a pagination generated using the provided data.
+     */
+    public static function get_pagination( $base_url='', $total_items=0, $max_per_page=1 ){
+        // Calculate the number of links for the pagination.
+        $html_links = '';
+        $page_number = self::get_page_number();
+        $max_pages = ceil($total_items / $max_per_page);
+
+        // Generate the HTML links for the pagination.
+        for( $j=1; $j<=$max_pages; $j++ ){
+            $link_class = 'sucuriscan-pagination-link';
+
+            if( $page_number == $j ){
+                $link_class .= chr(32) . 'sucuriscan-pagination-active';
+            }
+
+            $html_links .= sprintf(
+                '<li><a href="%s&num=%d" class="%s">%s</a></li>',
+                $base_url, $j, $link_class, $j
+            );
+        }
+
+        return $html_links;
+    }
+
+}
+
+class SucuriScanInterface extends SucuriScan {
+
     /**
      * Initialization code for the plugin.
      *
@@ -1286,67 +4432,23 @@ if( !function_exists('sucuriscan_init') ){
      *
      * @return void
      */
-    function sucuriscan_init(){
+    public static function initialize(){
         if(
             isset($_SERVER['HTTP_X_FORWARDED_FOR'])
-            && preg_match("/^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/", $_SERVER['HTTP_X_FORWARDED_FOR'])
-            && sucuriscan_is_valid_ipv4($_SERVER['HTTP_X_FORWARDED_FOR'])
+            && self::is_valid_ip($_SERVER['HTTP_X_FORWARDED_FOR'])
         ){
             $_SERVER['SUCURIREAL_REMOTE_ADDR'] = $_SERVER['REMOTE_ADDR'];
             $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_FORWARDED_FOR'];
         }
     }
 
-    add_action('init', 'sucuriscan_init', 1);
-}
-
-if( !function_exists('sucuriscan_create_uploaddir') ){
     /**
-     * Create a folder in the WordPress upload directory where the plugin will
-     * store all the temporal or dynamic information.
+     * Define which javascript and css files will be loaded in the header of the
+     * plugin pages, only when the administrator panel is accessed.
      *
      * @return void
      */
-    function sucuriscan_create_uploaddir(){
-        $plugin_upload_folder = sucuriscan_dir_filepath();
-
-        if( !file_exists($plugin_upload_folder) ){
-            if( @mkdir($plugin_upload_folder) ){
-                // Create last-logins datastore file.
-                sucuriscan_lastlogins_datastore_exists();
-
-                // Create a htaccess file to deny access from all.
-                @file_put_contents(
-                    $plugin_upload_folder . '/.htaccess',
-                    "Order Deny,Allow\nDeny from all",
-                    LOCK_EX
-                );
-
-                // Create an index.html to avoid directory listing.
-                @file_put_contents(
-                    $plugin_upload_folder . '/index.html',
-                    '<!-- Attemp to prevent the directory listing. -->',
-                    LOCK_EX
-                );
-            } else {
-                sucuriscan_error(
-                    'Data folder does not exists and could not be created. You will need to
-                    create this folder manually and give it write permissions:<br><br><code>'
-                    . $plugin_upload_folder . '</code>'
-                );
-            }
-        }
-    }
-
-    add_action('admin_init', 'sucuriscan_create_uploaddir');
-}
-
-if( !function_exists('sucuriscan_admin_script_style_registration') ){
-    /**
-     * Define which javascript and css files will be loaded in the header of the page.
-     * @return void
-     */
-    function sucuriscan_admin_script_style_registration(){
+    public static function enqueue_scripts(){
         $asset_version = '';
 
         if( strlen(SUCURISCAN_PLUGIN_CHECKSUM) >= 7 ){
@@ -1360,74 +4462,45 @@ if( !function_exists('sucuriscan_admin_script_style_registration') ){
         wp_enqueue_script( 'sucuriscan' );
     }
 
-    add_action( 'admin_enqueue_scripts', 'sucuriscan_admin_script_style_registration', 1 );
-}
+    /**
+     * Generate the menu and submenus for the plugin in the admin interface.
+     *
+     * @return void
+     */
+    public static function add_interface_menu(){
+        global $sucuriscan_pages;
 
-/**
- * Returns the system filepath to the relevant user uploads directory for this
- * site. This is a multisite capable function.
- *
- * @param  string $path The relative path that needs to be completed to get the absolute path.
- * @return string       The full filesystem path including the directory specified.
- */
-function sucuriscan_dir_filepath($path = ''){
-    return SucuriScan::datastore_folder_path($path);
-}
+        if(
+            function_exists('add_menu_page')
+            && $sucuriscan_pages
+        ){
+            // Add main menu link.
+            add_menu_page(
+                'Sucuri Security',
+                'Sucuri Security',
+                'manage_options',
+                'sucuriscan',
+                'sucuriscan_page',
+                SUCURI_URL . '/inc/images/menu-icon.png'
+            );
 
-/**
- * List an associative array with the sub-pages of this plugin.
- *
- * @param  boolean $for_navbar Either TRUE or FALSE indicanting that the first page will be named Dashboard.
- * @return array               List of pages and sub-pages of this plugin.
- */
-function sucuriscan_pages( $for_navbar=FALSE ){
-    $pages = array(
-        'sucuriscan' => 'Dashboard',
-        'sucuriscan_scanner' => 'Malware Scan',
-        'sucuriscan_monitoring' => 'Firewall (WAF)',
-        'sucuriscan_hardening' => 'Hardening',
-        'sucuriscan_posthack' => 'Post-Hack',
-        'sucuriscan_lastlogins' => 'Last Logins',
-        'sucuriscan_settings' => 'Settings',
-        'sucuriscan_infosys' => 'Site Info',
-    );
+            $sub_pages = is_array($sucuriscan_pages) ? $sucuriscan_pages : array();
 
-    return $pages;
-}
+            foreach( $sub_pages as $sub_page_func => $sub_page_title ){
+                $page_func = $sub_page_func . '_page';
 
-/**
- * Generate the menu and submenus for the plugin in the admin interface.
- *
- * @return void
- */
-function sucuriscan_menu(){
-    // Add main menu link.
-    add_menu_page(
-        'Sucuri Security',
-        'Sucuri Security',
-        'manage_options',
-        'sucuriscan',
-        'sucuriscan_page',
-        SUCURI_URL . '/inc/images/menu-icon.png'
-    );
-
-    $sub_pages = sucuriscan_pages();
-
-    foreach( $sub_pages as $sub_page_func => $sub_page_title ){
-        $page_func = $sub_page_func . '_page';
-
-        add_submenu_page(
-            'sucuriscan',
-            $sub_page_title,
-            $sub_page_title,
-            'manage_options',
-            $sub_page_func,
-            $page_func
-        );
+                add_submenu_page(
+                    'sucuriscan',
+                    $sub_page_title,
+                    $sub_page_title,
+                    'manage_options',
+                    $sub_page_func,
+                    $page_func
+                );
+            }
+        }
     }
-}
 
-if( !function_exists('sucuriscan_handle_old_plugin') ){
     /**
      * Remove the old Sucuri plugins considering that with the new version (after
      * 1.6.0) all the functionality of the others will be merged here, this will
@@ -1436,1115 +4509,144 @@ if( !function_exists('sucuriscan_handle_old_plugin') ){
      *
      * @return void
      */
-    function sucuriscan_handle_old_plugin(){
-        $sucuri_fileinfo = new SucuriScanFileInfo();
-        $sucuri_fileinfo->ignore_files = FALSE;
-        $sucuri_fileinfo->ignore_directories = FALSE;
-
-        $plugins = array(
-            'sucuri-wp-plugin/sucuri.php',
-            'sucuri-cloudproxy-waf/cloudproxy.php',
-        );
-
-        foreach( $plugins as $plugin ){
-            $plugin_directory = dirname( WP_PLUGIN_DIR . '/' . $plugin );
-
-            if( file_exists($plugin_directory) ){
-                if( is_plugin_active($plugin) ){
-                    deactivate_plugins($plugin);
-                }
-
-                $plugin_removed = $sucuri_fileinfo->remove_directory_tree($plugin_directory);
-            }
-        }
-    }
-
-    add_action('admin_init', 'sucuriscan_handle_old_plugin');
-}
-
-/**
- * Initialize the execute of the main plugin's functions.
- *
- * This will load the menu options in the WordPress administrator panel, and
- * execute the bootstrap function of the plugin.
- */
-add_action('admin_menu', 'sucuriscan_menu');
-add_action('sucuriscan_scheduled_scan', 'sucuriscan_filesystem_scan');
-remove_action('wp_head', 'wp_generator');
-
-/**
- * Validate email address.
- *
- * This use the native PHP function filter_var which is available in PHP >=
- * 5.2.0 if it is not found in the interpreter this function will sue regular
- * expressions to check whether the email address passed is valid or not.
- *
- * @see http://www.php.net/manual/en/function.filter-var.php
- *
- * @param  string $email The string that will be validated as an email address.
- * @return boolean       TRUE if the email address passed to the function is valid, FALSE if not.
- */
-function is_valid_email( $email='' ){
-    if( function_exists('filter_var') ){
-        return (bool) filter_var($email, FILTER_VALIDATE_EMAIL);
-    } else {
-        $pattern = '/^([a-z0-9\+_\-]+)(\.[a-z0-9\+_\-]+)*@([a-z0-9\-]+\.)+[a-z]{2,6}$/ix';
-        return (bool) preg_match($pattern, $email);
-    }
-}
-
-/**
- * Cut a long text to the length specified, and append suspensive points at the end.
- *
- * @param  string  $text   String of characters that will be cut.
- * @param  integer $length Maximum length of the returned string, default is 10.
- * @return string          Short version of the text specified.
- */
-function sucuriscan_excerpt( $text='', $length=10 ){
-    $text_length = strlen($text);
-
-    if( $text_length > $length ){
-        return substr( $text, 0, $length ) . '...';
-    }
-
-    return $text;
-}
-
-/**
- * Check whether the email notifications will be sent in HTML or Plain/Text.
- *
- * @return boolean Whether the emails will be in HTML or Plain/Text.
- */
-function sucuriscan_prettify_mails(){
-    return ( sucuriscan_get_option('sucuriscan_prettify_mails') === 'enabled' );
-}
-
-/**
- * Check whether the SSL certificates will be verified while executing a HTTP
- * request or not. This is only for customization of the administrator, in fact
- * not verifying the SSL certificates can lead to a "Man in the Middle" attack.
- *
- * @return boolean Whether the SSL certs will be verified while sending a request.
- */
-function sucuriscan_verify_ssl_cert(){
-    return ( sucuriscan_get_option('sucuriscan_verify_ssl_cert') === 'true' );
-}
-
-/**
- * Send a message to a specific email address.
- *
- * @param  string  $email    The email address of the recipient that will receive the message.
- * @param  string  $subject  The reason of the message that will be sent.
- * @param  string  $message  Body of the message that will be sent.
- * @param  array   $data_set Optional parameter to add more information to the notification.
- * @return boolean           Whether the email contents were sent successfully.
- */
-function sucuriscan_send_mail( $email='', $subject='', $message='', $data_set=array() ){
-    $headers = array();
-    $subject = ucwords(strtolower($subject));
-    $wp_domain = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : get_option('siteurl');
-    $force = FALSE;
-    $debug = FALSE;
-
-    // Check whether the mail will be printed in the site instead of sent.
-    if(
-        isset($data_set['Debug'])
-        && $data_set['Debug'] == TRUE
-    ){
-        $debug = TRUE;
-        unset($data_set['Debug']);
-    }
-
-    // Check whether the mail will be even if the limit per hour was reached or not.
-    if(
-        isset($data_set['Force'])
-        && $data_set['Force'] == TRUE
-    ){
-        $force = TRUE;
-        unset($data_set['Force']);
-    }
-
-    // Check whether the email notifications will be sent in HTML or Plain/Text.
-    if( sucuriscan_prettify_mails() ){
-        $headers = array( 'Content-type: text/html' );
-        $data_set['PrettifyType'] = 'pretty';
-    }
-
-    if( !sucuriscan_emails_per_hour_reached() || $force || $debug ){
-        $message = sucuriscan_prettify_mail($subject, $message, $data_set);
-
-        if( $debug ){ die($message); }
-
-        $email_sent = wp_mail(
-            $email,
-            "Sucuri WP Notification: {$wp_domain} - {$subject}",
-            $message,
-            $headers
-        );
-
-        if( $email_sent ){
-            $emails_sent_num = (int) sucuriscan_get_option('sucuriscan_emails_sent');
-            update_option( 'sucuriscan_emails_sent', $emails_sent_num + 1 );
-            update_option( 'sucuriscan_last_email_at', time() );
-
-            return TRUE;
-        }
-    } else {
-        // sucuriscan_error( 'Cant send more emails for the next hour' );
-    }
-
-    return FALSE;
-}
-
-/**
- * Check whether the maximum quantity of emails per hour was reached.
- *
- * @return boolean Whether the quota emails per hour was reached.
- */
-function sucuriscan_emails_per_hour_reached(){
-    $max_emails_per_hour = sucuriscan_get_option('sucuriscan_emails_per_hour');
-
-    if( $max_emails_per_hour != 'unlimited' ){
-        // Check if we are still in that sixty minutes.
-        $current_time = time();
-        $last_email_at = sucuriscan_get_option('sucuriscan_last_email_at');
-        $diff_time = abs( $current_time - $last_email_at );
-
-        if( $diff_time <= 3600 ){
-            // Check if the quantity of emails sent is bigger than the configured.
-            $emails_sent = (int) sucuriscan_get_option('sucuriscan_emails_sent');
-            $max_emails_per_hour = intval($max_emails_per_hour);
-
-            if( $emails_sent >= $max_emails_per_hour ){
-                return TRUE;
-            }
-        } else {
-            // Reset the counter of emails sent.
-            update_option( 'sucuriscan_emails_sent', 0 );
-        }
-    }
-
-    return FALSE;
-}
-
-/**
- * Generate a HTML version of the message that will be sent through an email.
- *
- * @param  string $subject  The reason of the message that will be sent.
- * @param  string $message  Body of the message that will be sent.
- * @param  array  $data_set Optional parameter to add more information to the notification.
- * @return string           The message formatted in a HTML template.
- */
-function sucuriscan_prettify_mail( $subject='', $message='', $data_set=array() ){
-    $prettify_type = isset($data_set['PrettifyType']) ? $data_set['PrettifyType'] : 'simple';
-    $template_name = 'notification-' . $prettify_type;
-    $remote_addr = sucuriscan_get_remoteaddr();
-    $user = wp_get_current_user();
-    $display_name = '';
-
-    if(
-        $user instanceof WP_User
-        && isset($user->user_login)
-        && !empty($user->user_login)
-    ){
-        $display_name = sprintf( 'User: %s (%s)', $user->display_name, $user->user_login );
-    }
-
-    $mail_variables = array(
-        'TemplateTitle' => 'Sucuri WP Notification',
-        'Subject' => $subject,
-        'Website' => get_option('siteurl'),
-        'RemoteAddress' => $remote_addr,
-        'Message' => $message,
-        'User' => $display_name,
-        'Time' => current_time('mysql'),
-    );
-
-    foreach($data_set as $var_key=>$var_value){
-        $mail_variables[$var_key] = $var_value;
-    }
-
-    return sucuriscan_get_section( $template_name, $mail_variables );
-}
-
-/**
- * Prints a HTML alert in the WordPress admin interface.
- *
- * @param  string $type    The type of alert, it can be either Updated or Error.
- * @param  string $message The message that will be printed in the alert.
- * @return void
- */
-function sucuriscan_admin_notice($type='updated', $message=''){
-    $alert_id = rand(100, 999);
-    if( !empty($message) ): ?>
-        <div id="sucuriscan-alert-<?php echo $alert_id; ?>" class="<?php echo $type; ?> sucuriscan-alert sucuriscan-alert-<?php echo $type; ?>">
-            <a href="javascript:void(0)" class="close" onclick="sucuriscan_alert_close('<?php echo $alert_id; ?>')">&times;</a>
-            <p><?php _e($message); ?></p>
-        </div>
-    <?php endif;
-}
-
-/**
- * Prints a HTML alert of type ERROR in the WordPress admin interface.
- *
- * @param  string $error_msg The message that will be printed in the alert.
- * @return void
- */
-function sucuriscan_error( $error_msg='' ){
-    sucuriscan_admin_notice( 'error', '<b>Sucuri:</b> ' . $error_msg );
-}
-
-/**
- * Prints a HTML alert of type INFO in the WordPress admin interface.
- *
- * @param  string $info_msg The message that will be printed in the alert.
- * @return void
- */
-function sucuriscan_info( $info_msg='' ){
-    sucuriscan_admin_notice( 'updated', '<b>Sucuri:</b> ' . $info_msg );
-}
-
-/**
- * Verify the nonce of the previous page after a form submission. If the
- * validation fails the execution of the script will be stopped and a dead page
- * will be printed to the client using the official WordPress method.
- *
- * @return boolean Either TRUE or FALSE if the nonce is valid or not respectively.
- */
-function sucuriscan_check_page_nonce(){
-    if( !empty($_POST) ){
-        $nonce_name = 'sucuriscan_page_nonce';
-
-        if( !isset($_POST[$nonce_name]) || !wp_verify_nonce($_POST[$nonce_name], $nonce_name) ){
-            wp_die(__('WordPress Nonce verification failed, try again going back and checking the form.') );
-
-            return FALSE;
-        }
-    }
-
-    return TRUE;
-}
-
-/**
- * Replace all pseudo-variables from a string of characters.
- *
- * @param  string $content The content of a template file which contains pseudo-variables.
- * @param  array  $params  List of pseudo-variables that will be replaced in the template.
- * @return string          The content of the template with the pseudo-variables replated.
- */
-function sucuriscan_replace_pseudovars( $content='', $params=array() ){
-    if( is_array($params) ){
-        foreach( $params as $tpl_key => $tpl_value ){
-            $tpl_key = '%%SUCURI.' . $tpl_key . '%%';
-            $content = str_replace( $tpl_key, $tpl_value, $content );
-        }
-
-        return $content;
-    }
-
-    return FALSE;
-}
-
-/**
- * Complement the list of pseudo-variables that will be used in the base
- * template files, this will also generate the navigation bar and detect which
- * items in it are selected by the current page.
- *
- * @param  array  $params A hash containing the pseudo-variable name as the key and the value that will replace it.
- * @return array          A complementary list of pseudo-variables for the template files.
- */
-function sucuriscan_links_and_navbar( $params=array() ){
-    $params = is_array($params) ? $params : array();
-    $sub_pages = sucuriscan_pages(TRUE);
-
-    $params['Navbar'] = '';
-    $params['CurrentPageFunc'] = isset($_GET['page']) ? $_GET['page'] : '';
-
-    foreach( $sub_pages as $sub_page_func => $sub_page_title ){
-        $func_parts = explode( '_', $sub_page_func, 2 );
-
-        if( isset($func_parts[1]) ){
-            $unique_name = $func_parts[1];
-            $pseudo_var = 'URL.' . ucwords($unique_name);
-        } else {
-            $unique_name = '';
-            $pseudo_var = 'URL.Home';
-        }
-
-        $params[$pseudo_var] = sucuriscan_get_url($unique_name);
-
-        $navbar_item_css_class = 'nav-tab';
-
-        if( $params['CurrentPageFunc'] == $sub_page_func ){
-            $navbar_item_css_class .= chr(32) . 'nav-tab-active';
-        }
-
-        $params['Navbar'] .= sprintf(
-            '<a class="%s" href="%s">%s</a>' . "\n",
-            $navbar_item_css_class,
-            $params[$pseudo_var],
-            $sub_page_title
-        );
-    }
-
-    return $params;
-}
-
-/**
- * Generate a HTML code using a template and replacing all the pseudo-variables
- * by the dynamic variables provided by the developer through one of the parameters
- * of the function.
- *
- * @param  string  $template Filename of the template that will be used to generate the page.
- * @param  array   $params   A hash containing the pseudo-variable name as the key and the value that will replace it.
- * @param  boolean $type     Either page, section or snippet indicating the type of template that will be retrieved.
- * @return string            The formatted HTML page after replace all the pseudo-variables.
- */
-function sucuriscan_get_template( $template='', $params=array(), $type='page' ){
-    switch( $type ){
-        case 'page': /* no_break */
-        case 'section':
-            $template_path_pattern = '%s/%s/inc/tpl/%s.html.tpl';
-            break;
-        case 'snippet':
-            $template_path_pattern = '%s/%s/inc/tpl/%s.snippet.tpl';
-            break;
-    }
-
-    $template_content = '';
-    $template_path =  sprintf( $template_path_pattern, WP_PLUGIN_DIR, SUCURISCAN_PLUGIN_FOLDER, $template );
-    $params = is_array($params) ? $params : array();
-
-    if( file_exists($template_path) && is_readable($template_path) ){
-        $template_content = file_get_contents($template_path);
-
-        $current_page = isset($_GET['page']) ? htmlentities($_GET['page']) : '';
-        $params['CurrentURL'] = sprintf( '%s/wp-admin/admin.php?page=%s', site_url(), $current_page );
-        $params['SucuriURL'] = SUCURI_URL;
-
-        // Replace the global pseudo-variables in the section/snippets templates.
-        if(
-            $template == 'base'
-            && isset($params['PageContent'])
-            && preg_match('/%%SUCURI\.(.+)%%/', $params['PageContent'])
-        ){
-            $params['PageContent'] = sucuriscan_replace_pseudovars( $params['PageContent'], $params );
-        }
-
-        $template_content = sucuriscan_replace_pseudovars( $template_content, $params );
-    }
-
-    if( $template == 'base' || $type != 'page' ){
-        return $template_content;
-    }
-
-    return sucuriscan_get_base_template( $template_content, $params );
-}
-
-/**
- * Gather and generate the information required globally by all the template files.
- *
- * @param  array $params A hash containing the pseudo-variable name as the key and the value that will replace it.
- * @return array         A complementary list of pseudo-variables for the template files.
- */
-function sucuriscan_shared_params( $params=array() ){
-    $params = is_array($params) ? $params : array();
-
-    // Base parameters, required to render all the pages.
-    $params = sucuriscan_links_and_navbar($params);
-
-    // Global parameters, used through out all the pages.
-    $params['PageTitle'] = isset($params['PageTitle']) ? '('.$params['PageTitle'].')' : '';
-    $params['PageNonce'] = wp_create_nonce('sucuriscan_page_nonce');
-    $params['PageStyleClass'] = isset($params['PageStyleClass']) ? $params['PageStyleClass'] : 'base';
-    $params['CleanDomain'] = sucuriscan_get_domain();
-    $params['AdminEmail'] = sucuriscan_get_site_email();
-
-    return $params;
-}
-
-/**
- * Generate a HTML code using a template and replacing all the pseudo-variables
- * by the dynamic variables provided by the developer through one of the parameters
- * of the function.
- *
- * @param  string $html   The HTML content of a template file with its pseudo-variables parsed.
- * @param  array  $params A hash containing the pseudo-variable name as the key and the value that will replace it.
- * @return string         The formatted HTML content of the base template.
- */
-function sucuriscan_get_base_template( $html='', $params=array() ){
-    $params = is_array($params) ? $params : array();
-
-    $params = sucuriscan_shared_params($params);
-    $params['PageContent'] = $html;
-
-    return sucuriscan_get_template( 'base', $params );
-}
-
-/**
- * Generate a HTML code using a template and replacing all the pseudo-variables
- * by the dynamic variables provided by the developer through one of the parameters
- * of the function.
- *
- * @param  string $template Filename of the template that will be used to generate the page.
- * @param  array  $params   A hash containing the pseudo-variable name as the key and the value that will replace it.
- * @return string           The formatted HTML page after replace all the pseudo-variables.
- */
-function sucuriscan_get_section($template='', $params=array()){
-    $params = sucuriscan_shared_params($params);
-
-    return sucuriscan_get_template( $template, $params, 'section' );
-}
-
-/**
- * Generate a HTML code using a template and replacing all the pseudo-variables
- * by the dynamic variables provided by the developer through one of the parameters
- * of the function.
- *
- * @param  string $template Filename of the template that will be used to generate the page.
- * @param  array  $params   A hash containing the pseudo-variable name as the key and the value that will replace it.
- * @return string           The formatted HTML page after replace all the pseudo-variables.
- */
-function sucuriscan_get_modal($template='', $params=array()){
-    $required = array(
-        'Title' => 'Lorem ipsum dolor sit amet',
-        'CssClass' => '',
-        'Content' => '<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do
-            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim
-            veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
-            consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse
-            cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
-            proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>',
-    );
-
-    if( !empty($template) && $template != 'none' ){
-        $params['Content'] = sucuriscan_get_section($template);
-    }
-
-    foreach( $required as $param_name => $param_value ){
-        if( !isset($params[$param_name]) ){
-            $params[$param_name] = $param_value;
-        }
-    }
-
-    $params = sucuriscan_shared_params($params);
-
-    return sucuriscan_get_template( 'modalwindow', $params, 'section' );
-}
-
-/**
- * Generate a HTML code using a template and replacing all the pseudo-variables
- * by the dynamic variables provided by the developer through one of the parameters
- * of the function.
- *
- * @param  string $template Filename of the template that will be used to generate the page.
- * @param  array  $params   A hash containing the pseudo-variable name as the key and the value that will replace it.
- * @return string           The formatted HTML page after replace all the pseudo-variables.
- */
-function sucuriscan_get_snippet($template='', $params=array()){
-    return sucuriscan_get_template( $template, $params, 'snippet' );
-}
-
-/**
- * Generate an URL pointing to the page indicated in the function and that must
- * be loaded through the administrator panel.
- *
- * @param  string $page Short name of the page that will be generated.
- * @return string       Full string containing the link of the page.
- */
-function sucuriscan_get_url($page=''){
-    $url_path = admin_url('admin.php?page=sucuriscan');
-
-    if( !empty($page) ){
-        $url_path .= '_' . $page;
-    }
-
-    return $url_path;
-}
-
-/**
- * Retrieve a new set of keys for the WordPress configuration file using the
- * official API provided by WordPress itself.
- *
- * @return array A list of the new set of keys generated by WordPress API.
- */
-function sucuriscan_get_new_config_keys(){
-    $request = wp_remote_get('https://api.wordpress.org/secret-key/1.1/salt/');
-
-    if( !is_wp_error($request) || wp_remote_retrieve_response_code($request) === 200 ){
-        if( preg_match_all("/define\('([A-Z_]+)',[ ]+'(.*)'\);/", $request['body'], $match) ){
-            $new_keys = array();
-
-            foreach($match[1] as $i=>$value){
-                $new_keys[$value] = $match[2][$i];
-            }
-
-            return $new_keys;
-        }
-    }
-
-    return FALSE;
-}
-
-/**
- * Modify the WordPress configuration file and change the keys that were defined
- * by a new random-generated list of keys retrieved from the official WordPress
- * API. The result of the operation will be either FALSE in case of error, or an
- * array containing multiple indexes explaining the modification, among them you
- * will find the old and new keys.
- *
- * @return false|array Either FALSE in case of error, or an array with the old and new keys.
- */
-function sucuriscan_set_new_config_keys(){
-    $new_wpconfig = '';
-    $wp_config_path = ABSPATH.'wp-config.php';
-
-    if( file_exists($wp_config_path) ){
-        $wp_config_lines = file($wp_config_path);
-        $new_keys = sucuriscan_get_new_config_keys();
-        $old_keys = array();
-        $old_keys_string = $new_keys_string = '';
-
-        foreach($wp_config_lines as $wp_config_line){
-            $wp_config_line = str_replace("\n", '', $wp_config_line);
-
-            if( preg_match("/define\('([A-Z_]+)',([ ]+)'(.*)'\);/", $wp_config_line, $match) ){
-                $key_name = $match[1];
-                if( array_key_exists($key_name, $new_keys) ){
-                    $white_spaces = $match[2];
-                    $old_keys[$key_name] = $match[3];
-                    $wp_config_line = "define('{$key_name}',{$white_spaces}'{$new_keys[$key_name]}');";
-
-                    $old_keys_string .= "define('{$key_name}',{$white_spaces}'{$old_keys[$key_name]}');\n";
-                    $new_keys_string .= "{$wp_config_line}\n";
+    public static function handle_old_plugins(){
+        if( class_exists('SucuriScanFileInfo') ){
+            $sucuri_fileinfo = new SucuriScanFileInfo();
+            $sucuri_fileinfo->ignore_files = FALSE;
+            $sucuri_fileinfo->ignore_directories = FALSE;
+
+            $plugins = array(
+                'sucuri-wp-plugin/sucuri.php',
+                'sucuri-cloudproxy-waf/cloudproxy.php',
+            );
+
+            foreach( $plugins as $plugin ){
+                $plugin_directory = dirname( WP_PLUGIN_DIR . '/' . $plugin );
+
+                if( file_exists($plugin_directory) ){
+                    if( is_plugin_active($plugin) ){
+                        deactivate_plugins($plugin);
+                    }
+
+                    $plugin_removed = $sucuri_fileinfo->remove_directory_tree($plugin_directory);
                 }
             }
-
-            $new_wpconfig .= "{$wp_config_line}\n";
-        }
-
-        $response = array(
-            'updated' => is_writable($wp_config_path),
-            'old_keys' => $old_keys,
-            'old_keys_string' => $old_keys_string,
-            'new_keys' => $new_keys,
-            'new_keys_string' => $new_keys_string,
-            'new_wpconfig' => $new_wpconfig,
-        );
-
-        if( $response['updated'] ){
-            file_put_contents($wp_config_path, $new_wpconfig, LOCK_EX);
-        }
-        return $response;
-    }
-    return FALSE;
-}
-
-/**
- * Generate and set a new password for a specific user not in session.
- *
- * @param  integer $user_id The user identifier that will be changed, this must be different than the user in session.
- * @return boolean          Either TRUE or FALSE in case of success or error respectively.
- */
-function sucuriscan_new_password($user_id=0){
-    $user_id = intval($user_id);
-    $current_user = wp_get_current_user();
-
-    if( $user_id>0 && $user_id!=$current_user->ID ){
-        $user = get_userdata($user_id);
-        $new_password = wp_generate_password(15, TRUE, FALSE);
-
-        $data_set = array( 'User'=>$user->display_name );
-        $message = "The password for your user account in the website mentioned has been changed by an administrator,
-            this is the new password automatically generated by the system, please update ASAP.<br>
-            <div style='display:inline-block;background:#ddd;font-family:monaco,monospace,courier;
-            font-size:30px;margin:0;padding:15px;border:1px solid #999'>{$new_password}</div>";
-        sucuriscan_send_mail($user->user_email, 'Changed password', $message, $data_set);
-
-        wp_set_password($new_password, $user_id);
-
-        return TRUE;
-    }
-    return FALSE;
-}
-
-/**
- * Retrieve the real ip address of the user in the current request.
- *
- * @return string The real ip address of the user in the current request.
- */
-function sucuriscan_get_remoteaddr(){
-    $alternatives = array(
-        'HTTP_X_REAL_IP',
-        'HTTP_CLIENT_IP',
-        'HTTP_X_FORWARDED_FOR',
-        'HTTP_X_FORWARDED',
-        'HTTP_FORWARDED_FOR',
-        'HTTP_FORWARDED',
-        'REMOTE_ADDR',
-        'SUCURI_RIP',
-    );
-    foreach($alternatives as $alternative){
-        if( !isset($_SERVER[$alternative]) ){ continue; }
-
-        $remote_addr = preg_replace('/[^0-9a-z.,: ]/', '', $_SERVER[$alternative]);
-        if($remote_addr) break;
-    }
-
-    if( $remote_addr == '::1' ){
-        $remote_addr = '127.0.0.1';
-    }
-
-    return $remote_addr;
-}
-
-/**
- * Retrieve the user-agent from the current request.
- *
- * @return string The user-agent from the current request.
- */
-function sucuriscan_get_useragent(){
-    if( isset($_SERVER['HTTP_USER_AGENT']) ){
-        return esc_attr($_SERVER['HTTP_USER_AGENT']);
-    }
-
-    return FALSE;
-}
-
-/**
- * Check whether the site is behing the Sucuri CloudProxy network.
- *
- * @return boolean Either TRUE or FALSE if the site is behind CloudProxy.
- */
-function sucuriscan_is_behind_cloudproxy(){
-    $http_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost';
-    if( preg_match('/^(.*):([0-9]+)/', $http_host, $match) ){ $http_host = $match[1]; }
-    $host_by_name = gethostbyname($http_host);
-    $host_by_addr = gethostbyaddr($host_by_name);
-
-    if(
-        isset($_SERVER['SUCURIREAL_REMOTE_ADDR'])
-        || preg_match('/^cloudproxy([0-9]+)\.sucuri\.net$/', $host_by_addr)
-    ){
-        return TRUE;
-    }
-
-    return FALSE;
-}
-
-/**
- * Find and retrieve the current version of Wordpress installed.
- *
- * @return string The version number of Wordpress installed.
- */
-function sucuriscan_get_wpversion(){
-    $version = get_option('version');
-    if( $version ){ return $version; }
-
-    $wp_version_path = ABSPATH . WPINC . '/version.php';
-    if( file_exists($wp_version_path) ){
-        include($wp_version_path);
-        if( isset($wp_version) ){ return $wp_version; }
-    }
-
-    return md5_file(ABSPATH . WPINC . '/class-wp.php');
-}
-
-/**
- * Find and retrieve the absolute path of the WordPress configuration file.
- *
- * @return string Absolute path of the WordPress configuration file.
- */
-function sucuriscan_get_wpconfig_path(){
-    $wp_config_path = ABSPATH.'wp-config.php';
-
-    // if wp-config.php doesn't exist/not readable check one directory up
-    if( !is_readable($wp_config_path)){
-        $wp_config_path = ABSPATH.'/../wp-config.php';
-    }
-
-    return $wp_config_path;
-}
-
-/**
- * Find and retrieve the absolute path of the main WordPress htaccess file.
- *
- * @return string Absolute path of the main WordPress htaccess file.
- */
-function sucuriscan_get_htaccess_path(){
-    $base_dirs = array(
-        rtrim(ABSPATH, '/'),
-        dirname(ABSPATH),
-        dirname(dirname(ABSPATH))
-    );
-
-    foreach($base_dirs as $base_dir){
-        $htaccess_path = sprintf('%s/.htaccess', $base_dir);
-        if( file_exists($htaccess_path) ){
-            return $htaccess_path;
         }
     }
 
-    return FALSE;
-}
+    /**
+     * Create a folder in the WordPress upload directory where the plugin will
+     * store all the temporal or dynamic information.
+     *
+     * @return void
+     */
+    public static function create_datastore_folder(){
+        $plugin_upload_folder = SucuriScan::datastore_folder_path();
 
-/**
- * Get the email address set by the administrator to receive the notifications
- * sent by the plugin, if the email is missing the WordPress email address is
- * chosen by default.
- *
- * @return string The administrator email address.
- */
-function sucuriscan_get_site_email(){
-    $email = get_option('admin_email');
+        if( !file_exists($plugin_upload_folder) ){
+            if( @mkdir($plugin_upload_folder) ){
+                // Create last-logins datastore file.
+                sucuriscan_lastlogins_datastore_exists();
 
-    if( is_valid_email($email) ){
-        return $email;
-    }
+                // Create a htaccess file to deny access from all.
+                @file_put_contents(
+                    $plugin_upload_folder . '/.htaccess',
+                    "Order Deny,Allow\nDeny from all\n",
+                    LOCK_EX
+                );
 
-    return FALSE;
-}
-
-/**
- * Get the clean version of the current domain.
- *
- * @return string The domain of the current site.
- */
-function sucuriscan_get_domain(){
-    $http_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
-    $domain_name =  preg_replace( '/^www\./', '', $http_host );
-
-    return $domain_name;
-}
-
-/**
- * Generate an user-agent for the HTTP requests.
- *
- * @return string An user-agent for the HTTP requests.
- */
-function sucuriscan_user_agent(){
-    global $wp_version;
-
-    $user_agent = 'WordPress/' . $wp_version . '; ' . sucuriscan_get_domain();
-
-    return $user_agent;
-}
-
-/**
- * Return the time passed since the specified timestamp until now.
- *
- * @param  integer $timestamp The Unix time number of the date/time before now.
- * @return string             The time passed since the timestamp specified.
- */
-function sucuriscan_time_ago($timestamp=0){
-    if( !is_numeric($timestamp) ){
-        $timestamp = strtotime($timestamp);
-    }
-
-    $diff = abs( time() - intval($timestamp) );
-
-    if( $diff == 0 ){ return 'just now'; }
-
-    $intervals = array(
-        1                => array('year',   31556926),
-        $diff < 31556926 => array('month',  2628000),
-        $diff < 2629744  => array('week',   604800),
-        $diff < 604800   => array('day',    86400),
-        $diff < 86400    => array('hour',   3600),
-        $diff < 3600     => array('minute', 60),
-        $diff < 60       => array('second', 1)
-    );
-
-    $value = floor($diff/$intervals[1][1]);
-    $time_ago = sprintf(
-        '%s %s%s ago',
-        $value,
-        $intervals[1][0],
-        ( $value > 1 ? 's' : '' )
-    );
-
-    return $time_ago;
-}
-
-/**
- * Convert an string of characters into a valid variable name.
- *
- * @see http://www.php.net/manual/en/language.variables.basics.php
- *
- * @param  string $string A text containing alpha-numeric and special characters.
- * @return string         A valid variable name.
- */
-function sucuriscan_str_human2var($string=''){
-    $pattern = '/[^a-zA-Z0-9_]/';
-    $var_name = preg_replace($pattern, '_', strtolower($string));
-
-    return $var_name;
-}
-
-/**
- * Retrieve specific options from the database.
- *
- * Considering the case in which this plugin is installed in a multisite instance
- * of Wordpress, the allowed values for the first parameter of this function will
- * be treated like this:
- *
- * <ul>
- *   <li>all_sucuriscan_options: Will retrieve all the option values created by this plugin in the main site (aka. network),</li>
- *   <li>site_options: Will retrieve all the option values stored in the current site visited by the user (aka. sub-site) excluding the transient options,</li>
- *   <li>sucuriscan_option: Will retrieve one specific option from the network site only if the option starts with the prefix <i>sucuri_<i>.</li>
- * </ul>
- *
- * @param  string $filter_by   Criteria to filter the results, valid values: all_sucuriscan_options, site_options, sucuri_option.
- * @param  string $option_name Optional parameter with the name of the option that will be filtered.
- * @return array               List of options retrieved from the query in the database.
- */
-function sucuriscan_get_options_from_db( $filter_by='', $option_name='' ){
-    global $wpdb;
-
-    $output = FALSE;
-    switch($filter_by){
-        case 'all_sucuriscan_options':
-            $output = $wpdb->get_results("SELECT * FROM {$wpdb->options} WHERE option_name LIKE 'sucuriscan%' ORDER BY option_id ASC");
-            break;
-        case 'site_options':
-            $output = $wpdb->get_results("SELECT * FROM {$wpdb->options} WHERE option_name NOT LIKE '%_transient_%' ORDER BY option_id ASC");
-            break;
-        case 'sucuriscan_option':
-            $row = $wpdb->get_row( $wpdb->prepare("SELECT option_value FROM {$wpdb->base_prefix}options WHERE option_name = %s LIMIT 1", $option_name) );
-            if( $row ){ $output = $row->option_value; }
-            break;
-    }
-
-    return $output;
-}
-
-/**
- * Alias function for the method Common::SucuriScan_Get_Options()
- *
- * This function search the specified option in the database, not only the options
- * set by the plugin but all the options set for the site. If the value retrieved
- * is FALSE the method tries to search for a default value.
- *
- * @param  string $option_name Optional parameter that you can use to filter the results to one option.
- * @return string              The value (or default value) of the option specified.
- */
-function sucuriscan_get_option( $option_name='' ){
-    return sucuriscan_get_options($option_name);
-}
-
-/**
- * Retrieve all the options created by this Plugin from the Wordpress database.
- *
- * The function acts as an alias of WP::get_option() and if the returned value
- * is FALSE it tries to search for a default value to complement the information.
- *
- * @param  string $option_name Optional parameter that you can use to filter the results to one option.
- * @return array               Either FALSE or an Array containing all the sucuri options in the database.
- */
-function sucuriscan_get_options( $option_name='' ){
-    if( !empty($option_name) ){
-        return sucuriscan_get_single_option($option_name);
-    }
-
-    $settings = array();
-    $results = sucuriscan_get_options_from_db('all_sucuriscan_options');
-    foreach( $results as $row ){
-        $settings[$row->option_name] = $row->option_value;
-    }
-
-    return sucuriscan_get_default_options($settings);
-}
-
-/**
- * Retrieve a single option from the database.
- *
- * @param  string $option_name Name of the option that will be retrieved.
- * @return string              Value of the option stored in the database, FALSE if not found.
- */
-function sucuriscan_get_single_option( $option_name='' ){
-    $is_sucuri_option = preg_match('/^sucuriscan_/', $option_name) ? TRUE : FALSE;
-
-    if( sucuriscan_is_multisite() && $is_sucuri_option ){
-        $option_value = sucuriscan_get_options_from_db('sucuriscan_option', $option_name);
-    }else{
-        $option_value = get_option($option_name);
-    }
-
-    if( $option_value === FALSE && $is_sucuri_option ){
-        $option_value = sucuriscan_get_default_options($option_name);
-    }
-
-    return $option_value;
-}
-
-/**
- * Retrieve the default values for some specific options.
- *
- * @param  string|array $settings Either an array that will be complemented or a string with the name of the option.
- * @return string|array           The default values for the specified options.
- */
-function sucuriscan_get_default_options( $settings='' ){
-    $admin_email = get_option('admin_email');
-    $default_options = array(
-        'sucuriscan_api_key' => FALSE,
-        'sucuriscan_account' => $admin_email,
-        'sucuriscan_scan_frequency' => 'hourly',
-        'sucuriscan_scan_interface' => 'spl',
-        'sucuriscan_runtime' => 0,
-        'sucuriscan_lastlogin_redirection' => 'enabled',
-        'sucuriscan_notify_to' => $admin_email,
-        'sucuriscan_emails_sent' => 0,
-        'sucuriscan_emails_per_hour' => 5,
-        'sucuriscan_last_email_at' => time(),
-        'sucuriscan_prettify_mails' => 'enabled',
-        'sucuriscan_notify_success_login' => 'enabled',
-        'sucuriscan_notify_failed_login' => 'enabled',
-        'sucuriscan_notify_post_publication' => 'enabled',
-        'sucuriscan_notify_theme_editor' => 'enabled',
-        'sucuriscan_maximum_failed_logins' => 30,
-        'sucuriscan_ignored_events' => '',
-        'sucuriscan_verify_ssl_cert' => 'true',
-    );
-
-    if( is_array($settings) ){
-        foreach( $default_options as $option_name => $option_value ){
-            if( !isset($settings[$option_name]) ){
-                $settings[$option_name] = $option_value;
+                // Create an index.html to avoid directory listing.
+                @file_put_contents(
+                    $plugin_upload_folder . '/index.html',
+                    '<!-- Attemp to prevent the directory listing. -->',
+                    LOCK_EX
+                );
+            } else {
+                SucuriScanInterface::error(
+                    'Data folder does not exists and could not be created. You will need to
+                    create this folder manually and give it write permissions:<br><br><code>'
+                    . $plugin_upload_folder . '</code>'
+                );
             }
         }
-        return $settings;
     }
 
-    if( is_string($settings) ){
-        if( isset($default_options[$settings]) ){
-            return $default_options[$settings];
-        }
-    }
+    /**
+     * Check whether a user has the permissions to see a page from the plugin.
+     *
+     * @return void
+     */
+    public static function check_permissions(){
+        global $sucuriscan_pages;
 
-    return FALSE;
-}
-
-/**
- * Retrieve all the options stored by Wordpress in the database. The options
- * containing the word "transient" are excluded from the results, this function
- * is compatible with multisite instances.
- *
- * @return array All the options stored by Wordpress in the database, except the transient options.
- */
-function sucuriscan_get_wp_options(){
-    $settings = array();
-
-    $results = sucuriscan_get_options_from_db('site_options');
-    foreach( $results as $row ){
-        $settings[$row->option_name] = $row->option_value;
-    }
-
-    return $settings;
-}
-
-/**
- * Check what Wordpress options were changed comparing the values in the database
- * with the values sent through a simple request using a GET or POST method.
- *
- * @param  array  $request The content of the global variable GET or POST considering SERVER[REQUEST_METHOD].
- * @return array           A list of all the options that were changes through this request.
- */
-function sucuriscan_what_options_were_changed( $request=array() ){
-    $options_changed = array(
-        'original' => array(),
-        'changed' => array()
-    );
-    $wp_options = sucuriscan_get_wp_options();
-
-    foreach( $request as $req_name => $req_value ){
         if(
-            array_key_exists($req_name, $wp_options)
-            && $wp_options[$req_name] != $req_value
+            !function_exists('current_user_can')
+            || !current_user_can('manage_options')
         ){
-            $options_changed['original'][$req_name] = $wp_options[$req_name];
-            $options_changed['changed'][$req_name] = $req_value;
-        }
-    }
-    return $options_changed;
-}
-
-/**
- * Get a list of the post types ignored to receive email notifications when the
- * "new site content" hook is triggered.
- *
- * @return array List of ignored posts-types to send notifications.
- */
-function sucuriscan_get_ignored_events(){
-    $post_types = sucuriscan_get_option('sucuriscan_ignored_events');
-    $post_types_arr = @unserialize($post_types);
-
-    if( !is_array($post_types_arr) ){ $post_types_arr = array(); }
-
-    return $post_types_arr;
-}
-
-/**
- * Add a new post type to the list of ignored events to send notifications.
- *
- * @param  string  $event_name Unique post-type name.
- * @return boolean             Whether the event was ignored or not.
- */
-function sucuriscan_add_ignored_event( $event_name='' ){
-    $post_types = get_post_types();
-
-    // Check if the event is a registered post-type.
-    if( array_key_exists($event_name, $post_types) ){
-        $ignored_events = sucuriscan_get_ignored_events();
-
-        // Check if the event is not ignored already.
-        if( !array_key_exists($event_name, $ignored_events) ){
-            $ignored_events[$event_name] = time();
-            $saved = update_option( 'sucuriscan_ignored_events', serialize($ignored_events) );
-
-            return $saved;
+            $page = SucuriScanRequest::get('page', '_page');
+            wp_die(__('Access denied by <b>Sucuri</b> to see <code>' . $page . '</code>') );
         }
     }
 
-    return FALSE;
-}
+    /**
+     * Verify the nonce of the previous page after a form submission. If the
+     * validation fails the execution of the script will be stopped and a dead page
+     * will be printed to the client using the official WordPress method.
+     *
+     * @return boolean Either TRUE or FALSE if the nonce is valid or not respectively.
+     */
+    public static function check_nonce(){
+        if( !empty($_POST) ){
+            $nonce_name = 'sucuriscan_page_nonce';
+            $nonce_value = SucuriScanRequest::post($nonce_name, 'nonce');
 
-/**
- * Remove a post type from the list of ignored events to send notifications.
- *
- * @param  string  $event_name Unique post-type name.
- * @return boolean             Whether the event was removed from the list or not.
- */
-function sucuriscan_remove_ignored_event( $event_name='' ){
-    $ignored_events = sucuriscan_get_ignored_events();
+            if( !$nonce_value || !wp_verify_nonce($nonce_value, $nonce_name) ){
+                wp_die(__('WordPress Nonce verification failed, try again going back and checking the form.') );
 
-    if( array_key_exists($event_name, $ignored_events) ){
-        unset( $ignored_events[$event_name] );
-        $saved = update_option( 'sucuriscan_ignored_events', serialize($ignored_events) );
+                return FALSE;
+            }
+        }
 
-        return $saved;
-    }
-
-    return FALSE;
-}
-
-/**
- * Check whether an event is being ignored to send notifications or not.
- *
- * @param  string  $event_name Unique post-type name.
- * @return boolean             Whether an event is being ignored or not.
- */
-function sucuriscan_is_ignored_event( $event_name='' ){
-    $event_name = strtolower($event_name);
-    $ignored_events = sucuriscan_get_ignored_events();
-
-    if( array_key_exists($event_name, $ignored_events) ){
         return TRUE;
     }
 
-    return FALSE;
-}
+    /**
+     * Prints a HTML alert in the WordPress admin interface.
+     *
+     * @param  string $type    The type of alert, it can be either Updated or Error.
+     * @param  string $message The message that will be printed in the alert.
+     * @return void
+     */
+    private function admin_notice( $type='updated', $message='' ){
+        $alert_id = rand(100, 999);
+        if( !empty($message) ): ?>
+            <div id="sucuriscan-alert-<?php echo $alert_id; ?>" class="<?php echo $type; ?> sucuriscan-alert sucuriscan-alert-<?php echo $type; ?>">
+                <a href="javascript:void(0)" class="close" onclick="sucuriscan_alert_close('<?php echo $alert_id; ?>')">&times;</a>
+                <p><?php _e($message); ?></p>
+            </div>
+        <?php endif;
+    }
 
-if( !function_exists('sucuriscan_plugin_setup_notice') ){
+    /**
+     * Prints a HTML alert of type ERROR in the WordPress admin interface.
+     *
+     * @param  string $error_msg The message that will be printed in the alert.
+     * @return void
+     */
+    public static function error( $error_msg='' ){
+        self::admin_notice( 'error', '<b>Sucuri:</b> ' . $error_msg );
+    }
+
+    /**
+     * Prints a HTML alert of type INFO in the WordPress admin interface.
+     *
+     * @param  string $info_msg The message that will be printed in the alert.
+     * @return void
+     */
+    public static function info( $info_msg='' ){
+        self::admin_notice( 'updated', '<b>Sucuri:</b> ' . $info_msg );
+    }
+
     /**
      * Display a notice message with instructions to continue the setup of the
      * plugin, this includes the generation of the API key and other steps that need
@@ -2552,182 +4654,17 @@ if( !function_exists('sucuriscan_plugin_setup_notice') ){
      *
      * @return void
      */
-    function sucuriscan_plugin_setup_notice(){
+    public static function setup_notice(){
         if(
             current_user_can('manage_options')
-            && !sucuriscan_wordpress_apikey()
-            && !isset($_POST['sucuriscan_wordpress_apikey'])
-            && !isset($_POST['sucuriscan_recover_api_key'])
+            && !SucuriScanAPI::get_plugin_key()
+            && !SucuriScanRequest::post(':plugin_api_key')
+            && !SucuriScanRequest::post(':recover_api_key')
         ){
-            echo sucuriscan_get_section('setup_notice');
+            echo SucuriScanTemplate::get_section('setup-notice');
         }
     }
 
-    $sucuriscan_admin_notice_name = sucuriscan_is_multisite() ? 'network_admin_notices' : 'admin_notices';
-    add_action( $sucuriscan_admin_notice_name, 'sucuriscan_plugin_setup_notice' );
-}
-
-/**
- * Check the plugins directory and retrieve all plugin files with plugin data.
- * This function will also retrieve the URL and name of the repository/page
- * where it is being published at the WordPress plugins market.
- *
- * @return array Key is the plugin file path and the value is an array of the plugin data.
- */
-function sucuriscan_get_plugins(){
-    $sucuri_cache = new SucuriScanCache('plugindata');
-    $cached_data = $sucuri_cache->get( 'plugins', SUCURISCAN_GET_PLUGINS_LIFETIME, 'array' );
-
-    // Return the previously cached results of this function.
-    if( $cached_data !== FALSE ){
-        return $cached_data;
-    }
-
-    // Get the plugin's basic information from WordPress transient data.
-    $plugins = get_plugins();
-    $pattern = '/^http:\/\/wordpress\.org\/plugins\/(.*)\/$/';
-    $wp_market = 'http://wordpress.org/plugins/%s/';
-
-    // Loop through each plugin data and complement its information with more attributes.
-    foreach( $plugins as $plugin_path => $plugin_data ){
-        // Default values for the plugin extra attributes.
-        $repository = '';
-        $repository_name = '';
-        $is_free_plugin = FALSE;
-
-        // If the plugin's info object has already a plugin_uri.
-        if(
-            isset($plugin_data['PluginURI'])
-            && preg_match($pattern, $plugin_data['PluginURI'], $match)
-        ){
-            $repository = $match[0];
-            $repository_name = $match[1];
-            $is_free_plugin = TRUE;
-        }
-
-        // Retrieve the WordPress plugin page from the plugin's filename.
-        else {
-            if( strpos($plugin_path, '/') !== FALSE ){
-                $plugin_path_parts = explode('/', $plugin_path, 2);
-            } else {
-                $plugin_path_parts = explode('.', $plugin_path, 2);
-            }
-
-            if( isset($plugin_path_parts[0]) ){
-                $possible_repository = sprintf($wp_market, $plugin_path_parts[0]);
-                $resp = wp_remote_head($possible_repository);
-
-                if(
-                    !is_wp_error($resp)
-                    && $resp['response']['code'] == 200
-                ){
-                    $repository = $possible_repository;
-                    $repository_name = $plugin_path_parts[0];
-                    $is_free_plugin = TRUE;
-                }
-            }
-        }
-
-        // Complement the plugin's information with these attributes.
-        $plugins[$plugin_path]['Repository'] = $repository;
-        $plugins[$plugin_path]['RepositoryName'] = $repository_name;
-        $plugins[$plugin_path]['IsFreePlugin'] = $is_free_plugin;
-        $plugins[$plugin_path]['PluginType'] = ( $is_free_plugin ? 'free' : 'premium' );
-        $plugins[$plugin_path]['IsPluginActive'] = FALSE;
-
-        if( is_plugin_active($plugin_path) ){
-            $plugins[$plugin_path]['IsPluginActive'] = TRUE;
-        }
-    }
-
-    // Add the information of the plugins to the file-based cache.
-    $sucuri_cache->add( 'plugins', $plugins );
-
-    return $plugins;
-}
-
-/**
- * Retrieve plugin installer pages from WordPress Plugins API.
- *
- * It is possible for a plugin to override the Plugin API result with three
- * filters. Assume this is for plugins, which can extend on the Plugin Info to
- * offer more choices. This is very powerful and must be used with care, when
- * overriding the filters.
- *
- * The first filter, 'plugins_api_args', is for the args and gives the action as
- * the second parameter. The hook for 'plugins_api_args' must ensure that an
- * object is returned.
- *
- * The second filter, 'plugins_api', is the result that would be returned.
- *
- * @param  string $repository_name Frienly name of the plugin.
- * @return object                  Object on success, WP_Error on failure.
- */
-function sucuriscan_get_remote_plugin_data( $repository_name='' ){
-    $repository_base = 'http://api.wordpress.org/plugins/info/1.0/%s/';
-    $repository_url = sprintf( $repository_base, $repository_name );
-    $resp = wp_remote_get($repository_url);
-
-    if( !is_wp_error($resp) ){
-        $plugin_data = @unserialize($resp['body']);
-
-        if( $plugin_data instanceof stdClass ){
-            return $plugin_data;
-        }
-    }
-
-    return FALSE;
-}
-
-/**
- * Detect which number in a pagination was clicked.
- *
- * @return integer Page number of the link clicked in a pagination.
- */
-function sucuriscan_get_page_number(){
-    $page_number = 1;
-
-    // Check if there page was specified in the request.
-    if(
-        isset($_GET['num'])
-        && preg_match('/^[0-9]{1,2}$/', $_GET['num'])
-        && $_GET['num'] <= 10
-    ){
-        $page_number = intval($_GET['num']);
-    }
-
-    return $page_number;
-}
-
-/**
- * Generate the HTML code to display a pagination.
- *
- * @param  string  $base_url     Base URL for the links before the page number.
- * @param  integer $total_items  Total quantity of items retrieved from a query.
- * @param  integer $max_per_page Maximum number of items that will be shown per page.
- * @return string                HTML code for a pagination generated using the provided data.
- */
-function sucuriscan_generate_pagination( $base_url='', $total_items=0, $max_per_page=1 ){
-    // Calculate the number of links for the pagination.
-    $html_links = '';
-    $page_number = sucuriscan_get_page_number();
-    $max_pages = ceil($total_items / $max_per_page);
-
-    // Generate the HTML links for the pagination.
-    for( $j=1; $j<=$max_pages; $j++ ){
-        $link_class = 'sucuriscan-pagination-link';
-
-        if( $page_number == $j ){
-            $link_class .= chr(32) . 'sucuriscan-pagination-active';
-        }
-
-        $html_links .= sprintf(
-            '<li><a href="%s&num=%d" class="%s">%s</a></li>',
-            $base_url, $j, $link_class, $j
-        );
-    }
-
-    return $html_links;
 }
 
 /**
@@ -2738,63 +4675,68 @@ function sucuriscan_generate_pagination( $base_url='', $total_items=0, $max_per_
  * @return void
  */
 function sucuriscan_scanner_page(){
+    SucuriScanInterface::check_permissions();
+
+    // Check if the information is already cached.
+    $sucuri_cache = new SucuriScanCache('sitecheck');
+    $scan_results = $sucuri_cache->get( 'scan_results', SUCURISCAN_SITECHECK_LIFETIME, 'array' );
+
     if(
-        sucuriscan_check_page_nonce()
-        && isset($_POST['sucuriscan_malware_scan'])
+        (
+            $scan_results
+            && !empty($scan_results)
+        ) || (
+            SucuriScanInterface::check_nonce()
+            && SucuriScanRequest::post(':malware_scan', '1')
+        )
     ){
-        sucuriscan_sitecheck_info();
+        sucuriscan_sitecheck_info($scan_results);
     } else {
-        echo sucuriscan_get_template('malwarescan');
+        echo SucuriScanTemplate::get_template('malwarescan', array(
+            'PageTitle' => 'Malware Scan',
+            'PageStyleClass' => 'scanner-loading',
+        ));
     }
 }
 
 /**
  * Display the result of site scan made through SiteCheck.
  *
+ * @param  array $res Array with information of the scanning.
  * @return void
  */
-function sucuriscan_sitecheck_info(){
-    $sucuri_cache = new SucuriScanCache('sitecheck');
-    $scan_results = $sucuri_cache->get( 'scan_results', SUCURISCAN_SITECHECK_LIFETIME, 'array' );
-    $clean_domain = sucuriscan_get_domain();
-    $display_results = FALSE;
+function sucuriscan_sitecheck_info( $res=array() ){
+    // Will be TRUE only if the scanning results were retrieved from the cache.
+    $display_results = (bool) $res;
+    $clean_domain = SucuriScanOption::get_domain();
+
+    // If the results are not cached, then request a new scanning.
+    if( $res === FALSE ){
+        $res = SucuriScanAPI::get_sitecheck_results($clean_domain);
+
+        // Check for error messages in the request's response.
+        if( preg_match('/^ERROR:(.*)/', $res, $error_m) ){
+            SucuriScanInterface::error( 'The site <code>' . $clean_domain . '</code> was not scanned: ' . $error_m[1] );
+        }
+
+        else {
+            $sucuri_cache = new SucuriScanCache('sitecheck');
+            $display_results = TRUE;
+
+            // Cache the scanning results to reduce memory lose.
+            if( !$sucuri_cache->add( 'scan_results', $res ) ){
+                SucuriScanInterface::error( 'Could not cache the results of the SiteCheck scanning.' );
+            }
+        }
+    }
 
     ob_start();
-
-    if( !$scan_results ){
-        $remote_url = 'http://sitecheck.sucuri.net/scanner/?serialized&clear&fromwp&scan='.$clean_domain;
-        $scan_results = wp_remote_get($remote_url, array('timeout' => 180));
-
-        if( is_wp_error($scan_results) ){
-            sucuriscan_error( $scan_results->get_error_message() );
-        }
-
-        elseif( isset($scan_results['body']) ){
-            if( preg_match('/^ERROR:(.*)/', $scan_results['body'], $error_m) ){
-                sucuriscan_error( 'The site <code>' . $clean_domain . '</code> was not scanned: ' . $error_m[1] );
-            }
-
-            else {
-                $scan_results = @unserialize($scan_results['body']);
-                $display_results = TRUE;
-
-                if( !$sucuri_cache->add( 'scan_results', $scan_results ) ){
-                    sucuriscan_error( 'Could not cache the results of the SiteCheck scanning' );
-                }
-            }
-        }
-    } else {
-        $display_results = TRUE;
-        // sucuriscan_info( 'SiteCheck results retrieved from cache.' );
-    }
     ?>
 
 
     <?php if( $display_results ): ?>
 
         <?php
-        $res = ( is_array($scan_results) ? $scan_results : array() );
-
         // Check for general warnings, and return the information for Infected/Clean site.
         $malware_warns_exist   = isset($res['MALWARE']['WARN'])   ? TRUE : FALSE;
         $blacklist_warns_exist = isset($res['BLACKLIST']['WARN']) ? TRUE : FALSE;
@@ -2845,8 +4787,8 @@ function sucuriscan_sitecheck_info(){
 
                 <div class="inside">
                     <p>
-                        If your site was recently hacked, you can see which files were modified
-                        recently, to assist with any investigation.
+                        If your site was recently hacked, you can see which files were modified to
+                        assist with any investigation.
                     </p>
                 </div>
             </div>
@@ -3055,10 +4997,10 @@ function sucuriscan_sitecheck_info(){
                                             <td colspan="2" class="sucuriscan-border-bad">
                                                 <?php printf(
                                                     '<strong>%s</strong><br><span>%s</span><br><a href="%s" target="_blank">%s</a>',
-                                                    $recommendation[0],
-                                                    $recommendation[1],
-                                                    $recommendation[2],
-                                                    $recommendation[2]
+                                                    SucuriScan::escape($recommendation[0]),
+                                                    SucuriScan::escape($recommendation[1]),
+                                                    SucuriScan::escape($recommendation[2]),
+                                                    SucuriScan::escape($recommendation[2])
                                                 ); ?>
                                             </td>
                                         </tr>
@@ -3121,8 +5063,8 @@ function sucuriscan_sitecheck_info(){
                                     ) as $type => $group_title){
                                         if( isset($res['BLACKLIST'][$type]) ){
                                             foreach( $res['BLACKLIST'][$type] as $blres ){
-                                                $report_site = htmlspecialchars($blres[0]);
-                                                $report_url = htmlspecialchars($blres[1]);
+                                                $report_site = SucuriScan::escape($blres[0]);
+                                                $report_url = SucuriScan::escape($blres[1]);
                                                 printf(
                                                     '<li><b>%s:</b> %s.<br>Details at <a href="%s" target="_blank">%s</a></li>',
                                                     $group_title, $report_site, $report_url, $report_url
@@ -3158,1296 +5100,12 @@ function sucuriscan_sitecheck_info(){
     <?php
     $_html = ob_get_contents();
     ob_end_clean();
-    echo sucuriscan_get_base_template($_html, array(
+    echo SucuriScanTemplate::get_base_template($_html, array(
         'PageTitle' => 'Malware Scan',
         'PageContent' => $_html,
         'PageStyleClass' => 'scanner-results',
     ));
     return;
-}
-
-/**
- * Retrieves a URL using a changeable HTTP method, returning results in an
- * array. Results include HTTP headers and content.
- *
- * @see http://codex.wordpress.org/Function_Reference/wp_remote_post
- * @see http://codex.wordpress.org/Function_Reference/wp_remote_get
- *
- * @param  string $url    The target URL where the request will be sent.
- * @param  string $method HTTP method that will be used to send the request.
- * @param  array  $params Parameters for the request defined in an associative array of key-value.
- * @param  array  $args   Request arguments like the timeout, redirections, headers, cookies, etc.
- * @return array          Array of results including HTTP headers or WP_Error if the request failed.
- */
-function sucuriscan_api_call( $url='', $method='GET', $params=array(), $args=array() ){
-    if( !$url ){ return FALSE; }
-
-    $req_args = array(
-        'method' => $method,
-        'timeout' => 90,
-        'redirection' => 2,
-        'httpversion' => '1.0',
-        'user-agent' => sucuriscan_user_agent(),
-        'blocking' => TRUE,
-        'headers' => array(),
-        'cookies' => array(),
-        'compress' => FALSE,
-        'decompress' => FALSE,
-        'sslverify' => sucuriscan_verify_ssl_cert(),
-    );
-
-    // Update the request arguments with the values passed tot he function.
-    foreach( $args as $arg_name => $arg_value ){
-        if( array_key_exists($arg_name, $req_args) ){
-            $req_args[$arg_name] = $arg_value;
-        }
-    }
-
-    if( $method == 'GET' ){
-        $url = sprintf( '%s?%s', $url, http_build_query($params) );
-        $response = wp_remote_get( $url, $req_args );
-    }
-
-    elseif( $method == 'POST' ){
-        $req_args['body'] = $params;
-        $response = wp_remote_post( $url, $req_args );
-    }
-
-    if( isset($response) ){
-        if( is_wp_error($response) ){
-            sucuriscan_error(sprintf(
-                'Something went wrong with an API call (%s action): %s',
-                ( isset($params['a']) ? $params['a'] : 'unknown' ),
-                $response->get_error_message()
-            ));
-        } else {
-            $response['body_raw'] = $response['body'];
-
-            if(
-                isset($response['headers']['content-type'])
-                && $response['headers']['content-type'] = 'application/json'
-            ){
-                $response['body'] = json_decode($response['body_raw']);
-            }
-
-            return $response;
-        }
-    } else {
-        sucuriscan_error( 'HTTP method not allowed: ' . $method );
-    }
-
-    return FALSE;
-}
-
-/**
- * Store the API key locally.
- *
- * @param  string  $api_key  An unique string of characters to identify this installation.
- * @param  boolean $validate Whether the format of the key should be validated before store it.
- * @return boolean           Either TRUE or FALSE if the key was saved successfully or not respectively.
- */
-function sucuriscan_set_api_key( $api_key='', $validate=FALSE ){
-    if( $validate ){
-        if( !preg_match('/^([a-z0-9]{32})$/', $api_key) ){
-            sucuriscan_error( 'Invalid API key format' );
-            return FALSE;
-        }
-    }
-
-    if( !empty($api_key) ){
-        sucuriscan_notify_event( 'plugin_change', 'API key updated successfully: ' . $api_key );
-    }
-
-    return (bool) update_option( 'sucuriscan_api_key', $api_key );
-}
-
-/**
- * Retrieve the API key from the local storage.
- *
- * @return string|boolean The API key or FALSE if it does not exists.
- */
-function sucuriscan_wordpress_apikey(){
-    $api_key = sucuriscan_get_option('sucuriscan_api_key');
-
-    if( $api_key && strlen($api_key) > 10 ){
-        return $api_key;
-    }
-
-    return FALSE;
-}
-
-/**
- * Check whether the CloudProxy API key is valid or not.
- *
- * @param  string  $api_key      The CloudProxy API key.
- * @param  boolean $return_match Whether the parts of the API key must be returned or not.
- * @return boolean               TRUE if the API key specified is valid, FALSE otherwise.
- */
-function sucuriscan_valid_cloudproxy_apikey( $api_key='', $return_match=FALSE ){
-    $pattern = '/^([a-z0-9]{32})\/([a-z0-9]{32})$/';
-
-    if( $api_key && preg_match($pattern, $api_key, $match) ){
-        if( $return_match ){ return $match; }
-
-        return TRUE;
-    }
-
-    return FALSE;
-}
-
-/**
- * Check and return the API key for the plugin.
- *
- * In this plugin the key is a pair of two strings concatenated by a single
- * slash, the first part of it is in fact the key and the second part is the
- * unique identifier of the site in the remote server.
- *
- * @return array|boolean FALSE if the key is invalid or not present, an array otherwise.
- */
-function sucuriscan_cloudproxy_apikey(){
-    $option_name = 'sucuriscan_cloudproxy_apikey';
-    $api_key = sucuriscan_get_option($option_name);
-
-    // Check if the cloudproxy-waf plugin was previously installed.
-    if( !$api_key ){
-        $api_key = sucuriscan_get_option('sucuriwaf_apikey');
-
-        if( $api_key ){
-            update_option( $option_name, $api_key );
-            delete_option('sucuriwaf_apikey');
-        }
-    }
-
-    // Check the validity of the API key.
-    $match = sucuriscan_valid_cloudproxy_apikey( $api_key, TRUE );
-
-    if( $match ){
-        return array(
-            'string' => $match[1].'/'.$match[2],
-            'k' => $match[1],
-            's' => $match[2]
-        );
-    }
-
-    return FALSE;
-}
-
-/**
- * Call an action from the remote API interface of our WordPress service.
- *
- * @param  string  $method       HTTP method that will be used to send the request.
- * @param  array   $params       Parameters for the request defined in an associative array of key-value.
- * @param  boolean $send_api_key Whether the API key should be added to the request parameters or not.
- * @param  array   $args         Request arguments like the timeout, redirections, headers, cookies, etc.
- * @return array                 Array of results including HTTP headers or WP_Error if the request failed.
- */
-function sucuriscan_api_call_wordpress( $method='GET', $params=array(), $send_api_key=TRUE, $args=array() ){
-    $url = SUCURISCAN_API;
-    $params[SUCURISCAN_API_VERSION] = 1;
-    $params['p'] = 'wordpress';
-
-    if( $send_api_key ){
-        $api_key = sucuriscan_wordpress_apikey();
-
-        if( !$api_key ){ return FALSE; }
-
-        $params['k'] = $api_key;
-    }
-
-    $response = sucuriscan_api_call( $url, $method, $params, $args );
-
-    return $response;
-}
-
-/**
- * Call an action from the remote API interface of our CloudProxy service.
- *
- * @param  string $method HTTP method that will be used to send the request.
- * @param  array  $params Parameters for the request defined in an associative array of key-value.
- * @return array          Array of results including HTTP headers or WP_Error if the request failed.
- */
-function sucuriscan_api_call_cloudproxy( $method='GET', $params=array() ){
-    $send_request = FALSE;
-
-    if( isset($params['k']) && isset($params['s']) ){
-        $send_request = TRUE;
-    } else {
-        $api_key = sucuriscan_cloudproxy_apikey();
-
-        if( $api_key ){
-            $send_request = TRUE;
-            $params['k'] = $api_key['k'];
-            $params['s'] = $api_key['s'];
-        }
-    }
-
-    if( $send_request ){
-        $url = SUCURISCAN_CLOUDPROXY_API;
-        $params[SUCURISCAN_CLOUDPROXY_API_VERSION] = 1;
-
-        $response = sucuriscan_api_call( $url, $method, $params );
-
-        return $response;
-    }
-
-    return FALSE;
-}
-
-/**
- * Determine whether an API response was successful or not checking the expected
- * generic variables and types, in case of an error a notification will appears
- * in the administrator panel explaining the result of the operation.
- *
- * @param  array   $response Array of results including HTTP headers or WP_Error if the request failed.
- * @return boolean           Either TRUE or FALSE in case of success or failure of the API response (respectively).
- */
-function sucuriscan_handle_response( $response=array() ){
-    if( $response ){
-        if( $response['body'] instanceof stdClass ){
-            if( isset($response['body']->status) ){
-                if( $response['body']->status == 1 ){
-                    return TRUE;
-                } else {
-                    sucuriscan_error( ucwords($response['body']->action) . ': ' . $response['body']->messages[0] );
-                }
-            } else {
-                sucuriscan_error( 'Could not determine the status of an API call.' );
-            }
-        } else {
-            sucuriscan_error( 'Unknown API content-type, it was not a JSON-encoded response.' );
-        }
-    }
-
-    return FALSE;
-}
-
-/**
- * Send a request to the API to register this site.
- *
- * @return boolean TRUE if the API key was generated, FALSE otherwise.
- */
-function sucuriscan_register_site(){
-    $response = sucuriscan_api_call_wordpress( 'POST', array(
-        'e' => sucuriscan_get_site_email(),
-        's' => sucuriscan_get_domain(),
-        'a' => 'register_site',
-    ), FALSE );
-
-    if( sucuriscan_handle_response($response) ){
-        sucuriscan_set_api_key( $response['body']->output->api_key );
-        sucuriscan_create_scheduled_task();
-        sucuriscan_notify_event( 'plugin_change', 'Site registered and API key generated' );
-        sucuriscan_info( 'The API key for your site was successfully generated and saved.');
-
-        return TRUE;
-    }
-
-    return FALSE;
-}
-
-/**
- * Send a request to recover a previously registered API key.
- *
- * @return boolean TRUE if the API key was sent to the administrator email, FALSE otherwise.
- */
-function sucuriscan_recover_api_key(){
-    $clean_domain = sucuriscan_get_domain();
-
-    $response = sucuriscan_api_call_wordpress( 'GET', array(
-        'e' => sucuriscan_get_site_email(),
-        's' => $clean_domain,
-        'a' => 'recover_key',
-    ), FALSE );
-
-    if( sucuriscan_handle_response($response) ){
-        sucuriscan_notify_event( 'plugin_change', 'API key recovered for domain: ' . $clean_domain );
-        sucuriscan_info( $response['body']->output->message );
-
-        return TRUE;
-    }
-
-    return FALSE;
-}
-
-/**
- * Send a request to the API to store and analyze the events of the site. An
- * event can be anything from a simple request, an internal modification of the
- * settings or files in the administrator panel, or a notification generated by
- * this plugin.
- *
- * @param  string  $event The information gathered through out the normal functioning of the site.
- * @return boolean        TRUE if the event was logged in the monitoring service, FALSE otherwise.
- */
-function sucuriscan_send_log( $event='' ){
-    if( !empty($event) ){
-        $response = sucuriscan_api_call_wordpress( 'POST', array(
-            'a' => 'send_log',
-            'm' => $event,
-        ), TRUE, array( 'timeout' => 20 ) );
-
-        if( sucuriscan_handle_response($response) ){
-            return TRUE;
-        }
-    }
-
-    return FALSE;
-}
-
-/**
- * Retrieve the event logs registered by the API service.
- *
- * @param  integer $lines How many lines from the log file will be retrieved.
- * @return string         The response of the API service.
- */
-function sucuriscan_get_logs( $lines=50 ){
-    $response = sucuriscan_api_call_wordpress( 'GET', array(
-        'a' => 'get_logs',
-        'l' => $lines,
-    ) );
-
-    if( sucuriscan_handle_response($response) ){
-        $response['body']->output_data = array();
-        $log_pattern = '/^([0-9-: ]+) (.*) : (.*)/';
-        $extra_pattern = '/(.+ \(multiple entries\):) (.+)/';
-
-        foreach( $response['body']->output as $log ){
-            if( preg_match($log_pattern, $log, $log_match) ){
-                $log_data = array(
-                    'datetime' => $log_match[1],
-                    'timestamp' => strtotime($log_match[1]),
-                    'account' => $log_match[2],
-                    'message' => $log_match[3],
-                    'extra' => FALSE,
-                    'extra_total' => 0,
-                );
-
-                $log_data['message'] = str_replace( ', new size', '; new size', $log_data['message'] );
-
-                if( preg_match($extra_pattern, $log_data['message'], $log_extra) ){
-                    $log_data['message'] = $log_extra[1];
-                    $log_data['extra'] = explode(',', $log_extra[2]);
-                    $log_data['extra_total'] = count($log_data['extra']);
-                }
-
-                $response['body']->output_data[] = $log_data;
-            }
-        }
-
-        return $response['body'];
-    }
-
-    return FALSE;
-}
-
-/**
- * Send a request to the API to store and analyze the file's hashes of the site.
- * This will be the core of the monitoring tools and will enhance the
- * information of the audit logs alerting the administrator of suspicious
- * changes in the system.
- *
- * @param  string  $hashes The information gathered after the scanning of the site's files.
- * @return boolean         TRUE if the hashes were stored, FALSE otherwise.
- */
-function sucuriscan_send_hashes( $hashes='' ){
-    if( !empty($hashes) ){
-        $response = sucuriscan_api_call_wordpress( 'POST', array(
-            'a' => 'send_hashes',
-            'h' => $hashes,
-        ) );
-
-        if( sucuriscan_handle_response($response) ){
-            return TRUE;
-        }
-    }
-
-    return FALSE;
-}
-
-/**
- * Checks last time we ran to avoid running twice (or too often).
- *
- * @param  integer $runtime    When the filesystem scan must be scheduled to run.
- * @param  boolean $force_scan Whether the filesystem scan was forced by an administrator user or not.
- * @return boolean             Either TRUE or FALSE representing the success or fail of the operation respectively.
- */
-function sucuriscan_verify_run( $runtime=0, $force_scan=FALSE ){
-    $runtime_name = 'sucuriscan_runtime';
-    $last_run = sucuriscan_get_option($runtime_name);
-    $current_time = time();
-
-    if( $last_run && !$force_scan ){
-        $runtime_diff = $current_time - $runtime;
-
-        if( $last_run >= $runtime_diff ){
-            return FALSE;
-        }
-    }
-
-    update_option( $runtime_name, $current_time );
-    return TRUE;
-}
-
-/**
- * Check whether the current WordPress version must be reported to the API
- * service or not, this is to avoid duplicated information in the audit logs.
- *
- * @return boolean TRUE if the current WordPress version must be reported, FALSE otherwise.
- */
-function sucuriscan_report_wpversion(){
-    $option_name = 'sucuriscan_wp_version';
-    $reported_version = sucuriscan_get_option($option_name);
-    $wp_version = sucuriscan_get_wpversion();
-
-    if( $reported_version != $wp_version ){
-        sucuriscan_send_log( 'WordPress version: ' . $wp_version );
-        update_option( $option_name, $wp_version );
-
-        return TRUE;
-    }
-
-    return FALSE;
-}
-
-/**
- * Schedule the task to run the first filesystem scan.
- *
- * @return void
- */
-function sucuriscan_create_scheduled_task(){
-    $task_name = 'sucuriscan_scheduled_scan';
-
-    if( !wp_next_scheduled($task_name) ){
-        wp_schedule_event( time() + 10, 'twicedaily', $task_name );
-    }
-
-    wp_schedule_single_event( time() + 300, $task_name );
-    sucuriscan_info( 'The first filesystem scan was scheduled.' );
-}
-
-/**
- * Gather all the checksums (aka. file hashes) of this site, send them, and
- * analyze them using the Sucuri Monitoring service, this will generate the
- * audit logs for this site and be part of the integrity checks.
- *
- * @param  boolean $force_scan Whether the filesystem scan was forced by an administrator user or not.
- * @return boolean             TRUE if the filesystem scan was successful, FALSE otherwise.
- */
-function sucuriscan_filesystem_scan( $force_scan=FALSE ){
-    $minimum_runtime = SUCURISCAN_MINIMUM_RUNTIME;
-
-    if(
-        sucuriscan_wordpress_apikey()
-        && class_exists('SucuriScanFileInfo')
-        && sucuriscan_verify_run( $minimum_runtime, $force_scan )
-    ){
-        sucuriscan_report_wpversion();
-
-        $sucuri_fileinfo = new SucuriScanFileInfo();
-        $scan_interface = sucuriscan_get_option('sucuriscan_scan_interface');
-        $signatures = $sucuri_fileinfo->get_directory_tree_md5(ABSPATH, $scan_interface);
-
-        if( $signatures ){
-            $hashes_sent = sucuriscan_send_hashes( $signatures );
-
-            if( $hashes_sent ){
-                sucuriscan_info( 'Successful filesystem scan' );
-                return TRUE;
-            } else {
-                sucuriscan_error( 'The file hashes could not be stored.' );
-            }
-        } else {
-            sucuriscan_error( 'The file hashes could not be retrieved, the filesystem scan failed.' );
-        }
-    }
-
-    return FALSE;
-}
-
-/**
- * Generates an audit event log (to be sent later).
- *
- * @param  integer $severity Importance of the event that will be reported, values from one to five.
- * @param  string  $location In which part of the system was the event triggered.
- * @param  string  $message  The explanation of the event.
- * @return boolean           TRUE if the event was logged in the monitoring service, FALSE otherwise.
- */
-function sucuriscan_report_event( $severity=0, $location='', $message='' ){
-    $user = wp_get_current_user();
-    $username = FALSE;
-    $current_time = date( 'Y-m-d H:i:s' );
-    $remote_ip = sucuriscan_get_remoteaddr();
-
-    // Fixing severity value.
-    $severity = (int) $severity;
-    if( $severity > 0 ){ $severity = 1; }
-    elseif( $severity > 5 ){ $severity = 5; }
-
-    // Identify current user in session.
-    if(
-        $user instanceof WP_User
-        && isset($user->user_login)
-        && !empty($user->user_login)
-    ){
-        if( $user->user_login != $user->display_name ){
-            $username = sprintf( ' %s (%s),', $user->display_name, $user->user_login );
-        } else {
-            $username = sprintf( ' %s,', $user->user_login );
-        }
-    }
-
-    // Convert the severity number into a readable string.
-    switch( $severity ){
-        case 0:  $severity_name = 'Debug';    break;
-        case 1:  $severity_name = 'Notice';   break;
-        case 2:  $severity_name = 'Info';     break;
-        case 3:  $severity_name = 'Warning';  break;
-        case 4:  $severity_name = 'Error';    break;
-        case 5:  $severity_name = 'Critical'; break;
-        default: $severity_name = 'Info';     break;
-    }
-
-    $message = str_replace( array("\n", "\r"), array('', ''), $message );
-    $event_message = sprintf(
-        '%s:%s %s; %s',
-        $severity_name,
-        $username,
-        $remote_ip,
-        $message
-    );
-
-    return sucuriscan_send_log($event_message);
-}
-
-/**
- * Send a notification to the administrator of the specified events, only if
- * the administrator accepted to receive alerts for this type of events.
- *
- * @param  string $event   The name of the event that was triggered.
- * @param  string $content Body of the email that will be sent to the administrator.
- * @return void
- */
-function sucuriscan_notify_event( $event='', $content='' ){
-    $event_name = 'sucuriscan_notify_' . $event;
-    $notify = sucuriscan_get_option($event_name);
-    $email = sucuriscan_get_option('sucuriscan_notify_to');
-    $email_params = array();
-
-    if( $notify == 'enabled' ){
-        if( $event == 'post_publication' ){
-            $event = 'post_update';
-        }
-
-        elseif( $event == 'failed_login' ){
-            $content .= '<br><br><em>Explanation: Someone failed to login to your site. If you
-                are getting too many of these messages, it is likely your site is under a brute
-                force attack. You can disable the notifications for failed logins from
-                <a href="' . sucuriscan_get_url('settings') . '" target="_blank">here</a>.
-                More details at <a href="http://kb.sucuri.net/definitions/attacks/brute-force/password-guessing"
-                target="_blank">Password Guessing Brute Force Attacks</a>.</em>';
-        }
-
-        // Send a notification even if the limit of emails per hour was reached.
-        elseif( $event == 'bruteforce_attack' ){
-            $email_params['Force'] = TRUE;
-        }
-
-        $title = sprintf( 'Sucuri notification (%s)', str_replace('_', chr(32), $event) );
-        $mail_sent = sucuriscan_send_mail( $email, $title, $content, $email_params );
-
-        return $mail_sent;
-    }
-
-    return FALSE;
-}
-
-/**
- * Retrieve the public settings of the account associated with the API keys
- * registered by the administrator of the site. This function will send a HTTP
- * request to the remote API service and process its response, when successful
- * it will return an array/object containing the public attributes of the site.
- *
- * @param  boolean $api_key The CloudProxy API key.
- * @return array            A hash with the settings of a CloudProxy account.
- */
-function sucuriscan_cloudproxy_settings( $api_key=FALSE ){
-    $params = array( 'a' => 'show_settings' );
-
-    if( $api_key ){
-        $params = array_merge( $params, $api_key );
-    }
-
-    $response = sucuriscan_api_call_cloudproxy( 'GET', $params );
-
-    if( sucuriscan_handle_response($response) ){
-        return $response['body']->output;
-    }
-
-    return FALSE;
-}
-
-/**
- * Flush the cache of the site(s) associated with the API key.
- *
- * @param  boolean $api_key The CloudProxy API key.
- * @return string           Message explaining the result of the operation.
- */
-function sucuriscan_cloudproxy_clear_cache( $api_key=FALSE ){
-    $params = array( 'a' => 'clear_cache' );
-
-    if( $api_key ){
-        $params = array_merge( $params, $api_key );
-    }
-
-    $response = sucuriscan_api_call_cloudproxy( 'GET', $params );
-
-    if( sucuriscan_handle_response($response) ){
-        return $response['body'];
-    }
-
-    return FALSE;
-}
-
-/**
- * Retrieve the audit logs of the account associated with the API keys
- * registered b the administrator of the site. This function will send a HTTP
- * request to the remote API service and process its response, when successful
- * it will return an array/object containing a list of requests blocked by our
- * CloudProxy.
- *
- * By default the logs that will be retrieved are from today, if you need to see
- * the logs of previous days you will need to add a new parameter to the request
- * URL named "date" with format yyyy-mm-dd.
- *
- * @param  boolean $api_key The CloudProxy API key.
- * @param  string  $date    An optional date to filter the result to a specific timespan: yyyy-mm-dd.
- * @return array            A list of objects with the detailed version of each request blocked by our service.
- */
-function sucuriscan_cloudproxy_logs( $api_key=FALSE, $date='' ){
-    $params = array(
-        'a' => 'audit_trails',
-        'date' => date('Y-m-d'),
-    );
-
-    if( preg_match('/^([0-9]{4})\-([0-9]{2})\-([0-9]{2})$/', $date) ){
-        $params['date'] = $date;
-    }
-
-    if( $api_key ){
-        $params = array_merge( $params, $api_key );
-    }
-
-    $response = sucuriscan_api_call_cloudproxy( 'GET', $params );
-
-    if( sucuriscan_handle_response($response) ){
-        return $response['body']->output;
-    }
-
-    return FALSE;
-}
-
-$sucuriscan_hooks = array(
-    'add_attachment',
-    'create_category',
-    'delete_post',
-    'private_to_published',
-    'publish_page',
-    'publish_post',
-    'publish_phone',
-    'xmlrpc_publish_post',
-    'add_link',
-    'switch_theme',
-    'delete_user',
-    'retrieve_password',
-    'user_register',
-    'wp_login',
-    'wp_login_failed',
-    'login_form_resetpass',
-);
-
-/**
- * Send to Sucuri servers an alert advising that an attachment was added to a post.
- *
- * @param  integer $id The post identifier.
- * @return void
- */
-function sucuriscan_hook_add_attachment( $id=0 ){
-    $data = ( is_int($id) ? get_post($id) : FALSE );
-    $title = ( $data ? $data->post_title : 'Unknown' );
-
-    $message = 'Media file added #'.$id.' ('.$title.')';
-    sucuriscan_report_event( 1, 'core', $message );
-    sucuriscan_notify_event( 'post_publication', $message );
-}
-
-/**
- * Send to Sucuri servers an alert advising that a category was created.
- *
- * @param  integer $id The identifier of the category created.
- * @return void
- */
-function sucuriscan_hook_create_category( $id=0 ){
-    $title = ( is_int($id) ? get_cat_name($id) : 'Unknown' );
-
-    $message = 'Category created #'.$id.' ('.$title.')';
-    sucuriscan_report_event( 1, 'core', $message );
-    sucuriscan_notify_event( 'post_publication', $message );
-}
-
-/**
- * Send to Sucuri servers an alert advising that a post was deleted.
- *
- * @param  integer $id The identifier of the post deleted.
- * @return void
- */
-function sucuriscan_hook_delete_post( $id=0 ){
-    sucuriscan_report_event( 3, 'core', 'Post deleted #'.$id );
-}
-
-/**
- * Send to Sucuri servers an alert advising that the state of a post was changed
- * from private to published. This will only applies for posts not pages.
- *
- * @param  integer $id The identifier of the post changed.
- * @return void
- */
-function sucuriscan_hook_private_to_published( $id=0 ){
-    $data = ( is_int($id) ? get_post($id) : FALSE );
-
-    if( $data ){
-        $title = $data->post_title;
-        $p_type = ucwords($data->post_type);
-    } else {
-        $title = 'Unknown';
-        $p_type = 'Publication';
-    }
-
-    // Check whether the post-type is being ignored to send notifications.
-    if( !sucuriscan_is_ignored_event($p_type) ){
-        $message = $p_type.' changed from private to published #'.$id.' ('.$title.')';
-        sucuriscan_report_event( 2, 'core', $message );
-        sucuriscan_notify_event( 'post_publication', $message );
-    }
-}
-
-/**
- * Send to Sucuri servers an alert advising that a post was published.
- *
- * @param  integer $id The identifier of the post or page published.
- * @return void
- */
-function sucuriscan_hook_publish( $id=0 ){
-    $data = ( is_int($id) ? get_post($id) : FALSE );
-
-    if( $data ){
-        $title = $data->post_title;
-        $p_type = ucwords($data->post_type);
-        $action = ( $data->post_date == $data->post_modified ? 'created' : 'updated' );
-    } else {
-        $title = 'Unknown';
-        $p_type = 'Publication';
-        $action = 'published';
-    }
-
-    $message = $p_type.' was '.$action.' #'.$id.' ('.$title.')';
-    sucuriscan_report_event( 2, 'core', $message );
-    sucuriscan_notify_event( 'post_publication', $message );
-}
-
-/**
- * Alias function for hook_publish()
- *
- * @param  integer $id The identifier of the post or page published.
- * @return void
- */
-function sucuriscan_hook_publish_page( $id=0 ){ sucuriscan_hook_publish($id); }
-
-/**
- * Alias function for hook_publish()
- *
- * @param  integer $id The identifier of the post or page published.
- * @return void
- */
-function sucuriscan_hook_publish_post( $id=0 ){ sucuriscan_hook_publish($id); }
-
-/**
- * Alias function for hook_publish()
- *
- * @param  integer $id The identifier of the post or page published.
- * @return void
- */
-function sucuriscan_hook_publish_phone( $id=0 ){ sucuriscan_hook_publish($id); }
-
-/**
- * Alias function for hook_publish()
- *
- * @param  integer $id The identifier of the post or page published.
- * @return void
- */
-function sucuriscan_hook_xmlrpc_publish_post( $id=0 ){ sucuriscan_hook_publish($id); }
-
-/**
- * Send to Sucuri servers an alert advising that a new link was added to the bookmarks.
- *
- * @param  integer $id Identifier of the new link created;
- * @return void
- */
-function sucuriscan_hook_add_link( $id=0 ){
-    $data = ( is_int($id) ? get_bookmark($id) : FALSE );
-
-    if( $data ){
-        $title = $data->link_name;
-        $url = $data->link_url;
-    } else {
-        $title = 'Unknown';
-        $url = 'undefined/url';
-    }
-
-    $message = 'New link added #'.$id.' ('.$title.': '.$url.')';
-    sucuriscan_report_event( 2, 'core', $message );
-    sucuriscan_notify_event( 'post_publication', $message );
-}
-
-/**
- * Send to Sucuri servers an alert advising that the theme of the site was changed.
- *
- * @param  string $title The name of the new theme selected to used through out the site.
- * @return void
- */
-function sucuriscan_hook_switch_theme( $title='' ){
-    if( empty($title) ){ $title = 'Unknown'; }
-
-    $message = 'Theme switched to: '.$title;
-    sucuriscan_report_event( 3, 'core', $message );
-    sucuriscan_notify_event( 'theme_switched', $message );
-}
-
-/**
- * Send to Sucuri servers an alert advising that a user account was deleted.
- *
- * @param  integer $id The identifier of the user account deleted.
- * @return void
- */
-function sucuriscan_hook_delete_user( $id=0 ){
-    sucuriscan_report_event( 3, 'core', 'User account deleted #'.$id );
-}
-
-/**
- * Send to Sucuri servers an alert advising that an attempt to retrieve the password
- * of an user account was tried.
- *
- * @param  string $title The name of the user account involved in the trasaction.
- * @return void
- */
-function sucuriscan_hook_retrieve_password( $title='' ){
-    if( empty($title) ){ $title = 'Unknown'; }
-
-    sucuriscan_report_event( 3, 'core', 'Password retrieval attempt for user: '.$title );
-}
-
-/**
- * Send to Sucuri servers an alert advising that a new user account was created.
- *
- * @param  integer $id The identifier of the new user account created.
- * @return void
- */
-function sucuriscan_hook_user_register( $id=0 ){
-    $data = ( is_int($id) ? get_userdata($id) : FALSE );
-    $title = ( $data ? $data->display_name : 'Unknown' );
-
-    $message = 'New user account registered #'.$id.' ('.$title.')';
-    sucuriscan_report_event( 3, 'core', $message );
-    sucuriscan_notify_event( 'user_registration', $message );
-}
-
-/**
- * Send to Sucuri servers an alert advising that an attempt to login into the
- * administration panel was successful.
- *
- * @param  string $title The name of the user account involved in the transaction.
- * @return void
- */
-function sucuriscan_hook_wp_login( $title='' ){
-    if( empty($title) ){ $title = 'Unknown'; }
-
-    $message = 'User logged in: '.$title;
-    sucuriscan_report_event( 2, 'core', $message );
-    sucuriscan_notify_event( 'success_login', $message );
-}
-
-/**
- * Send to Sucuri servers an alert advising that an attempt to login into the
- * administration panel failed.
- *
- * @param  string $title The name of the user account involved in the transaction.
- * @return void
- */
-function sucuriscan_hook_wp_login_failed( $title='' ){
-    if( empty($title) ){ $title = 'Unknown'; }
-
-    $message = 'User authentication failed: '.$title;
-    sucuriscan_report_event( 2, 'core', $message );
-    sucuriscan_notify_event( 'failed_login', $message );
-
-    // Log the failed login in the internal datastore for future reports.
-    $logged = sucuriscan_log_failed_login($title);
-
-    // Check if the quantity of failed logins will be considered as a brute-force attack.
-    if( $logged ){
-        $failed_logins = sucuriscan_get_failed_logins();
-
-        if( $failed_logins ){
-            $max_time = 3600;
-            $maximum_failed_logins = sucuriscan_get_option('sucuriscan_maximum_failed_logins');
-
-            /**
-             * If the time passed is within the hour, and the quantity of failed logins
-             * registered in the datastore file is bigger than the maximum quantity of
-             * failed logins allowed per hour (value configured by the administrator in the
-             * settings page), then send an email notification reporting the event and
-             * specifying that it may be a brute-force attack against the login page.
-             */
-            if(
-                $failed_logins['diff_time'] <= $max_time
-                && $failed_logins['count'] >= $maximum_failed_logins
-            ){
-                sucuriscan_report_failed_logins($failed_logins);
-            }
-
-            /**
-             * If there time passed is superior to the hour, then reset the content of the
-             * datastore file containing the failed logins so far, any entry in that file
-             * will not be considered as part of a brute-force attack (if it exists) because
-             * the time passed between the first and last login attempt is big enough to
-             * mitigate the attack. We will consider the current failed login event as the
-             * first entry of that file in case of future attempts during the next sixty
-             * minutes.
-             */
-            elseif( $failed_logins['diff_time'] > $max_time ){
-                sucuriscan_reset_failed_logins();
-                sucuriscan_log_failed_login($title);
-            }
-        }
-    }
-}
-
-/**
- * Send to Sucuri servers an alert advising that an attempt to reset the password
- * of an user account was executed.
- *
- * @return void
- */
-function sucuriscan_hook_login_form_resetpass(){
-    // Detecting WordPress 2.8.3 vulnerability - $key is array.
-    if( isset($_GET['key']) && is_array($_GET['key']) ){
-        sucuriscan_report_event( 3, 'core', 'Attempt to reset password by attacking WP/2.8.3 bug' );
-    }
-}
-
-// Configure the hooks defined above to be triggered automatically.
-if( isset($sucuriscan_hooks) ){
-    foreach( $sucuriscan_hooks as $hook_name ){
-        $hook_func = 'sucuriscan_hook_' . $hook_name;
-
-        if( function_exists($hook_func) ){
-            add_action( $hook_name, $hook_func, 50 );
-        }
-    }
-}
-
-if( !function_exists('sucuriscan_hook_undefined_actions') ){
-
-    /**
-     * Send a notifications to the administrator of some specific events that are
-     * not triggered through an hooked action, but through a simple request in the
-     * admin interface.
-     *
-     * @return integer Either one or zero representing the success or fail of the operation.
-     */
-    function sucuriscan_hook_undefined_actions(){
-
-        // Plugin activation and/or deactivation.
-        if(
-            current_user_can('activate_plugins')
-            && (
-                ( isset($_GET['action']) && preg_match('/^(activate|deactivate)$/', $_GET['action']) ) ||
-                ( isset($_POST['action']) && preg_match('/^(activate|deactivate)-selected$/', $_POST['action']))
-            )
-        ){
-            $plugin_list = array();
-
-            if(
-                isset($_GET['plugin'])
-                && !empty($_GET['plugin'])
-                && strpos($_SERVER['REQUEST_URI'], 'plugins.php') !== FALSE
-            ){
-                $action_d = $_GET['action'] . 'd';
-                $plugin_list[] = $_GET['plugin'];
-            }
-
-            elseif( isset($_POST['checked']) ){
-                $action_d = str_replace('-selected', 'd', $_POST['action']);
-                $plugin_list = $_POST['checked'];
-            }
-
-            foreach( $plugin_list as $plugin ){
-                $plugin_info = get_plugin_data( WP_PLUGIN_DIR . '/' . $plugin );
-                $message = sprintf(
-                    'Plugin %s: %s (v%s; %s)',
-                    $action_d,
-                    $plugin_info['Name'],
-                    $plugin_info['Version'],
-                    esc_attr($plugin)
-                );
-
-                sucuriscan_report_event( 3, 'core', $message );
-                sucuriscan_notify_event( 'plugin_' . $action_d, $message );
-            }
-        }
-
-        // Plugin update request.
-        elseif(
-            current_user_can('update_plugins')
-            && (
-                ( isset($_GET['action']) && preg_match('/(upgrade-plugin|do-plugin-upgrade)/', $_GET['action']) ) ||
-                ( isset($_POST['action']) && $_POST['action'] == 'update-selected' )
-            )
-        ){
-            $plugin_list = array();
-
-            if(
-                isset($_GET['plugin'])
-                && !empty($_GET['plugin'])
-                && strpos($_SERVER['REQUEST_URI'], 'wp-admin/update.php') !== FALSE
-            ){
-                $plugin_list[] = $_GET['plugin'];
-            }
-
-            elseif( isset($_POST['checked']) ){
-                $plugin_list = $_POST['checked'];
-            }
-
-            foreach( $plugin_list as $plugin ){
-                $plugin_info = get_plugin_data( WP_PLUGIN_DIR . '/' . $plugin );
-                $message = sprintf(
-                    'Plugin request to be updated: %s (v%s; %s)',
-                    $plugin_info['Name'],
-                    $plugin_info['Version'],
-                    esc_attr($plugin)
-                );
-
-                sucuriscan_report_event( 3, 'core', $message );
-                sucuriscan_notify_event( 'plugin_updated', $message );
-            }
-        }
-
-        // Plugin installation request.
-        elseif(
-            current_user_can('install_plugins')
-            && isset($_GET['action'])
-            && preg_match('/^(install|upload)-plugin$/', $_GET['action'])
-            && current_user_can('install_plugins')
-        ){
-            if( isset($_FILES['pluginzip']) ){
-                $plugin = $_FILES['pluginzip']['name'];
-            } elseif( isset($_GET['plugin']) ){
-                $plugin = $_GET['plugin'];
-            } else {
-                $plugin = 'Unknown';
-            }
-
-            $message = 'Plugin request to be installed: ' . esc_attr($plugin);
-            sucuriscan_report_event( 3, 'core', $message );
-            sucuriscan_notify_event( 'plugin_installed', $message );
-        }
-
-        // Plugin deletion request.
-        elseif(
-            current_user_can('delete_plugins')
-            && isset($_POST['action'])
-            && $_POST['action'] == 'delete-selected'
-            && isset($_POST['verify-delete'])
-            && $_POST['verify-delete'] == 1
-        ){
-            $plugin_list = (array) $_POST['checked'];
-
-            foreach( $plugin_list as $plugin ){
-                $plugin_info = get_plugin_data( WP_PLUGIN_DIR . '/' . $plugin );
-                $message = sprintf(
-                    'Plugin request to be deleted: %s (v%s; %s)',
-                    $plugin_info['Name'],
-                    $plugin_info['Version'],
-                    esc_attr($plugin)
-                );
-
-                sucuriscan_report_event( 3, 'core', $message );
-                sucuriscan_notify_event( 'plugin_deleted', $message );
-            }
-        }
-
-        // Plugin editor request.
-        elseif(
-            current_user_can('edit_plugins')
-            && isset($_POST['action'])
-            && $_POST['action'] == 'update'
-            && isset($_POST['file'])
-            && isset($_POST['plugin'])
-            && strpos($_SERVER['REQUEST_URI'], 'plugin-editor.php') !== FALSE
-        ){
-            $message = 'Plugin editor modification: ' . esc_attr($_POST['file']);
-            sucuriscan_report_event( 3, 'core', $message );
-            sucuriscan_notify_event( 'theme_editor', $message );
-        }
-
-        // Theme editor request.
-        elseif(
-            current_user_can('edit_themes')
-            && isset($_POST['action'])
-            && $_POST['action'] == 'update'
-            && isset($_POST['file'])
-            && isset($_POST['theme'])
-            && strpos($_SERVER['REQUEST_URI'], 'theme-editor.php') !== FALSE
-        ){
-            $message = 'Theme editor modification: ' . esc_attr($_POST['theme']) . '/' . esc_attr($_POST['file']);
-            sucuriscan_report_event( 3, 'core', $message );
-            sucuriscan_notify_event( 'theme_editor', $message );
-        }
-
-        // Theme activation and/or deactivation (same hook for switch_theme).
-        // Theme installation request (hook not available).
-        // Theme deletion request (hook not available).
-
-        // Theme update request.
-        elseif(
-            current_user_can('update_themes')
-            && isset($_GET['action'])
-            && preg_match('/^(upgrade-theme|do-theme-upgrade)$/', $_GET['action'])
-            && isset($_POST['checked'])
-        ){
-            $theme_list = (array) $_POST['checked'];
-
-            foreach( $theme_list as $theme ){
-                $theme_info = wp_get_theme($theme);
-                $theme_name = ucwords($theme);
-                $theme_version = '0.0';
-
-                if( $theme_info->exists() ){
-                    $theme_name = $theme_info->get('Name');
-                    $theme_version = $theme_info->get('Version');
-                }
-
-                $message = sprintf(
-                    'Theme request to be updated: %s (v%s; %s)',
-                    $theme_name,
-                    $theme_version,
-                    esc_attr($theme)
-                );
-
-                sucuriscan_report_event( 3, 'core', $message );
-                sucuriscan_notify_event( 'theme_updated', $message );
-            }
-        }
-
-        // WordPress update request.
-        elseif(
-            current_user_can('update_core')
-            && isset($_GET['action'])
-            && $_GET['action'] == 'do-core-reinstall'
-            && isset($_POST['upgrade'])
-            && isset($_POST['version'])
-        ){
-            $message = 'WordPress updated (or re-installed) to version: ' . esc_attr($_POST['version']);
-            sucuriscan_report_event( 3, 'core', $message );
-            sucuriscan_notify_event( 'website_updated', $message );
-        }
-
-        // Widget addition or deletion.
-        elseif(
-            current_user_can('edit_theme_options')
-            && isset($_POST['action'])
-            && $_POST['action'] == 'save-widget'
-            && isset($_POST['id_base'])
-            && isset($_POST['sidebar'])
-        ){
-            if(
-                isset($_POST['delete_widget'])
-                && $_POST['delete_widget'] == 1
-            ){
-                $action_d = 'deleted';
-                $action_text = 'deleted from';
-            } else {
-                $action_d = 'added';
-                $action_text = 'added to';
-            }
-
-            $message = sprintf(
-                'Widget %s (%s) %s %s (#%d; size %dx%d)',
-                esc_attr($_POST['id_base']),
-                esc_attr($_POST['widget-id']),
-                $action_text,
-                esc_attr($_POST['sidebar']),
-                esc_attr($_POST['widget_number']),
-                esc_attr($_POST['widget-width']),
-                esc_attr($_POST['widget-height'])
-            );
-
-            sucuriscan_report_event( 3, 'core', $message );
-            sucuriscan_notify_event( 'widget_' . $action_d, $message );
-        }
-
-        // Detect any Wordpress settings modification.
-        elseif(
-            isset($_POST['option_page'])
-            && current_user_can('manage_options')
-            && SucuriScan::sucuriscan_check_options_wpnonce()
-        ){
-            // Get the settings available in the database and compare them with the submission.
-            $all_options = sucuriscan_get_wp_options();
-            $options_changed = sucuriscan_what_options_were_changed($_POST);
-            $options_changed_str = '';
-            $options_changed_count = 0;
-
-            // Generate the list of options changed.
-            foreach( $options_changed['original'] as $option_name => $option_value ){
-                $options_changed_count += 1;
-                $options_changed_str .= sprintf(
-                    "The value of the option <b>%s</b> was changed from <b>'%s'</b> to <b>'%s'</b>.<br>\n",
-                    $option_name, $option_value, $options_changed['changed'][$option_name]
-                );
-            }
-
-            // Get the option group (name of the page where the request was originated).
-            $option_page = isset($_POST['option_page']) ? $_POST['option_page'] : 'options';
-            $page_referer = FALSE;
-
-            // Check which of these option groups where modified.
-            switch( $option_page ){
-                case 'options':
-                    $page_referer = 'Global';
-                    break;
-                case 'general':    /* no_break */
-                case 'writing':    /* no_break */
-                case 'reading':    /* no_break */
-                case 'discussion': /* no_break */
-                case 'media':      /* no_break */
-                case 'permalink':
-                    $page_referer = ucwords($option_page);
-                    break;
-                default:
-                    $page_referer = 'Common';
-                    break;
-            }
-
-            if( $page_referer && $options_changed_count > 0 ){
-                $message = $page_referer.' settings changed';
-                sucuriscan_report_event( 3, 'core', $message );
-                sucuriscan_notify_event( 'settings_updated', $message . "<br>\n" . $options_changed_str );
-            }
-        }
-
-    }
-
-    add_action( 'admin_init', 'sucuriscan_hook_undefined_actions' );
-    add_action( 'login_form', 'sucuriscan_hook_undefined_actions' );
 }
 
 /**
@@ -4460,15 +5118,13 @@ if( !function_exists('sucuriscan_hook_undefined_actions') ){
  * @return void
  */
 function sucuriscan_monitoring_page(){
-    if( !current_user_can('manage_options') ){
-        wp_die(__('You do not have sufficient permissions to access this page: Firewall (WAF)') );
-    }
+    SucuriScanInterface::check_permissions();
 
     // Process all form submissions.
     sucuriscan_monitoring_form_submissions();
 
     // Get the dynamic values for the template variables.
-    $api_key = sucuriscan_cloudproxy_apikey();
+    $api_key = SucuriScanAPI::get_cloudproxy_key();
 
     // Page pseudo-variables initialization.
     $template_variables = array(
@@ -4490,7 +5146,7 @@ function sucuriscan_monitoring_page(){
         $template_variables['Monitoring.InstructionsVisibility'] = 'hidden';
     }
 
-    echo sucuriscan_get_template('monitoring', $template_variables);
+    echo SucuriScanTemplate::get_template('monitoring', $template_variables);
 }
 
 /**
@@ -4502,37 +5158,35 @@ function sucuriscan_monitoring_page(){
  */
 function sucuriscan_monitoring_form_submissions(){
 
-    if( sucuriscan_check_page_nonce() ){
+    if( SucuriScanInterface::check_nonce() ){
 
         // Add and/or Update the Sucuri WAF API Key (do it before anything else).
-        $option_name = 'sucuriscan_cloudproxy_apikey';
+        $option_name = ':cloudproxy_apikey';
 
-        if( isset($_POST[$option_name]) ){
-            $api_key = $_POST[$option_name];
-
-            if( sucuriscan_valid_cloudproxy_apikey($api_key) ){
-                update_option($option_name, $api_key);
-                sucuriscan_info( 'Sucuri CloudProxy WAF API key saved successfully' );
+        if( $api_key = SucuriScanRequest::post($option_name) ){
+            if( SucuriScanAPI::is_valid_cloudproxy_key($api_key) ){
+                SucuriScanOption::update_option($option_name, $api_key);
+                SucuriScanInterface::info( 'CloudProxy API key saved successfully' );
             } elseif( empty($api_key) ){
-                delete_option($option_name);
-                sucuriscan_info( 'Sucuri CloudProxy WAF API key removed successfully' );
+                SucuriScanOption::delete_option($option_name);
+                SucuriScanInterface::info( 'CloudProxy API key removed successfully' );
             } else {
-                sucuriscan_error( 'Invalid CloudProxy API key, check your settings and try again.' );
+                SucuriScanInterface::error( 'Invalid CloudProxy API key, check your settings and try again.' );
             }
         }
 
         // Flush the cache of the site(s) associated with the API key.
-        if( isset($_POST['sucuriscan_clear_cache']) ){
-            $clear_cache_resp = sucuriscan_cloudproxy_clear_cache();
+        if( SucuriScanRequest::post(':clear_cache', '1') ){
+            $clear_cache_resp = SucuriScanAPI::clear_cloudproxy_cache();
 
             if( $clear_cache_resp ){
                 if( isset($clear_cache_resp->messages[0]) ){
-                    sucuriscan_info($clear_cache_resp->messages[0]);
+                    SucuriScanInterface::info($clear_cache_resp->messages[0]);
                 } else {
-                    sucuriscan_error('Could not clear the cache of your site, try later again.');
+                    SucuriScanInterface::error('Could not clear the cache of your site, try later again.');
                 }
             } else {
-                sucuriscan_error( 'CloudProxy WAF is not enabled on your site, or your API key is invalid.' );
+                SucuriScanInterface::error( 'CloudProxy is not enabled on your site, or your API key is invalid.' );
             }
         }
 
@@ -4554,7 +5208,7 @@ function sucuriscan_monitoring_settings( $api_key='' ){
     );
 
     if( $api_key ){
-        $settings = sucuriscan_cloudproxy_settings($api_key);
+        $settings = SucuriScanAPI::get_cloudproxy_settings($api_key);
 
         $template_variables['Monitoring.APIKey'] = $api_key['string'];
 
@@ -4586,7 +5240,7 @@ function sucuriscan_monitoring_settings( $api_key='' ){
                 }
 
                 // Parse the snippet template and replace the pseudo-variables.
-                $template_variables['Monitoring.SettingOptions'] .= sucuriscan_get_snippet('monitoring-settings', array(
+                $template_variables['Monitoring.SettingOptions'] .= SucuriScanTemplate::get_snippet('monitoring-settings', array(
                     'Monitoring.OptionCssClass' => $css_class,
                     'Monitoring.OptionName' => $option_title,
                     'Monitoring.OptionValue' => $option_value,
@@ -4596,7 +5250,7 @@ function sucuriscan_monitoring_settings( $api_key='' ){
         }
     }
 
-    return sucuriscan_get_section( 'monitoring-settings', $template_variables );
+    return SucuriScanTemplate::get_section( 'monitoring-settings', $template_variables );
 }
 
 /**
@@ -4668,33 +5322,31 @@ function sucuriscan_monitoring_logs( $api_key='' ){
         'AuditLogs.PaginationVisibility' => 'hidden',
         'AuditLogs.AuditPagination' => '',
         'AuditLogs.TargetDate' => '',
-        'AuditLogs.DateYears' => sucuriscan_monitoring_dates('years'),
-        'AuditLogs.DateMonths' => sucuriscan_monitoring_dates('months'),
-        'AuditLogs.DateDays' => sucuriscan_monitoring_dates('days'),
+        'AuditLogs.DateYears' => '',
+        'AuditLogs.DateMonths' => '',
+        'AuditLogs.DateDays' => '',
     );
 
     $date = date('Y-m-d');
 
     if( $api_key ){
-        // Retrieve the date filter from the request (if any).
-        if( isset($_GET['date']) ){
-            $date = $_GET['date'];
+        // Retrieve the date filter from the GET request (if any).
+        $date_by_get = SucuriScanRequest::get('date', '_yyyymmdd');
+
+        if( $date_by_get ){
+            $date = $date_by_get;
         }
 
-        elseif(
-            isset($_POST['sucuriscan_year']) &&
-            isset($_POST['sucuriscan_month']) &&
-            isset($_POST['sucuriscan_day'])
-        ){
-            $date = sprintf(
-                '%s-%s-%s',
-                $_POST['sucuriscan_year'],
-                $_POST['sucuriscan_month'],
-                $_POST['sucuriscan_day']
-            );
+        // Retrieve the date filter from the POST request (if any).
+        $year = SucuriScanRequest::post(':year');
+        $month = SucuriScanRequest::post(':month');
+        $day = SucuriScanRequest::post(':day');
+
+        if( $year && $month && $day ){
+            $date = sprintf( '%s-%s-%s', $year, $month, $day );
         }
 
-        $logs_data = sucuriscan_cloudproxy_logs( $api_key, $date );
+        $logs_data = SucuriScanAPI::get_cloudproxy_logs( $api_key, $date );
 
         if( $logs_data ){
             add_thickbox(); /* Include the Thickbox library. */
@@ -4706,8 +5358,11 @@ function sucuriscan_monitoring_logs( $api_key='' ){
     }
 
     $template_variables['AuditLogs.TargetDate'] = htmlentities($date);
+    $template_variables['AuditLogs.DateYears'] = sucuriscan_monitoring_dates('years', $date);
+    $template_variables['AuditLogs.DateMonths'] = sucuriscan_monitoring_dates('months', $date);
+    $template_variables['AuditLogs.DateDays'] = sucuriscan_monitoring_dates('days', $date);
 
-    return sucuriscan_get_section( 'monitoring-logs', $template_variables );
+    return SucuriScanTemplate::get_section( 'monitoring-logs', $template_variables );
 }
 
 /**
@@ -4741,14 +5396,14 @@ function sucuriscan_monitoring_access_logs( $access_logs=array() ){
         $filter_by_keyword = FALSE;
         $filter_query = FALSE;
 
-        if( isset($_POST['sucuriscan_monitoring_denial_type']) ){
+        if( $q = SucuriScanRequest::post(':monitoring_denial_type') ){
             $filter_by_denial_type = TRUE;
-            $filter_query = htmlentities($_POST['sucuriscan_monitoring_denial_type']);
+            $filter_query = $q;
         }
 
-        if( isset($_POST['sucuriscan_monitoring_log_filter']) ){
+        if( $q = SucuriScanRequest::post(':monitoring_log_filter') ){
             $filter_by_keyword = TRUE;
-            $filter_query = htmlentities($_POST['sucuriscan_monitoring_log_filter']);
+            $filter_query = $q;
         }
 
         foreach( $access_logs as $access_log ){
@@ -4761,7 +5416,7 @@ function sucuriscan_monitoring_access_logs( $access_logs=array() ){
             // If there is a filter, check the access_log data and break the operation if needed.
             if( $filter_query ){
                 if( $filter_by_denial_type ){
-                    $denial_type_slug = sucuriscan_str_human2var($access_log->sucuri_block_reason);
+                    $denial_type_slug = SucuriScan::human2var($access_log->sucuri_block_reason);
 
                     if( $denial_type_slug != $filter_query ){ continue; }
                 }
@@ -4791,7 +5446,7 @@ function sucuriscan_monitoring_access_logs( $access_logs=array() ){
                 $audit_log_snippet[$attr_title] = $attr_value;
             }
 
-            $logs_html .= sucuriscan_get_snippet('monitoring-logs', $audit_log_snippet);
+            $logs_html .= SucuriScanTemplate::get_snippet('monitoring-logs', $audit_log_snippet);
             $counter += 1;
         }
     }
@@ -4810,12 +5465,11 @@ function sucuriscan_monitoring_access_logs( $access_logs=array() ){
  */
 function sucuriscan_monitoring_denial_types( $access_logs=array(), $in_html=TRUE ){
     $types = array();
-    $selected = '';
 
     if( $access_logs && !empty($access_logs) ){
         foreach( $access_logs as $access_log ){
             if( !array_key_exists($access_log->sucuri_block_reason, $types) ){
-                $denial_type_k = sucuriscan_str_human2var($access_log->sucuri_block_reason);
+                $denial_type_k = SucuriScan::human2var($access_log->sucuri_block_reason);
                 $types[$denial_type_k] = $access_log->sucuri_block_reason;
             }
         }
@@ -4823,14 +5477,16 @@ function sucuriscan_monitoring_denial_types( $access_logs=array(), $in_html=TRUE
 
     if( $in_html ){
         $html_types = '<option value="">Filter</option>';
-
-        if( isset($_REQUEST['sucuriscan_monitoring_denial_type']) ){
-            $selected = htmlentities($_REQUEST['sucuriscan_monitoring_denial_type']);
-        }
+        $selected = SucuriScanRequest::post(':monitoring_denial_type', '.+');
 
         foreach( $types as $type_key => $type_value ){
-            $selected_tag = ( $type_key == $selected ) ? 'selected="selected"' : '';
-            $html_types .= sprintf( '<option value="%s" %s>%s</option>', $type_key, $selected_tag, $type_value );
+            $selected_tag = ( $type_key === $selected ) ? 'selected="selected"' : '';
+            $html_types .= sprintf(
+                '<option value="%s" %s>%s</option>',
+                SucuriScan::escape($type_key),
+                $selected_tag,
+                SucuriScan::escape($type_value)
+            );
         }
 
         return $html_types;
@@ -4843,24 +5499,33 @@ function sucuriscan_monitoring_denial_types( $access_logs=array(), $in_html=TRUE
  * Get a list of years, months or days depending of the type specified.
  *
  * @param  string  $type    Either years, months or days.
+ * @param  string  $date    Year, month and day selected from the request.
  * @param  boolean $in_html Whether the list should be converted to a HTML select options or not.
  * @return array            Either an array with the expected values, or a HTML code.
  */
-function sucuriscan_monitoring_dates( $type='', $in_html=TRUE ){
+function sucuriscan_monitoring_dates( $type='', $date='', $in_html=TRUE ){
     $options = array();
     $selected = '';
 
+    if( preg_match('/^([0-9]{4})\-([0-9]{2})\-([0-9]{2})$/', $date, $date_m) ){
+        $s_year = $date_m[1];
+        $s_month = $date_m[2];
+        $s_day = $date_m[3];
+    } else {
+        $s_year = '';
+        $s_month = '';
+        $s_day = '';
+    }
+
     switch( $type ){
         case 'years':
+            $selected = $s_year;
             $current_year = (int) date('Y');
             $max_years = 5; /* Maximum number of years to keep the logs. */
             $options = range( ($current_year - $max_years), $current_year );
-
-            if( isset($_REQUEST['sucuriscan_year']) ){
-                $selected = $_REQUEST['sucuriscan_year'];
-            }
             break;
         case 'months':
+            $selected = $s_month;
             $options = array(
                 '01' => 'January',
                 '02' => 'February',
@@ -4875,17 +5540,10 @@ function sucuriscan_monitoring_dates( $type='', $in_html=TRUE ){
                 '11' => 'November',
                 '12' => 'December'
             );
-
-            if( isset($_REQUEST['sucuriscan_month']) ){
-                $selected = $_REQUEST['sucuriscan_month'];
-            }
             break;
         case 'days':
             $options = range(1, 31);
-
-            if( isset($_REQUEST['sucuriscan_day']) ){
-                $selected = $_REQUEST['sucuriscan_day'];
-            }
+            $selected = $s_day;
             break;
     }
 
@@ -4916,15 +5574,13 @@ function sucuriscan_monitoring_dates( $type='', $in_html=TRUE ){
  * @return void
  */
 function sucuriscan_hardening_page(){
+    SucuriScanInterface::check_permissions();
 
-    if( !current_user_can('manage_options') ){
-        wp_die(__('You do not have sufficient permissions to access this page: Sucuri Hardening') );
-    }
-
-    if( isset($_POST['wpsucuri-doharden']) ){
-        if( !wp_verify_nonce($_POST['sucuriscan_hardening_nonce'], 'sucuriscan_hardening_nonce') ){
-            unset($_POST['wpsucuri-doharden']);
-        }
+    if(
+        SucuriScanRequest::post(':run_hardening')
+        && !SucuriScanInterface::check_nonce()
+    ){
+        unset($_POST['sucuriscan_run_hardening']);
     }
 
     ob_start();
@@ -4932,8 +5588,8 @@ function sucuriscan_hardening_page(){
 
     <div id="poststuff">
         <form method="post">
-            <input type="hidden" name="sucuriscan_hardening_nonce" value="<?php echo wp_create_nonce('sucuriscan_hardening_nonce'); ?>" />
-            <input type="hidden" name="wpsucuri-doharden" value="wpsucuri-doharden" />
+            <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+            <input type="hidden" name="sucuriscan_run_hardening" value="1" />
 
             <?php
             sucuriscan_harden_version();
@@ -4955,7 +5611,7 @@ function sucuriscan_hardening_page(){
     <?php
     $_html = ob_get_contents();
     ob_end_clean();
-    echo sucuriscan_get_base_template($_html, array(
+    echo SucuriScanTemplate::get_base_template($_html, array(
         'PageTitle' => 'Hardening',
         'PageContent' => $_html,
         'PageStyleClass' => 'hardening'
@@ -5019,8 +5675,7 @@ function sucuriscan_harden_status( $title='', $status=0, $type='', $messageok=''
  * @return void
  */
 function sucuriscan_harden_version(){
-    global $wp_version;
-
+    $site_version = SucuriScan::site_version();
     $updates = get_core_updates();
     $cp = ( !is_array($updates) || empty($updates) ? 1 : 0 );
 
@@ -5033,21 +5688,20 @@ function sucuriscan_harden_version(){
         }
     }
 
-    if( strcmp($wp_version, '3.7') < 0 ){
+    if( strcmp($site_version, '3.7') < 0 ){
         $cp = 0;
     }
 
-    $wp_version = htmlspecialchars($wp_version);
     $initial_msg = 'Why keep your site updated? WordPress is an open-source
         project which means that with every update the details of the changes made
         to the source code are made public, if there were security fixes then
         someone with malicious intent can use this information to attack any site
         that has not been upgraded.';
-    $messageok = sprintf('Your WordPress installation (%s) is current.', $wp_version);
+    $messageok = sprintf('Your WordPress installation (%s) is current.', $site_version);
     $messagewarn = sprintf(
         'Your current version (%s) is not current.<br>
         <a href="update-core.php" class="button-primary">Update now!</a>',
-        $wp_version
+        $site_version
     );
 
     sucuriscan_harden_status( 'Verify WordPress version', $cp, NULL, $messageok, $messagewarn, $initial_msg );
@@ -5084,33 +5738,34 @@ function sucuriscan_harden_removegenerator(){
 function sucuriscan_harden_upload(){
     $cp = 1;
     $upmsg = NULL;
-    $htaccess_upload = dirname(sucuriscan_dir_filepath())."/.htaccess";
+    $datastore_path = SucuriScan::datastore_folder_path();
+    $htaccess_upload = dirname($datastore_path) . '/.htaccess';
 
     if( !is_readable($htaccess_upload) ){
         $cp = 0;
     } else {
         $cp = 0;
-        $fcontent = file($htaccess_upload);
+        $fcontent = @file($htaccess_upload);
 
         foreach( $fcontent as $fline ){
-            if( strpos($fline, 'deny from all') !== FALSE ){
+            if( stripos($fline, 'deny from all') !== FALSE ){
                 $cp = 1;
                 break;
             }
         }
     }
 
-    if( isset($_POST['wpsucuri-doharden']) ){
-        if( isset($_POST['sucuriscan_harden_upload']) && $cp == 0 ){
+    if( SucuriScanRequest::post(':run_hardening') ){
+        if( SucuriScanRequest::post(':harden_upload') && $cp == 0 ){
             if( @file_put_contents($htaccess_upload, "\n<Files *.php>\ndeny from all\n</Files>") === FALSE ){
-                $upmsg = sucuriscan_error('ERROR: Unable to create <code>.htaccess</code> file, folder destination is not writable.');
+                $upmsg = SucuriScanInterface::error('Unable to create <code>.htaccess</code> file, folder destination is not writable.');
             } else {
-                $upmsg = sucuriscan_info('COMPLETE: Upload directory successfully hardened');
+                $upmsg = SucuriScanInterface::info('Hardening applied successfully to upload directory');
                 $cp = 1;
             }
         }
 
-        elseif( isset($_POST['sucuriscan_harden_upload_unharden']) ){
+        elseif( SucuriScanRequest::post(':harden_upload_unharden') ){
             $htaccess_upload_writable = ( file_exists($htaccess_upload) && is_writable($htaccess_upload) ) ? TRUE : FALSE;
             $htaccess_content = $htaccess_upload_writable ? file_get_contents($htaccess_upload) : '';
 
@@ -5122,11 +5777,11 @@ function sucuriscan_harden_upload(){
                     @file_put_contents($htaccess_upload, $htaccess_content, LOCK_EX);
                 }
 
-                sucuriscan_info('Hardening removed for the WordPress upload directory <code>/wp-content/uploads</code>');
+                SucuriScanInterface::info('Hardening reverted for upload directory <code>/wp-content/uploads/</code>');
             } else {
-                sucuriscan_error(
-                    '<code>wp-content/uploads/.htaccess</code> does not exists or is not
-                    writable, you will need to remove the following code (manually):
+                SucuriScanInterface::error(
+                    'File <code>/wp-content/uploads/.htaccess</code> does not exists or
+                    is not writable, you will need to remove the following code (manually):
                     <code>&lt;Files *.php&gt;deny from all&lt;/Files&gt;</code>'
                 );
             }
@@ -5162,27 +5817,27 @@ function sucuriscan_harden_wpcontent(){
         $cp = 0;
     } else {
         $cp = 0;
-        $fcontent = file($htaccess_upload);
+        $fcontent = @file($htaccess_upload);
 
         foreach( $fcontent as $fline ){
-            if( strpos($fline, 'deny from all') !== FALSE ){
+            if( stripos($fline, 'deny from all') !== FALSE ){
                 $cp = 1;
                 break;
             }
         }
     }
 
-    if( isset($_POST['wpsucuri-doharden']) ){
-        if( isset($_POST['sucuriscan_harden_wpcontent']) && $cp == 0 ){
+    if( SucuriScanRequest::post(':run_hardening') ){
+        if( SucuriScanRequest::post(':harden_wpcontent') && $cp == 0 ){
             if( @file_put_contents($htaccess_upload, "\n<Files *.php>\ndeny from all\n</Files>") === FALSE ){
-                $upmsg = sucuriscan_error('ERROR: Unable to create <code>.htaccess</code> file, folder destination is not writable.');
+                $upmsg = SucuriScanInterface::error('Unable to create <code>.htaccess</code> file, folder destination is not writable.');
             } else {
-                $upmsg = sucuriscan_info('COMPLETE: wp-content directory successfully hardened');
+                $upmsg = SucuriScanInterface::info('Hardening applied successfully to content directory <code>/wp-content/</code>');
                 $cp = 1;
             }
         }
 
-        elseif( isset($_POST['sucuriscan_harden_wpcontent_unharden']) ){
+        elseif( SucuriScanRequest::post(':harden_wpcontent_unharden') ){
             $htaccess_upload_writable = ( file_exists($htaccess_upload) && is_writable($htaccess_upload) ) ? TRUE : FALSE;
             $htaccess_content = $htaccess_upload_writable ? file_get_contents($htaccess_upload) : '';
 
@@ -5194,11 +5849,11 @@ function sucuriscan_harden_wpcontent(){
                     @file_put_contents($htaccess_upload, $htaccess_content, LOCK_EX);
                 }
 
-                sucuriscan_info('WP-Content directory protection reverted.');
+                SucuriScanInterface::info('Hardening reverted for content directory <code>/wp-content/</code>');
             } else {
-                sucuriscan_info(
-                    '<code>wp-content/.htaccess</code> does not exists or is not writable,
-                    you will need to remove the following code manually there:
+                SucuriScanInterface::info(
+                    'File <code>/wp-content/.htaccess</code> does not exists or is not writable,
+                    you will need to remove the following code manually from there:
                     <code>&lt;Files *.php&gt;deny from all&lt;/Files&gt;</code>'
                 );
             }
@@ -5237,27 +5892,27 @@ function sucuriscan_harden_wpincludes(){
         $cp = 0;
     } else {
         $cp = 0;
-        $fcontent = file($htaccess_upload);
+        $fcontent = @file($htaccess_upload);
 
         foreach( $fcontent as $fline ){
-            if( strpos($fline, 'deny from all') !== FALSE ){
+            if( stripos($fline, 'deny from all') !== FALSE ){
                 $cp = 1;
                 break;
             }
         }
     }
 
-    if( isset($_POST['wpsucuri-doharden']) ){
-        if( isset($_POST['sucuriscan_harden_wpincludes']) && $cp == 0 ){
+    if( SucuriScanRequest::post(':run_hardening') ){
+        if( SucuriScanRequest::post(':harden_wpincludes') && $cp == 0 ){
             if( @file_put_contents($htaccess_upload, "\n<Files *.php>\ndeny from all\n</Files>\n<Files wp-tinymce.php>\nallow from all\n</Files>\n")===FALSE ){
-                $upmsg = sucuriscan_error('ERROR: Unable to create <code>.htaccess</code> file, folder destination is not writable.');
+                $upmsg = SucuriScanInterface::error('Unable to create <code>.htaccess</code> file, folder destination is not writable.');
             } else {
-                $upmsg = sucuriscan_info('COMPLETE: wp-includes directory successfully hardened.');
+                $upmsg = SucuriScanInterface::info('Hardening applied successfully to library\'s directory <code>/wp-includes/</code>');
                 $cp = 1;
             }
         }
 
-        elseif( isset($_POST['sucuriscan_harden_wpincludes_unharden']) ){
+        elseif( SucuriScanRequest::post(':harden_wpincludes_unharden') ){
             $htaccess_upload_writable = ( file_exists($htaccess_upload) && is_writable($htaccess_upload) ) ? TRUE : FALSE;
             $htaccess_content = $htaccess_upload_writable ? file_get_contents($htaccess_upload) : '';
 
@@ -5270,11 +5925,11 @@ function sucuriscan_harden_wpincludes(){
 
                     @file_put_contents($htaccess_upload, $htaccess_content, LOCK_EX);
                 }
-                sucuriscan_info('WP-Includes directory protection reverted.');
+                SucuriScanInterface::info('Hardening reverted for library\'s directory <code>/wp-includes/</code>');
             } else {
-                sucuriscan_error(
-                    '<code>wp-includes/.htaccess</code> does not exists or is not
-                    writable, you will need to remove the following code manually
+                SucuriScanInterface::error(
+                    'File <code>wp-includes/.htaccess</code> does not exists or is not
+                    writable, you will need to remove the following code manually from
                     there: <code>&lt;Files *.php&gt;deny from all&lt;/Files&gt;</code>'
                 );
             }
@@ -5320,7 +5975,7 @@ function sucuriscan_harden_phpversion(){
  */
 function sucuriscan_cloudproxy_enabled(){
     $btn_string = '';
-    $enabled = sucuriscan_is_behind_cloudproxy();
+    $enabled = SucuriScan::is_behind_cloudproxy();
     $status = 1;
 
     if( $enabled !== TRUE ){
@@ -5352,7 +6007,7 @@ function sucuriscan_cloudproxy_enabled(){
  * @return void
  */
 function sucuriscan_harden_secretkeys(){
-    $wp_config_path = sucuriscan_get_wpconfig_path();
+    $wp_config_path = SucuriScan::get_wpconfig_path();
 
     if( $wp_config_path ){
         $cp = 1;
@@ -5380,12 +6035,12 @@ function sucuriscan_harden_secretkeys(){
         }
 
         if( $cp == 0 ){
-            $admin_url = admin_url('admin.php?page=sucuriscan_posthack');
-            $message .= '<br><a href="'.$admin_url.'" class="button button-primary">Update WP-Config Keys</a><br>';
+            $admin_url = SucuriScanTemplate::get_url('posthack');
+            $message .= '<br><a href="'.$admin_url.'" class="button button-primary">Update secret keys</a><br>';
         }
     }else{
         $cp = 0;
-        $message = 'The <code>wp-config</code> file was not found.<br>';
+        $message = 'The <code>wp-config.php</code> file was not found.<br>';
     }
 
     $message .= '<br>It checks whether you have proper random keys/salts created for WordPress. A
@@ -5417,18 +6072,18 @@ function sucuriscan_harden_readme(){
     $upmsg = NULL;
     $cp = is_readable(ABSPATH.'/readme.html') ? 0 : 1;
 
-    if( isset($_POST['wpsucuri-doharden']) ){
-        if( isset($_POST['sucuriscan_harden_readme']) && $cp == 0 ){
+    if( SucuriScanRequest::post(':run_hardening') ){
+        if( SucuriScanRequest::post(':harden_readme') && $cp == 0 ){
             if( @unlink(ABSPATH.'/readme.html') === FALSE ){
-                $upmsg = sucuriscan_error('Unable to remove <code>readme.html</code> file.');
+                $upmsg = SucuriScanInterface::error('Unable to remove <code>readme.html</code> file.');
             } else {
                 $cp = 1;
-                $upmsg = sucuriscan_info('<code>readme.html</code> file removed successfully.');
+                $upmsg = SucuriScanInterface::info('<code>readme.html</code> file removed successfully.');
             }
         }
 
-        elseif( isset($_POST['sucuriscan_harden_readme_unharden']) ){
-            sucuriscan_error('We can not revert this action, you should create the <code>readme.html</code> file at your own.');
+        elseif( SucuriScanRequest::post(':harden_readme_unharden') ){
+            SucuriScanInterface::error('We can not revert this action, you must create the <code>readme.html</code> file by yourself.');
         }
     }
 
@@ -5453,14 +6108,19 @@ function sucuriscan_harden_adminuser(){
     global $wpdb;
 
     $upmsg = NULL;
-    $res = $wpdb->get_results("SELECT user_login FROM {$wpdb->prefix}users WHERE user_login = 'admin'");
-    $account_removed = ( count($res) == 0 ? 1 : 0 );
+    $user_query = new WP_User_Query(array(
+        'search' => 'admin',
+        'fields' => array( 'ID', 'user_login' ),
+        'search_columns' => array( 'user_login' ),
+    ));
+    $results = $user_query->get_results();
+    $account_removed = ( count($results) === 0 ? 1 : 0 );
 
-    if( $account_removed == 0 ){
-        $upmsg = '<i><strong>We do not offer the option</strong> to automatically change the user name.
+    if( $account_removed === 0 ){
+        $upmsg = '<i><strong>Notice.</strong> We do not offer an option to automatically change the user name.
         Go to the <a href="'.admin_url('users.php').'" target="_blank">user list</a> and create a new
-        admin user name. Once created, log in as that user and remove the default "admin" from there
-        (make sure to assign all the admin posts to the new user too!).</i>';
+        administrator user. Once created, log in as that user and remove the default <code>admin</code>
+        (make sure to assign all the admin posts to the new user too).</i>';
     }
 
     sucuriscan_harden_status(
@@ -5482,14 +6142,14 @@ function sucuriscan_harden_adminuser(){
 function sucuriscan_harden_fileeditor(){
     $file_editor_disabled = defined('DISALLOW_FILE_EDIT') ? DISALLOW_FILE_EDIT : FALSE;
 
-    if( isset($_POST['wpsucuri-doharden']) ){
+    if( SucuriScanRequest::post(':run_hardening') ){
         $current_time = date('r');
-        $wp_config_path = sucuriscan_get_wpconfig_path();
+        $wp_config_path = SucuriScan::get_wpconfig_path();
 
         $wp_config_writable = ( file_exists($wp_config_path) && is_writable($wp_config_path) ) ? TRUE : FALSE;
         $new_wpconfig = $wp_config_writable ? file_get_contents($wp_config_path) : '';
 
-        if( isset($_POST['sucuriscan_harden_fileeditor']) ){
+        if( SucuriScanRequest::post(':harden_fileeditor') ){
             if( $wp_config_writable ){
                 if( preg_match('/(.*define\(.DB_COLLATE..*)/', $new_wpconfig, $match) ){
                     $disallow_fileedit_definition = "\n\ndefine('DISALLOW_FILE_EDIT', TRUE); // Sucuri Security: {$current_time}\n";
@@ -5497,37 +6157,37 @@ function sucuriscan_harden_fileeditor(){
                 }
 
                 @file_put_contents($wp_config_path, $new_wpconfig, LOCK_EX);
-                sucuriscan_info( 'WP-Config file updated successfully, the plugin and theme editor were disabled.' );
+                SucuriScanInterface::info( 'Configuration file updated successfully, the plugin and theme editor were disabled.' );
                 $file_editor_disabled = TRUE;
             } else {
-                sucuriscan_error( 'The <code>wp-config.php</code> file is not in the default location
+                SucuriScanInterface::error( 'The <code>wp-config.php</code> file is not in the default location
                     or is not writable, you will need to put the following code manually there:
                     <code>define("DISALLOW_FILE_EDIT", TRUE);</code>' );
             }
         }
 
-        elseif( isset($_POST['sucuriscan_harden_fileeditor_unharden']) ){
+        elseif( SucuriScanRequest::post(':harden_fileeditor_unharden') ){
             if( preg_match("/(.*define\('DISALLOW_FILE_EDIT', TRUE\);.*)/", $new_wpconfig, $match) ){
                 if( $wp_config_writable ){
                     $new_wpconfig = str_replace("\n{$match[1]}", '', $new_wpconfig);
                     file_put_contents($wp_config_path, $new_wpconfig, LOCK_EX);
-                    sucuriscan_info( 'WP-Config file updated successfully, the plugin and theme editor were enabled.' );
+                    SucuriScanInterface::info( 'Configuration file updated successfully, the plugin and theme editor were enabled.' );
                     $file_editor_disabled = FALSE;
                 } else {
-                    sucuriscan_error( 'The <code>wp-config.php</code> file is not in the default location
+                    SucuriScanInterface::error( 'The <code>wp-config.php</code> file is not in the default location
                         or is not writable, you will need to remove the following code manually from there:
                         <code>define("DISALLOW_FILE_EDIT", TRUE);</code>' );
                 }
             } else {
-                sucuriscan_error( 'We did not find a definition to disallow the file editor.' );
+                SucuriScanInterface::error( 'The theme and plugin editor are not disabled from the configuration file.' );
             }
         }
     }
 
-    $message = 'Occasionally you may wish to disable the plugin or theme editor to prevent overzealous users
-        from being able to edit sensitive files and potentially crash the site. Disabling these also
-        provides an additional layer of security if a hacker gains access to a well-privileged user
-        account.';
+    $message = 'Occasionally you may wish to disable the plugin or theme editor to prevent overzealous
+        users from being able to edit sensitive files and potentially crash the site. Disabling these
+        also provides an additional layer of security if a hacker gains access to a well-privileged
+        user account.';
 
     sucuriscan_harden_status(
         'Plugin &amp; Theme editor',
@@ -5573,11 +6233,15 @@ function sucuriscan_harden_dbtables(){
  * @return void
  */
 function sucuriscan_page(){
-    if( !current_user_can('manage_options') ){
-        wp_die(__('You do not have sufficient permissions to access this page: Sucuri Integrity Check') );
-    }
+    SucuriScanInterface::check_permissions();
 
-    sucuriscan_integrity_form_submissions();
+    if(
+        SucuriScanInterface::check_nonce()
+        && SucuriScanRequest::post(':force_scan')
+    ){
+        SucuriScanEvent::notify_event( 'plugin_change', 'Filesystem scan forced at: ' . date('r') );
+        SucuriScanEvent::filesystem_scan(TRUE);
+    }
 
     $template_variables = array(
         'WordpressVersion' => sucuriscan_wordpress_outdated(),
@@ -5585,30 +6249,7 @@ function sucuriscan_page(){
         'CoreFiles' => sucuriscan_core_files(),
     );
 
-    echo sucuriscan_get_template('integrity', $template_variables);
-}
-
-/**
- * Process the requests sent by the form submissions originated in the integrity
- * page, all forms must have a nonce field that will be checked agains the one
- * generated in the template render function.
- *
- * @return void
- */
-function sucuriscan_integrity_form_submissions(){
-    if( sucuriscan_check_page_nonce() ){
-
-        // Manually force a filesystem scan (by an administrator user).
-        if( isset($_POST['sucuriscan_force_scan']) ){
-            if( current_user_can('manage_options') ){
-                sucuriscan_notify_event( 'plugin_change', 'Filesystem scan forced at: ' . date('r') );
-                sucuriscan_filesystem_scan(TRUE);
-            } else {
-                sucuriscan_error( 'Your privileges are not sufficient to execute this action.' );
-            }
-        }
-
-    }
+    echo SucuriScanTemplate::get_template('integrity', $template_variables);
 }
 
 /**
@@ -5645,9 +6286,9 @@ function sucuriscan_auditlogs(){
 
     // Initialize the values for the pagination.
     $max_per_page = SUCURISCAN_AUDITLOGS_PER_PAGE;
-    $page_number = sucuriscan_get_page_number();
+    $page_number = SucuriScanTemplate::get_page_number();
     $logs_limit = $page_number * $max_per_page;
-    $audit_logs = sucuriscan_get_logs($logs_limit);
+    $audit_logs = SucuriScanAPI::get_logs($logs_limit);
 
     $show_all = TRUE;
 
@@ -5696,7 +6337,7 @@ function sucuriscan_auditlogs(){
                     $snippet_data['AuditLog.Extra'] .= '<small>For Mac users, this is a scrollable container</small>';
                 }
 
-                $template_variables['AuditLogs.List'] .= sucuriscan_get_snippet('integrity-auditlogs', $snippet_data);
+                $template_variables['AuditLogs.List'] .= SucuriScanTemplate::get_snippet('integrity-auditlogs', $snippet_data);
                 $counter_i += 1;
             }
         }
@@ -5706,15 +6347,15 @@ function sucuriscan_auditlogs(){
 
         if( $total_items > 0 ){
             $template_variables['AuditLogs.PaginationVisibility'] = 'visible';
-            $template_variables['AuditLogs.PaginationLinks'] = sucuriscan_generate_pagination(
+            $template_variables['AuditLogs.PaginationLinks'] = SucuriScanTemplate::get_pagination(
                 '%%SUCURI.URL.Home%%',
-                $max_per_page * 5, /* Temporary value while we get the total logs. */
+                $max_per_page * 5, /* TODO: Temporary value while we get the total logs. */
                 $max_per_page
             );
         }
     }
 
-    return sucuriscan_get_section('integrity-auditlogs', $template_variables);
+    return SucuriScanTemplate::get_section('integrity-auditlogs', $template_variables);
 }
 
 /**
@@ -5723,13 +6364,12 @@ function sucuriscan_auditlogs(){
  * @return string Panel with a warning advising that WordPress is outdated.
  */
 function sucuriscan_wordpress_outdated(){
-    global $wp_version;
-
+    $site_version = SucuriScan::site_version();
     $updates = get_core_updates();
     $cp = ( !is_array($updates) || empty($updates) ? 1 : 0 );
 
     $template_variables = array(
-        'WordPress.Version' => htmlspecialchars($wp_version),
+        'WordPress.Version' => $site_version,
         'WordPress.UpgradeURL' => admin_url('update-core.php'),
         'WordPress.UpdateVisibility' => 'hidden',
         'WordPressBeta.Visibility' => 'hidden',
@@ -5751,7 +6391,7 @@ function sucuriscan_wordpress_outdated(){
         }
     }
 
-    if( strcmp($wp_version, '3.7') < 0 ){
+    if( strcmp($site_version, '3.7') < 0 ){
         $cp = 0;
     }
 
@@ -5759,7 +6399,7 @@ function sucuriscan_wordpress_outdated(){
         $template_variables['WordPress.UpdateVisibility'] = 'visible';
     }
 
-    return sucuriscan_get_section('integrity-wpoutdate', $template_variables);
+    return SucuriScanTemplate::get_section('integrity-wpoutdate', $template_variables);
 }
 
 /**
@@ -5770,7 +6410,7 @@ function sucuriscan_wordpress_outdated(){
  * @return void
  */
 function sucuriscan_core_files(){
-    global $wp_version;
+    $site_version = SucuriScan::site_version();
 
     $template_variables = array(
         'CoreFiles.List' => '',
@@ -5779,8 +6419,8 @@ function sucuriscan_core_files(){
         'CoreFiles.BadVisibility' => 'hidden',
     );
 
-    if( $wp_version ){
-        $latest_hashes = sucuriscan_check_wp_integrity($wp_version);
+    if( $site_version ){
+        $latest_hashes = sucuriscan_check_wp_integrity($site_version);
 
         if( $latest_hashes ){
             $counter = 0;
@@ -5813,7 +6453,7 @@ function sucuriscan_core_files(){
                     }
 
                     $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
-                    $template_variables['CoreFiles.List'] .= sucuriscan_get_snippet('integrity-corefiles', array(
+                    $template_variables['CoreFiles.List'] .= SucuriScanTemplate::get_snippet('integrity-corefiles', array(
                         'CoreFiles.CssClass' => $css_class,
                         'CoreFiles.StatusType' => $list_type,
                         'CoreFiles.StatusAbbr' => substr($list_type, 0, 1),
@@ -5829,41 +6469,11 @@ function sucuriscan_core_files(){
                 $template_variables['CoreFiles.BadVisibility'] = 'visible';
             }
         } else {
-            sucuriscan_error( 'Error retrieving the WordPress core hashes, try again.' );
+            SucuriScanInterface::error( 'Error retrieving the WordPress core hashes, try again.' );
         }
     }
 
-    return sucuriscan_get_section('integrity-corefiles', $template_variables);
-}
-
-/**
- * Retrieve a list with the checksums of the files in a specific version of WordPress.
- *
- * @see Release Archive http://wordpress.org/download/release-archive/
- *
- * @param  integer $version Valid version number of the WordPress project.
- * @return object           Associative object with the relative filepath and the checksums of the project files.
- */
-function sucuriscan_get_official_checksums( $version=0 ){
-    $api_url = sprintf('http://api.wordpress.org/core/checksums/1.0/?version=%s&locale=en_US', $version);
-    $request = wp_remote_get($api_url);
-
-    if( !is_wp_error($request) || wp_remote_retrieve_response_code($request) === 200 ){
-        $json_data = json_decode($request['body']);
-
-        if( $json_data->checksums !== FALSE ){
-            $checksums = $json_data->checksums;
-
-            // Convert the object list to an array for better handle of the data.
-            if( $checksums instanceof stdClass ){
-                $checksums = (array) $checksums;
-            }
-
-            return $checksums;
-        }
-    }
-
-    return FALSE;
+    return SucuriScanTemplate::get_section('integrity-corefiles', $template_variables);
 }
 
 /**
@@ -5882,7 +6492,7 @@ function sucuriscan_get_official_checksums( $version=0 ){
  * @return array            Associative array with these keys: modified, stable, removed, added.
  */
 function sucuriscan_check_wp_integrity( $version=0 ){
-    $latest_hashes = sucuriscan_get_official_checksums($version);
+    $latest_hashes = SucuriScanAPI::get_official_checksums($version);
 
     if( !$latest_hashes ){ return FALSE; }
 
@@ -5982,9 +6592,9 @@ function sucuriscan_modified_files(){
     // Find files modified in the last days.
     $back_days = 7;
 
-    // Correct the ranges of the search to be between one and sixty days.
-    if( sucuriscan_check_page_nonce() && isset($_POST['sucuriscan_last_days']) ){
-        $back_days = intval($_POST['sucuriscan_last_days']);
+    // Set the ranges of the search to be between one and sixty days.
+    if( SucuriScanInterface::check_nonce() ){
+        $back_days = (int) SucuriScanRequest::post(':last_days', '[0-9]+');
         if    ( $back_days <= 0  ){ $back_days = 1;  }
         elseif( $back_days >= 60 ){ $back_days = 60; }
     }
@@ -6005,11 +6615,11 @@ function sucuriscan_modified_files(){
     $counter = 0;
 
     foreach( $wp_content_hashes as $file_path => $file_info ){
-        if( $file_info['filetime'] >= $back_days ){
+        if( $file_info['modified_at'] >= $back_days ){
             $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
-            $mod_date = date('d/M/Y H:i:s', $file_info['filetime']);
+            $mod_date = date('d/M/Y H:i:s', $file_info['modified_at']);
 
-            $template_variables['ModifiedFiles.List'] .= sucuriscan_get_snippet('integrity-modifiedfiles', array(
+            $template_variables['ModifiedFiles.List'] .= SucuriScanTemplate::get_snippet('integrity-modifiedfiles', array(
                 'ModifiedFiles.CssClass' => $css_class,
                 'ModifiedFiles.CheckSum' => $file_info['checksum'],
                 'ModifiedFiles.FilePath' => $file_path,
@@ -6023,7 +6633,7 @@ function sucuriscan_modified_files(){
         $template_variables['ModifiedFiles.NoFilesVisibility'] = 'hidden';
     }
 
-    return sucuriscan_get_section('integrity-modifiedfiles', $template_variables);
+    return SucuriScanTemplate::get_section('integrity-modifiedfiles', $template_variables);
 }
 
 /**
@@ -6032,9 +6642,7 @@ function sucuriscan_modified_files(){
  * @return void
  */
 function sucuriscan_posthack_page(){
-    if( !current_user_can('manage_options') ){
-        wp_die(__('You do not have sufficient permissions to access this page: Sucuri Post-Hack') );
-    }
+    SucuriScanInterface::check_permissions();
 
     $process_form = sucuriscan_posthack_process_form();
 
@@ -6046,7 +6654,7 @@ function sucuriscan_posthack_page(){
         'ResetPlugins' => sucuriscan_posthack_plugins($process_form),
     );
 
-    echo sucuriscan_get_template('posthack', $template_variables);
+    echo SucuriScanTemplate::get_template('posthack', $template_variables);
 }
 
 /**
@@ -6055,11 +6663,14 @@ function sucuriscan_posthack_page(){
  * @return boolean TRUE if a form submission should be processed, FALSE otherwise.
  */
 function sucuriscan_posthack_process_form(){
-    if( sucuriscan_check_page_nonce() && isset($_POST['sucuriscan_process_form']) ){
-        if( $_POST['sucuriscan_process_form'] == 1 ){
+    if(
+        SucuriScanInterface::check_nonce()
+        && SucuriScanRequest::post(':process_form', '.+')
+    ){
+        if( SucuriScanRequest::post(':process_form', '1') ){
             return TRUE;
         } else {
-            sucuriscan_error('You need to confirm that you understand the risk of this operation.');
+            SucuriScanInterface::error('You need to confirm that you understand the risk of this operation.');
         }
     }
 
@@ -6079,29 +6690,32 @@ function sucuriscan_update_secret_keys( $process_form=FALSE ){
     );
 
     // Update all WordPress secret keys.
-    if( $process_form && isset($_POST['sucuriscan_update_wpconfig']) ){
-        $wpconfig_process = sucuriscan_set_new_config_keys();
+    if( $process_form && SucuriScanRequest::post(':update_wpconfig', '1') ){
+        $wpconfig_process = SucuriScanEvent::set_new_config_keys();
 
         if( $wpconfig_process ){
             $template_variables['WPConfigUpdate.Visibility'] = 'visible';
 
             if( $wpconfig_process['updated'] === TRUE ){
-                sucuriscan_info( 'WordPress secret keys updated successfully (check bellow the summary of the operation).' );
+                SucuriScanInterface::info( 'Secret keys updated successfully (summary of the operation bellow).' );
                 $template_variables['WPConfigUpdate.NewConfig'] .= "// Old Keys\n";
                 $template_variables['WPConfigUpdate.NewConfig'] .= $wpconfig_process['old_keys_string'];
                 $template_variables['WPConfigUpdate.NewConfig'] .= "//\n";
                 $template_variables['WPConfigUpdate.NewConfig'] .= "// New Keys\n";
                 $template_variables['WPConfigUpdate.NewConfig'] .= $wpconfig_process['new_keys_string'];
             } else {
-                sucuriscan_error( '<code>wp-config.php</code> file is not writable, replace the old configuration file with the new values shown bellow.' );
+                SucuriScanInterface::error(
+                    '<code>wp-config.php</code> file is not writable, replace the '
+                    . 'old configuration file with the new values shown bellow.'
+                );
                 $template_variables['WPConfigUpdate.NewConfig'] = $wpconfig_process['new_wpconfig'];
             }
         } else {
-            sucuriscan_error('<code>wp-config.php</code> file was not found in the default location.' );
+            SucuriScanInterface::error('<code>wp-config.php</code> file was not found in the default location.' );
         }
     }
 
-    return sucuriscan_get_section('posthack-updatesecretkeys', $template_variables);
+    return SucuriScanTemplate::get_section('posthack-updatesecretkeys', $template_variables);
 }
 
 /**
@@ -6130,22 +6744,21 @@ function sucuriscan_posthack_users( $process_form=FALSE ){
             $user->user_registered_formatted = date('D, M/Y H:i', $user->user_registered_timestamp);
             $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
 
-            $user_snippet = sucuriscan_get_snippet('posthack-resetpassword', array(
+            $template_variables['ResetPassword.UserList'] .= SucuriScanTemplate::get_snippet('posthack-resetpassword', array(
                 'ResetPassword.UserId' => $user->ID,
-                'ResetPassword.Username' => $user->user_login,
-                'ResetPassword.Displayname' => $user->display_name,
-                'ResetPassword.Email' => $user->user_email,
+                'ResetPassword.Username' => SucuriScan::escape($user->user_login),
+                'ResetPassword.Displayname' => SucuriScan::escape($user->display_name),
+                'ResetPassword.Email' => SucuriScan::escape($user->user_email),
                 'ResetPassword.Registered' => $user->user_registered_formatted,
                 'ResetPassword.Roles' => implode(', ', $user->roles),
-                'ResetPassword.CssClass' => $css_class
+                'ResetPassword.CssClass' => $css_class,
             ));
 
-            $template_variables['ResetPassword.UserList'] .= $user_snippet;
             $counter += 1;
         }
     }
 
-    return sucuriscan_get_section('posthack-resetpassword', $template_variables);
+    return SucuriScanTemplate::get_section('posthack-resetpassword', $template_variables);
 }
 
 /**
@@ -6155,15 +6768,16 @@ function sucuriscan_posthack_users( $process_form=FALSE ){
  * @return void
  */
 function sucuriscan_reset_user_password( $process_form=FALSE ){
-    if( $process_form && isset($_POST['sucuriscan_reset_password']) ){
-        $user_identifiers = isset($_POST['user_ids']) ? $_POST['user_ids'] : array();
-        $pwd_changed = $pwd_not_changed = array();
+    if( $process_form && SucuriScanRequest::post(':reset_password') ){
+        $user_identifiers = SucuriScanRequest::post('user_ids');
+        $pwd_changed = array();
+        $pwd_not_changed = array();
 
         if( is_array($user_identifiers) && !empty($user_identifiers) ){
             arsort($user_identifiers);
 
             foreach( $user_identifiers as $user_id ){
-                if( sucuriscan_new_password($user_id) ){
+                if( SucuriScanEvent::set_new_password($user_id) ){
                     $pwd_changed[] = $user_id;
                 } else {
                     $pwd_not_changed[] = $user_id;
@@ -6171,14 +6785,14 @@ function sucuriscan_reset_user_password( $process_form=FALSE ){
             }
 
             if( !empty($pwd_changed) ){
-                sucuriscan_info( 'Password changed successfully for users: ' . implode(', ',$pwd_changed) );
+                SucuriScanInterface::info( 'Password changed successfully for users: ' . implode(', ',$pwd_changed) );
             }
 
             if( !empty($pwd_not_changed) ){
-                sucuriscan_error( 'Password change failed for users: ' . implode(', ',$pwd_not_changed) );
+                SucuriScanInterface::error( 'Password change failed for users: ' . implode(', ',$pwd_not_changed) );
             }
         } else {
-            sucuriscan_error( 'You did not select a user from the list.' );
+            SucuriScanInterface::error( 'You did not select a user from the list.' );
         }
     }
 }
@@ -6195,7 +6809,7 @@ function sucuriscan_posthack_plugins( $process_form=FALSE ){
     );
 
     sucuriscan_posthack_reinstall_plugins($process_form);
-    $all_plugins = sucuriscan_get_plugins();
+    $all_plugins = SucuriScanAPI::get_plugins();
     $counter = 0;
 
     foreach( $all_plugins as $plugin_path => $plugin_data ){
@@ -6205,11 +6819,11 @@ function sucuriscan_posthack_plugins( $process_form=FALSE ){
         $plugin_status = $plugin_data['IsPluginActive'] ? 'active' : 'not active';
         $plugin_status_class = $plugin_data['IsPluginActive'] ? 'success' : 'default';
 
-        $template_variables['ResetPlugin.PluginList'] .= sucuriscan_get_snippet('posthack-resetplugins', array(
+        $template_variables['ResetPlugin.PluginList'] .= SucuriScanTemplate::get_snippet('posthack-resetplugins', array(
             'ResetPlugin.CssClass' => $css_class,
             'ResetPlugin.Disabled' => $input_disabled,
-            'ResetPlugin.PluginPath' => $plugin_path,
-            'ResetPlugin.Plugin' => sucuriscan_excerpt($plugin_data['Name'], 35),
+            'ResetPlugin.PluginPath' => SucuriScan::escape($plugin_path),
+            'ResetPlugin.Plugin' => SucuriScan::excerpt($plugin_data['Name'], 35),
             'ResetPlugin.Version' => $plugin_data['Version'],
             'ResetPlugin.Type' => $plugin_data['PluginType'],
             'ResetPlugin.TypeClass' => $plugin_type_class,
@@ -6220,7 +6834,7 @@ function sucuriscan_posthack_plugins( $process_form=FALSE ){
         $counter += 1;
     }
 
-    return sucuriscan_get_section('posthack-resetplugins', $template_variables);
+    return SucuriScanTemplate::get_section('posthack-resetplugins', $template_variables);
 }
 
 /**
@@ -6237,17 +6851,14 @@ function sucuriscan_posthack_reinstall_plugins( $process_form=FALSE ){
         include_once( ABSPATH . 'wp-admin/includes/class-wp-upgrader.php' );
         include_once( ABSPATH . 'wp-admin/includes/plugin-install.php' ); // For plugins_api.
 
-        if(
-            isset($_POST['plugin_path'])
-            && !empty($_POST['plugin_path'])
-        ){
+        if( $plugin_list = SucuriScanRequest::post('plugin_path', '_array') ){
             // Create an instance of the FileInfo interface.
             $sucuri_fileinfo = new SucuriScanFileInfo();
             $sucuri_fileinfo->ignore_files = FALSE;
             $sucuri_fileinfo->ignore_directories = FALSE;
 
             // Get (possible) cached information from the installed plugins.
-            $all_plugins = sucuriscan_get_plugins();
+            $all_plugins = SucuriScanAPI::get_plugins();
 
             // Loop through all the installed plugins.
             foreach( $_POST['plugin_path'] as $plugin_path ){
@@ -6256,7 +6867,7 @@ function sucuriscan_posthack_reinstall_plugins( $process_form=FALSE ){
 
                     // Check if the plugin can be downloaded from the free market.
                     if( $plugin_data['IsFreePlugin'] === TRUE ){
-                        $plugin_info = sucuriscan_get_remote_plugin_data($plugin_data['RepositoryName']);
+                        $plugin_info = SucuriScanAPI::get_remote_plugin_data($plugin_data['RepositoryName']);
 
                         if( $plugin_info ){
                             // First, remove all files/sub-folders from the plugin's directory.
@@ -6268,13 +6879,13 @@ function sucuriscan_posthack_reinstall_plugins( $process_form=FALSE ){
                             $upgrader = new Plugin_Upgrader($upgrader_skin);
                             $upgrader->install($plugin_info->download_link);
                         } else {
-                            sucuriscan_error( 'Could not establish a stable connection with the WordPress plugins market.' );
+                            SucuriScanInterface::error( 'Could not establish a stable connection with the WordPress plugins market.' );
                         }
                     }
                 }
             }
         } else {
-            sucuriscan_error( 'You did not select a free plugin to reinstall.' );
+            SucuriScanInterface::error( 'You did not select a free plugin to reinstall.' );
         }
     }
 }
@@ -6287,9 +6898,7 @@ function sucuriscan_posthack_reinstall_plugins( $process_form=FALSE ){
  * @return string Last-logings for the administrator accounts.
  */
 function sucuriscan_lastlogins_page(){
-    if( !current_user_can('manage_options') ){
-        wp_die(__('You do not have sufficient permissions to access this page: Sucuri Last-Logins') );
-    }
+    SucuriScanInterface::check_permissions();
 
     // Page pseudo-variables initialization.
     $template_variables = array(
@@ -6300,7 +6909,7 @@ function sucuriscan_lastlogins_page(){
         'FailedLogins' => sucuriscan_failed_logins_panel(),
     );
 
-    echo sucuriscan_get_template('lastlogins', $template_variables);
+    echo SucuriScanTemplate::get_template('lastlogins', $template_variables);
 }
 
 /**
@@ -6324,8 +6933,8 @@ function sucuriscan_lastlogins_admins(){
         $admin->lastlogins = $last_logins['entries'];
 
         $user_snippet = array(
-            'AdminUsers.Username' => $admin->user_login,
-            'AdminUsers.Email' => $admin->user_email,
+            'AdminUsers.Username' => SucuriScan::escape($admin->user_login),
+            'AdminUsers.Email' => SucuriScan::escape($admin->user_email),
             'AdminUsers.LastLogins' => '',
             'AdminUsers.RegisteredAt' => 'Undefined',
             'AdminUsers.UserURL' => admin_url('user-edit.php?user_id='.$admin->ID),
@@ -6341,19 +6950,19 @@ function sucuriscan_lastlogins_admins(){
 
             foreach( $admin->lastlogins as $lastlogin ){
                 $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
-                $user_snippet['AdminUsers.LastLogins'] .= sucuriscan_get_snippet('lastlogins-admins-lastlogin', array(
-                    'AdminUsers.RemoteAddr' => $lastlogin->user_remoteaddr,
-                    'AdminUsers.Datetime' => $lastlogin->user_lastlogin,
+                $user_snippet['AdminUsers.LastLogins'] .= SucuriScanTemplate::get_snippet('lastlogins-admins-lastlogin', array(
+                    'AdminUsers.RemoteAddr' => SucuriScan::escape($lastlogin->user_remoteaddr),
+                    'AdminUsers.Datetime' => SucuriScan::escape($lastlogin->user_lastlogin),
                     'AdminUsers.CssClass' => $css_class,
                 ));
                 $counter += 1;
             }
         }
 
-        $template_variables['AdminUsers.List'] .= sucuriscan_get_snippet('lastlogins-admins', $user_snippet);
+        $template_variables['AdminUsers.List'] .= SucuriScanTemplate::get_snippet('lastlogins-admins', $user_snippet);
     }
 
-    return sucuriscan_get_section('lastlogins-admins', $template_variables);
+    return SucuriScanTemplate::get_section('lastlogins-admins', $template_variables);
 }
 
 /**
@@ -6365,7 +6974,7 @@ function sucuriscan_lastlogins_admins(){
  */
 function sucuriscan_lastlogins_all(){
     $max_per_page = SUCURISCAN_LASTLOGINS_USERSLIMIT;
-    $page_number = sucuriscan_get_page_number();
+    $page_number = SucuriScanTemplate::get_page_number();
     $offset = ($max_per_page * $page_number) - $max_per_page;
 
     $template_variables = array(
@@ -6378,7 +6987,7 @@ function sucuriscan_lastlogins_all(){
     );
 
     if( !sucuriscan_lastlogins_datastore_is_writable() ){
-        sucuriscan_error( 'Last-logins datastore file is not writable: <code>'.sucuriscan_lastlogins_datastore_filepath().'</code>' );
+        SucuriScanInterface::error( 'Last-logins datastore file is not writable: <code>'.sucuriscan_lastlogins_datastore_filepath().'</code>' );
     }
 
     $counter = 0;
@@ -6401,32 +7010,32 @@ function sucuriscan_lastlogins_all(){
             'UserList.Displayname' => '',
             'UserList.Email' => '',
             'UserList.Registered' => '',
-            'UserList.RemoteAddr' => $user->user_remoteaddr,
-            'UserList.Hostname' => $user->user_hostname,
-            'UserList.Datetime' => $user->user_lastlogin,
-            'UserList.TimeAgo' => sucuriscan_time_ago($user->user_lastlogin),
+            'UserList.RemoteAddr' => SucuriScan::escape($user->user_remoteaddr),
+            'UserList.Hostname' => SucuriScan::escape($user->user_hostname),
+            'UserList.Datetime' => SucuriScan::escape($user->user_lastlogin),
+            'UserList.TimeAgo' => SucuriScan::time_ago($user->user_lastlogin),
             'UserList.UserURL' => admin_url('user-edit.php?user_id='.$user->user_id),
             'UserList.CssClass' => $css_class,
         );
 
         if( $user->user_exists ){
-            $user_dataset['UserList.Username'] = $user->user_login;
-            $user_dataset['UserList.Displayname'] = $user->display_name;
-            $user_dataset['UserList.Email'] = $user->user_email;
-            $user_dataset['UserList.Registered'] = $user->user_registered;
+            $user_dataset['UserList.Username'] = SucuriScan::escape($user->user_login);
+            $user_dataset['UserList.Displayname'] = SucuriScan::escape($user->display_name);
+            $user_dataset['UserList.Email'] = SucuriScan::escape($user->user_email);
+            $user_dataset['UserList.Registered'] = SucuriScan::escape($user->user_registered);
         }
 
-        $template_variables['UserList'] .= sucuriscan_get_snippet('lastlogins-all', $user_dataset);
+        $template_variables['UserList'] .= SucuriScanTemplate::get_snippet('lastlogins-all', $user_dataset);
     }
 
     // Generate the pagination for the list.
-    $template_variables['UserList.Pagination'] = sucuriscan_generate_pagination(
+    $template_variables['UserList.Pagination'] = SucuriScanTemplate::get_pagination(
         '%%SUCURI.URL.Lastlogins%%',
         $last_logins['total'],
         $max_per_page
     );
 
-    return sucuriscan_get_section('lastlogins-all', $template_variables);
+    return SucuriScanTemplate::get_section('lastlogins-all', $template_variables);
 }
 
 /**
@@ -6435,7 +7044,7 @@ function sucuriscan_lastlogins_all(){
  * @return string Absolute filepath where the user's last login information is stored.
  */
 function sucuriscan_lastlogins_datastore_filepath(){
-    return sucuriscan_dir_filepath( 'sucuri-lastlogins.php' );
+    return SucuriScan::datastore_folder_path( 'sucuri-lastlogins.php' );
 }
 
 /**
@@ -6464,12 +7073,17 @@ function sucuriscan_lastlogins_datastore_exists(){
  */
 function sucuriscan_lastlogins_datastore_is_writable(){
     $datastore_filepath = sucuriscan_lastlogins_datastore_exists();
+
     if($datastore_filepath){
         if( !is_writable($datastore_filepath) ){
             @chmod($datastore_filepath, 0644);
         }
-        return is_writable($datastore_filepath) ? $datastore_filepath : FALSE;
+
+        if( is_writable($datastore_filepath) ){
+            return $datastore_filepath;
+        }
     }
+
     return FALSE;
 }
 
@@ -6481,9 +7095,11 @@ function sucuriscan_lastlogins_datastore_is_writable(){
  */
 function sucuriscan_lastlogins_datastore_is_readable(){
     $datastore_filepath = sucuriscan_lastlogins_datastore_exists();
+
     if( $datastore_filepath && is_readable($datastore_filepath) ){
         return $datastore_filepath;
     }
+
     return FALSE;
 }
 
@@ -6499,7 +7115,7 @@ if( !function_exists('sucuri_set_lastlogin') ){
 
         if($datastore_filepath){
             $current_user = get_user_by('login', $user_login);
-            $remote_addr = sucuriscan_get_remoteaddr();
+            $remote_addr = SucuriScan::get_remote_addr();
 
             $login_info = array(
                 'user_id' => $current_user->ID,
@@ -6564,7 +7180,7 @@ function sucuriscan_get_logins( $limit=10, $offset=0, $user_id=0 ){
             for( $i=$offset; $i<$total_lines; $i++ ){
                 $line = $reversed_lines[$i] ? trim($reversed_lines[$i]) : '';
 
-                if( preg_match('/^a:/', $line) ){
+                if( preg_match('/^a:[0-9]+:.+/', $line) ){
                     $last_login = @unserialize($line);
 
                     // Only administrators can see all login stats.
@@ -6594,7 +7210,7 @@ function sucuriscan_get_logins( $limit=10, $offset=0, $user_id=0 ){
                     $parsed_lines += 1;
                 }
 
-                if( preg_match('/^([0-9]+)$/', $limit) && $limit>0 ){
+                if( preg_match('/^[0-9]+$/', $limit) && $limit>0 ){
                     if( $parsed_lines >= $limit ){ break; }
                 }
             }
@@ -6624,8 +7240,7 @@ if( !function_exists('sucuri_login_redirect') ){
         return $login_url;
     }
 
-    $lastlogin_redirection = sucuriscan_get_option('sucuriscan_lastlogin_redirection');
-    if( $lastlogin_redirection == 'enabled' ){
+    if( SucuriScanOption::get_option(':lastlogin_redirection') == 'enabled' ){
         add_filter('login_redirect', 'sucuriscan_login_redirect', 10, 3);
     }
 }
@@ -6637,7 +7252,10 @@ if( !function_exists('sucuri_get_user_lastlogin') ){
      * @return void
      */
     function sucuriscan_get_user_lastlogin(){
-        if( isset($_GET['sucuriscan_lastlogin']) && current_user_can('manage_options') ){
+        if(
+            current_user_can('manage_options')
+            && SucuriScanRequest::get(':lastlogin', '1')
+        ){
             $current_user = wp_get_current_user();
 
             // Select the penultimate entry, not the last one.
@@ -6646,10 +7264,10 @@ if( !function_exists('sucuri_get_user_lastlogin') ){
             if( isset($last_logins['entries'][1]) ){
                 $row = $last_logins['entries'][1];
 
-                $message_tpl  = 'Last time you logged in was at <code>%s</code> from <code>%s</code> - <code>%s</code>';
+                $message_tpl = 'Last time you logged in was at <code>%s</code> from <code>%s</code> - <code>%s</code>';
                 $lastlogin_message = sprintf( $message_tpl, date('d/M/Y H:i'), $row->user_remoteaddr, $row->user_hostname );
-                $lastlogin_message .= chr(32).'(<a href="'.site_url('wp-admin/admin.php?page='.SUCURISCAN.'_lastlogins').'">view all logs</a>)';
-                sucuriscan_info( $lastlogin_message );
+                $lastlogin_message .= chr(32).'(<a href="'.SucuriScanTemplate::get_url('lastlogins').'">view all logs</a>)';
+                SucuriScanInterface::info( $lastlogin_message );
             }
         }
     }
@@ -6670,6 +7288,7 @@ function sucuriscan_loggedin_users_panel(){
     );
 
     $logged_in_users = sucuriscan_get_online_users(TRUE);
+
     if( is_array($logged_in_users) && !empty($logged_in_users) ){
         $template_variables['LoggedInUsers.Total'] = count($logged_in_users);
         $counter = 0;
@@ -6679,20 +7298,20 @@ function sucuriscan_loggedin_users_panel(){
             $logged_in_user['last_activity_datetime'] = date('d/M/Y H:i', $logged_in_user['last_activity']);
             $logged_in_user['user_registered_datetime'] = date('d/M/Y H:i', strtotime($logged_in_user['user_registered']));
 
-            $template_variables['LoggedInUsers.List'] .= sucuriscan_get_snippet('lastlogins-loggedin', array(
-                'LoggedInUsers.Id' => $logged_in_user['user_id'],
+            $template_variables['LoggedInUsers.List'] .= SucuriScanTemplate::get_snippet('lastlogins-loggedin', array(
+                'LoggedInUsers.Id' => SucuriScan::escape($logged_in_user['user_id']),
                 'LoggedInUsers.UserURL' => admin_url('user-edit.php?user_id='.$logged_in_user['user_id']),
-                'LoggedInUsers.UserLogin' => $logged_in_user['user_login'],
-                'LoggedInUsers.UserEmail' => $logged_in_user['user_email'],
-                'LoggedInUsers.LastActivity' => $logged_in_user['last_activity_datetime'],
-                'LoggedInUsers.Registered' => $logged_in_user['user_registered_datetime'],
-                'LoggedInUsers.RemoveAddr' => $logged_in_user['remote_addr'],
+                'LoggedInUsers.UserLogin' => SucuriScan::escape($logged_in_user['user_login']),
+                'LoggedInUsers.UserEmail' => SucuriScan::escape($logged_in_user['user_email']),
+                'LoggedInUsers.LastActivity' => SucuriScan::escape($logged_in_user['last_activity_datetime']),
+                'LoggedInUsers.Registered' => SucuriScan::escape($logged_in_user['user_registered_datetime']),
+                'LoggedInUsers.RemoveAddr' => SucuriScan::escape($logged_in_user['remote_addr']),
                 'LoggedInUsers.CssClass' => ( $counter % 2 == 0 ) ? '' : 'alternate'
             ));
         }
     }
 
-    return sucuriscan_get_section('lastlogins-loggedin', $template_variables);
+    return SucuriScanTemplate::get_section('lastlogins-loggedin', $template_variables);
 }
 
 /**
@@ -6704,7 +7323,7 @@ function sucuriscan_loggedin_users_panel(){
 function sucuriscan_get_online_users( $add_current_user=FALSE ){
     $users = array();
 
-    if( sucuriscan_is_multisite() ){
+    if( SucuriScan::is_multisite() ){
         $users = get_site_transient('online_users');
     } else {
         $users = get_transient('online_users');
@@ -6735,7 +7354,7 @@ function sucuriscan_get_online_users( $add_current_user=FALSE ){
 function sucuriscan_save_online_users( $logged_in_users=array() ){
     $expiration = 30 * 60;
 
-    if( sucuriscan_is_multisite() ){
+    if( SucuriScan::is_multisite() ){
         return set_site_transient('online_users', $logged_in_users, $expiration);
     } else {
         return set_transient('online_users', $logged_in_users, $expiration);
@@ -6750,7 +7369,7 @@ if( !function_exists('sucuriscan_unset_online_user_on_logout') ){
      * @return void
      */
     function sucuriscan_unset_online_user_on_logout(){
-        $remote_addr = sucuriscan_get_remoteaddr();
+        $remote_addr = SucuriScan::get_remote_addr();
         $current_user = wp_get_current_user();
         $user_id = $current_user->ID;
 
@@ -6800,7 +7419,7 @@ if( !function_exists('sucuriscan_set_online_user') ){
             // Get logged in user information.
             $current_user = ($user instanceof WP_User) ? $user : wp_get_current_user();
             $current_user_id = $current_user->ID;
-            $remote_addr = sucuriscan_get_remoteaddr();
+            $remote_addr = SucuriScan::get_remote_addr();
             $current_time = current_time('timestamp');
             $logged_in_users = sucuriscan_get_online_users();
 
@@ -6811,7 +7430,7 @@ if( !function_exists('sucuriscan_set_online_user') ){
                 'user_email' => $current_user->user_email,
                 'user_registered' => $current_user->user_registered,
                 'last_activity' => $current_time,
-                'remote_addr' => $remote_addr
+                'remote_addr' => $remote_addr,
             );
 
             if( !is_array($logged_in_users) || empty($logged_in_users) ){
@@ -6869,8 +7488,8 @@ function sucuriscan_failed_logins_panel(){
         'FailedLogins.WarningVisibility' => 'visible',
     );
 
-    $max_failed_logins = sucuriscan_get_option('sucuriscan_maximum_failed_logins');
-    $notify_bruteforce_attack = sucuriscan_get_option('sucuriscan_notify_bruteforce_attack');
+    $max_failed_logins = SucuriScanOption::get_option(':maximum_failed_logins');
+    $notify_bruteforce_attack = SucuriScanOption::get_option(':notify_bruteforce_attack');
     $failed_logins = sucuriscan_get_failed_logins();
 
     if( $failed_logins ){
@@ -6879,13 +7498,13 @@ function sucuriscan_failed_logins_panel(){
         foreach( $failed_logins['entries'] as $login_data ){
             $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
 
-            $template_variables['FailedLogins.List'] .= sucuriscan_get_snippet('lastlogins-failedlogins', array(
+            $template_variables['FailedLogins.List'] .= SucuriScanTemplate::get_snippet('lastlogins-failedlogins', array(
                 'FailedLogins.CssClass' => $css_class,
                 'FailedLogins.Num' => ($counter + 1),
-                'FailedLogins.Username' => $login_data['user_login'],
-                'FailedLogins.RemoteAddr' => $login_data['remote_addr'],
+                'FailedLogins.Username' => SucuriScan::escape($login_data['user_login']),
+                'FailedLogins.RemoteAddr' => SucuriScan::escape($login_data['remote_addr']),
                 'FailedLogins.Datetime' => date('d/M/Y H:i', $login_data['attempt_time']),
-                'FailedLogins.UserAgent' => esc_attr($login_data['user_agent']),
+                'FailedLogins.UserAgent' => SucuriScan::escape($login_data['user_agent']),
             ));
 
             $counter += 1;
@@ -6902,7 +7521,7 @@ function sucuriscan_failed_logins_panel(){
         $template_variables['FailedLogins.WarningVisibility'] = 'hidden';
     }
 
-    return sucuriscan_get_section('lastlogins-failedlogins', $template_variables);
+    return SucuriScanTemplate::get_section('lastlogins-failedlogins', $template_variables);
 }
 
 /**
@@ -6917,7 +7536,7 @@ function sucuriscan_failed_logins_panel(){
  * @return string         The full (relative) path where the file is located.
  */
 function sucuriscan_failed_logins_datastore_path( $reset=FALSE ){
-    $datastore_path = sucuriscan_dir_filepath('sucuri-failedlogins.php');
+    $datastore_path = SucuriScan::datastore_folder_path('sucuri-failedlogins.php');
     $default_content = sucuriscan_failed_logins_default_content();
 
     // Create the file if it does not exists.
@@ -6977,7 +7596,7 @@ function sucuriscan_get_failed_logins(){
             // Read and parse all the entries found in the datastore file.
             foreach( $lines as $i => $line ){
                 if( $i >= $default_content_n ){
-                    $login_data = json_decode( trim($line), TRUE );
+                    $login_data = @json_decode( trim($line), TRUE );
                     $login_data['attempt_date'] = date('r', $login_data['attempt_time']);
 
                     if( !$login_data['user_agent'] ){
@@ -7020,8 +7639,8 @@ function sucuriscan_log_failed_login( $user_login='' ){
         $login_data = json_encode(array(
             'user_login' => $user_login,
             'attempt_time' => time(),
-            'remote_addr' => sucuriscan_get_remoteaddr(),
-            'user_agent' => sucuriscan_get_useragent(),
+            'remote_addr' => SucuriScan::get_remote_addr(),
+            'user_agent' => SucuriScan::get_user_agent(),
         ));
 
         $logged = @file_put_contents( $datastore_path, $login_data . "\n", FILE_APPEND );
@@ -7043,7 +7662,7 @@ function sucuriscan_log_failed_login( $user_login='' ){
  */
 function sucuriscan_report_failed_logins( $failed_logins=array() ){
     if( $failed_logins && $failed_logins['count'] > 0 ){
-        $prettify_mails = sucuriscan_prettify_mails();
+        $prettify_mails = SucuriScanMail::prettify_mails();
         $mail_content = '';
 
         if( $prettify_mails ){
@@ -7085,7 +7704,7 @@ function sucuriscan_report_failed_logins( $failed_logins=array() ){
             $mail_content = $table_html;
         }
 
-        if( sucuriscan_notify_event( 'bruteforce_attack', $mail_content ) ){
+        if( SucuriScanEvent::notify_event( 'bruteforce_attack', $mail_content ) ){
             sucuriscan_reset_failed_logins();
 
             return TRUE;
@@ -7105,6 +7724,393 @@ function sucuriscan_report_failed_logins( $failed_logins=array() ){
  */
 function sucuriscan_reset_failed_logins(){
     return (bool) sucuriscan_failed_logins_datastore_path(TRUE);
+}
+
+/**
+ * Print a HTML code with the settings of the plugin.
+ *
+ * @return void
+ */
+function sucuriscan_settings_page(){
+    SucuriScanInterface::check_permissions();
+
+    $template_variables = array(
+        'PageTitle' => 'Settings',
+        'Settings.General' => sucuriscan_settings_general(),
+        'Settings.Notifications' => sucuriscan_settings_notifications(),
+        'Settings.IgnoreRules' => sucuriscan_settings_ignore_rules(),
+    );
+
+    echo SucuriScanTemplate::get_template('settings', $template_variables);
+}
+
+/**
+ * Process the requests sent by the form submissions originated in the settings
+ * page, all forms must have a nonce field that will be checked against the one
+ * generated in the template render function.
+ *
+ * @param  boolean $page_nonce True if the nonce is valid, False otherwise.
+ * @return void
+ */
+function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
+    global $sucuriscan_schedule_allowed,
+        $sucuriscan_interface_allowed,
+        $sucuriscan_notify_options,
+        $sucuriscan_emails_per_hour,
+        $sucuriscan_maximum_failed_logins,
+        $sucuriscan_verify_ssl_cert;
+
+    // Use this conditional to avoid double checking.
+    if( is_null($page_nonce) ){
+        $page_nonce = SucuriScanInterface::check_nonce();
+    }
+
+    if( $page_nonce ){
+
+        // Recover API key through the email registered previously.
+        if( SucuriScanRequest::post(':recover_key') !== FALSE ){
+            SucuriScanAPI::recover_key();
+        }
+
+        // Save API key after it was recovered by the administrator.
+        if( $api_key = SucuriScanRequest::post(':manual_api_key') ){
+            SucuriScanAPI::set_plugin_key( $api_key, TRUE );
+            SucuriScanEvent::schedule_task();
+        }
+
+        // Remove API key from the local storage.
+        if( SucuriScanRequest::post(':remove_api_key') !== FALSE ){
+            SucuriScanAPI::set_plugin_key('');
+            wp_clear_scheduled_hook('sucuriscan_scheduled_scan');
+            SucuriScanEvent::notify_event( 'plugin_change', 'Sucuri API key removed' );
+        }
+
+        // Modify the schedule of the filesystem scanner.
+        if( $frequency = SucuriScanRequest::post(':scan_frequency') ){
+            $allowed_frequency = array_keys($sucuriscan_schedule_allowed);
+
+            if( in_array($frequency, $allowed_frequency) ){
+                SucuriScanOption::update_option(':scan_frequency', $frequency);
+                wp_clear_scheduled_hook('sucuriscan_scheduled_scan');
+
+                if( $frequency != '_oneoff' ){
+                    wp_schedule_event( time()+10, $frequency, 'sucuriscan_scheduled_scan' );
+                }
+
+                SucuriScanEvent::notify_event( 'plugin_change', 'Filesystem scanning frequency changed to: ' . $frequency );
+                SucuriScanInterface::info( 'Filesystem scan scheduled to run <code>'.$frequency.'</code>' );
+            }
+        }
+
+        // Set the method (aka. interface) that will be used to scan the site.
+        if( $interface = SucuriScanRequest::post(':scan_interface') ){
+            $allowed_values = array_keys($sucuriscan_interface_allowed);
+
+            if( in_array($interface, $allowed_values) ){
+                SucuriScanOption::update_option(':scan_interface', $interface);
+                SucuriScanEvent::notify_event( 'plugin_change', 'Filesystem scanning interface changed to: ' . $interface );
+                SucuriScanInterface::info( 'Filesystem scan interface set to <code>'.$interface.'</code>' );
+            }
+        }
+
+        // Update the value for the maximum emails per hour.
+        if( $per_hour = SucuriScanRequest::post(':emails_per_hour') ){
+            if( array_key_exists($per_hour, $sucuriscan_emails_per_hour) ){
+                $per_hour_label = $sucuriscan_emails_per_hour[$per_hour];
+                SucuriScanOption::update_option( ':emails_per_hour', $per_hour );
+                SucuriScanEvent::notify_event( 'plugin_change', 'Maximum email notifications per hour changed' );
+                SucuriScanInterface::info( 'E-mail notifications: <code>' . $per_hour_label . '</code>' );
+            } else {
+                SucuriScanInterface::error( 'Invalid value for the maximum emails per hour.' );
+            }
+        }
+
+        // Update the email where the event notifications will be sent.
+        if( $new_email = SucuriScanRequest::post(':notify_to') ){
+            if( SucuriScan::is_valid_email($new_email) ){
+                SucuriScanOption::update_option( ':notify_to', $new_email );
+                SucuriScanEvent::notify_event( 'plugin_change', 'Email address to get the event notifications was changed' );
+                SucuriScanInterface::info( 'All the event notifications will be sent to the email specified.' );
+            } else {
+                SucuriScanInterface::error( 'Email format not supported.' );
+            }
+        }
+
+        // Update the maximum failed logins per hour before consider it a brute-force attack.
+        if( $failed_logins = SucuriScanRequest::post(':maximum_failed_logins') ){
+            if( array_key_exists($failed_logins, $sucuriscan_maximum_failed_logins) ){
+                SucuriScanOption::update_option( ':maximum_failed_logins', $failed_logins );
+                $message = 'You will receive an email with a report containing information of the failed
+                    logins occurred during the last hour if its quantity is bigger than the value you just
+                    selected, which is <code>' . $failed_logins . '</code>. The information collected per
+                    hour will be resetted if the quantity of failed logins is lower.';
+                SucuriScanEvent::notify_event( 'plugin_change', $message );
+                SucuriScanInterface::info($message);
+            } else {
+                SucuriScanInterface::error( 'Invalid value for the maximum failed logins per hour before consider it a brute-force attack.' );
+            }
+        }
+
+        // Update the configuration for the SSL certificate verification.
+        if( $verify_ssl_cert = SucuriScanRequest::post(':verify_ssl_cert') ){
+            if( array_key_exists($verify_ssl_cert, $sucuriscan_verify_ssl_cert) ){
+                SucuriScanOption::update_option( ':verify_ssl_cert', $verify_ssl_cert );
+                $message = 'SSL certificates will not be verified when executing a HTTP request '
+                    . 'while communicating with the Sucuri API service, nor the official '
+                    . 'WordPress API.';
+                SucuriScanEvent::notify_event( 'plugin_change', $message );
+                SucuriScanInterface::info( $message );
+            } else {
+                SucuriScanInterface::error( 'Invalid value for the SSL certificate verification.' );
+            }
+        }
+
+        // Update the notification settings.
+        if( SucuriScanRequest::post(':save_notification_settings') !== FALSE ){
+            $options_updated_counter = 0;
+
+            foreach( $sucuriscan_notify_options as $alert_type => $alert_label ){
+                if( $option_value = SucuriScanRequest::post($alert_type, '(1|0)') ){
+                    $option_value = ( $option_value == '1' ) ? 'enabled' : 'disabled';
+                    SucuriScanOption::update_option( $alert_type, $option_value );
+                    $options_updated_counter += 1;
+                }
+            }
+
+            if( $options_updated_counter > 0 ){
+                SucuriScanEvent::notify_event( 'plugin_change', 'Email notification settings changed' );
+                SucuriScanInterface::info( 'Notification settings updated.' );
+            }
+        }
+
+        // Reset all the plugin's options.
+        if( SucuriScanRequest::post(':reset_options') !== FALSE ){
+            // Notify the event before the API key is removed.
+            $event_msg = 'All plugin\'s options were resetted.';
+            SucuriScanEvent::report_event( 1, 'core', $event_msg );
+            SucuriScanEvent::notify_event( 'plugin_change', $event_msg );
+
+            // Remove all plugin's options from the database.
+            $options = SucuriScanOption::get_options_from_db('all_plugin_options');
+
+            foreach( $options as $option ){
+                SucuriScanOption::delete_option( $option->option_name );
+            }
+
+            // Remove the scheduled tasks.
+            wp_clear_scheduled_hook('sucuriscan_scheduled_scan');
+
+            SucuriScanInterface::info( 'All plugin options were resetted successfully' );
+        }
+
+        // Ignore a new event for email notifications.
+        if( $action = SucuriScanRequest::post(':ignorerule_action', '(add|remove)') ){
+            $ignore_rule = SucuriScanRequest::post(':ignorerule');
+
+            if( $action == 'add' ){
+                if( SucuriScanOption::add_ignored_event($ignore_rule) ){
+                    SucuriScanInterface::info( 'Post-type ignored successfully.' );
+                } else {
+                    SucuriScanInterface::error( 'The post-type is invalid or it may be already ignored.' );
+                }
+            }
+
+            elseif( $action == 'remove' ) {
+                SucuriScanOption::remove_ignored_event($ignore_rule);
+                SucuriScanInterface::info( 'Post-type removed from the list successfully.' );
+            }
+        }
+
+    }
+}
+
+/**
+ * Read and parse the content of the general settings template.
+ *
+ * @return string Parsed HTML code for the general settings panel.
+ */
+function sucuriscan_settings_general(){
+
+    global $sucuriscan_schedule_allowed,
+        $sucuriscan_interface_allowed,
+        $sucuriscan_emails_per_hour,
+        $sucuriscan_maximum_failed_logins,
+        $sucuriscan_verify_ssl_cert;
+
+    // Check the nonce here to populate the value through other functions.
+    $page_nonce = SucuriScanInterface::check_nonce();
+
+    // Process all form submissions.
+    sucuriscan_settings_form_submissions($page_nonce);
+
+    // Register the site, get its API key, and store it locally for future usage.
+    $api_registered_modal = '';
+
+    // Whether the form to manually add the API key should be shown or not.
+    $display_manual_key_form = (bool) SucuriScanRequest::post(':recover_api_key');
+
+    if( $page_nonce && SucuriScanRequest::post(':wordpress_apikey') ){
+        $registered = SucuriScanAPI::register_site();
+
+        if( $registered ){
+            $api_registered_modal = SucuriScanTemplate::get_modal('settings-apiregistered', array(
+                'Title' => 'Site registered successfully',
+                'CssClass' => 'sucuriscan-apikey-registered',
+            ));
+        } else {
+            $display_manual_key_form = TRUE;
+        }
+    }
+
+    // Get initial variables to decide some things bellow.
+    $api_key = SucuriScanAPI::get_plugin_key();
+    $scan_freq = SucuriScanOption::get_option(':scan_frequency');
+    $scan_interface = SucuriScanOption::get_option(':scan_interface');
+    $emails_per_hour = SucuriScanOption::get_option(':emails_per_hour');
+    $maximum_failed_logins = SucuriScanOption::get_option(':maximum_failed_logins');
+    $verify_ssl_cert = SucuriScanOption::get_option(':verify_ssl_cert');
+    $runtime_scan = SucuriScanOption::get_option(':runtime');
+    $runtime_scan_human = date( 'd/M/Y H:i:s', $runtime_scan );
+
+    // Generate the HTML code for the option list in the form select fields.
+    $scan_freq_options = SucuriScanTemplate::get_select_options( $sucuriscan_schedule_allowed, $scan_freq );
+    $scan_interface_options = SucuriScanTemplate::get_select_options( $sucuriscan_interface_allowed, $scan_interface );
+    $emails_per_hour_options = SucuriScanTemplate::get_select_options( $sucuriscan_emails_per_hour, $emails_per_hour );
+    $maximum_failed_logins_options = SucuriScanTemplate::get_select_options( $sucuriscan_maximum_failed_logins, $maximum_failed_logins );
+    $verify_ssl_cert_options = SucuriScanTemplate::get_select_options( $sucuriscan_verify_ssl_cert, $verify_ssl_cert );
+
+    $template_variables = array(
+        'APIKey' => $api_key,
+        'APIKey.RecoverVisibility' => SucuriScanTemplate::visibility( $api_key || $display_manual_key_form ),
+        'APIKey.ManualKeyFormVisibility' => SucuriScanTemplate::visibility($display_manual_key_form),
+        'APIKey.RemoveVisibility' => SucuriScanTemplate::visibility($api_key),
+        'ScanningFrequency' => 'Undefined',
+        'ScanningFrequencyOptions' => $scan_freq_options,
+        'ScanningInterface' => ( $scan_interface ? $sucuriscan_interface_allowed[$scan_interface] : 'Undefined' ),
+        'ScanningInterfaceOptions' => $scan_interface_options,
+        'ScanningInterfaceVisibility' => SucuriScanTemplate::visibility( !SucuriScanFileInfo::is_spl_available() ),
+        'ScanningRuntime' => $runtime_scan,
+        'ScanningRuntimeHuman' => $runtime_scan_human,
+        'ModalWhenAPIRegistered' => $api_registered_modal,
+        'NotifyTo' => SucuriScanOption::get_option(':notify_to'),
+        'EmailsPerHour' => 'Undefined',
+        'EmailsPerHourOptions' => $emails_per_hour_options,
+        'MaximumFailedLogins' => 'Undefined',
+        'MaximumFailedLoginsOptions' => $maximum_failed_logins_options,
+        'VerifySSLCert' => 'Undefined',
+        'VerifySSLCertOptions' => $verify_ssl_cert_options,
+        'ModalWhenAPIRegistered' => $api_registered_modal,
+    );
+
+    if( array_key_exists($scan_freq, $sucuriscan_schedule_allowed) ){
+        $template_variables['ScanningFrequency'] = $sucuriscan_schedule_allowed[$scan_freq];
+    }
+
+    if( array_key_exists($emails_per_hour, $sucuriscan_emails_per_hour) ){
+        $template_variables['EmailsPerHour'] = $sucuriscan_emails_per_hour[$emails_per_hour];
+    }
+
+    if( array_key_exists($maximum_failed_logins, $sucuriscan_maximum_failed_logins) ){
+        $template_variables['MaximumFailedLogins'] = $sucuriscan_maximum_failed_logins[$maximum_failed_logins];
+    }
+
+    if( array_key_exists($verify_ssl_cert, $sucuriscan_verify_ssl_cert) ){
+        $template_variables['VerifySSLCert'] = $sucuriscan_verify_ssl_cert[$verify_ssl_cert];
+    }
+
+    return SucuriScanTemplate::get_section('settings-general', $template_variables);
+}
+
+/**
+ * Read and parse the content of the notification settings template.
+ *
+ * @return string Parsed HTML code for the notification settings panel.
+ */
+function sucuriscan_settings_notifications(){
+    global $sucuriscan_notify_options;
+
+    $template_variables = array(
+        'NotificationOptions' => '',
+    );
+
+    $counter = 0;
+
+    foreach( $sucuriscan_notify_options as $alert_type => $alert_label ){
+        $alert_value = SucuriScanOption::get_option($alert_type);
+        $checked = ( $alert_value == 'enabled' ? 'checked="checked"' : '' );
+        $css_class = ( $counter % 2 == 0 ) ? 'alternate' : '';
+
+        $template_variables['NotificationOptions'] .= SucuriScanTemplate::get_snippet('settings-notifications', array(
+            'Notification.CssClass' => $css_class,
+            'Notification.Name' => $alert_type,
+            'Notification.Checked' => $checked,
+            'Notification.Label' => $alert_label,
+        ));
+        $counter += 1;
+    }
+
+    return SucuriScanTemplate::get_section('settings-notifications', $template_variables);
+}
+
+/**
+ * Read and parse the content of the ignored-rules settings template.
+ *
+ * @return string Parsed HTML code for the ignored-rules settings panel.
+ */
+function sucuriscan_settings_ignore_rules(){
+    $notify_new_site_content = SucuriScanOption::get_option(':notify_post_publication');
+
+    $template_variables = array(
+        'IgnoreRules.MessageVisibility' => 'visible',
+        'IgnoreRules.TableVisibility' => 'hidden',
+        'IgnoreRules.PostTypes' => '',
+    );
+
+    if( $notify_new_site_content == 'enabled' ){
+        $post_types = get_post_types();
+        $ignored_events = SucuriScanOption::get_ignored_events();
+
+        $template_variables['IgnoreRules.MessageVisibility'] = 'hidden';
+        $template_variables['IgnoreRules.TableVisibility'] = 'visible';
+        $counter = 0;
+
+        foreach( $post_types as $post_type => $post_type_object ){
+            $counter += 1;
+            $css_class = ( $counter % 2 == 0 ) ? 'alternate' : '';
+            $post_type_title = ucwords( str_replace('_', chr(32), $post_type) );
+
+            if( array_key_exists($post_type, $ignored_events) ){
+                $is_ignored_text = 'YES';
+                $was_ignored_at = @date('d/M/Y - H:i:s', $ignored_events[$post_type]);
+                $is_ignored_class = 'danger';
+                $button_action = 'remove';
+                $button_class = 'button-primary';
+                $button_text = 'Allow';
+            } else {
+                $is_ignored_text = 'NO';
+                $was_ignored_at = 'Not ignored';
+                $is_ignored_class = 'success';
+                $button_action = 'add';
+                $button_class = 'button-primary button-danger';
+                $button_text = 'Ignore';
+            }
+
+            $template_variables['IgnoreRules.PostTypes'] .= SucuriScanTemplate::get_snippet('settings-ignorerules', array(
+                'IgnoreRules.CssClass' => $css_class,
+                'IgnoreRules.Num' => $counter,
+                'IgnoreRules.PostTypeTitle' => $post_type_title,
+                'IgnoreRules.IsIgnored' => $is_ignored_text,
+                'IgnoreRules.WasIgnoredAt' => $was_ignored_at,
+                'IgnoreRules.IsIgnoredClass' => $is_ignored_class,
+                'IgnoreRules.PostType' => $post_type,
+                'IgnoreRules.Action' => $button_action,
+                'IgnoreRules.ButtonClass' => 'button ' . $button_class,
+                'IgnoreRules.ButtonText' => $button_text,
+            ));
+        }
+    }
+
+    return SucuriScanTemplate::get_section('settings-ignorerules', $template_variables);
 }
 
 /**
@@ -7130,7 +8136,7 @@ function sucuriscan_infosys_page(){
         'WordpressConfig' => sucuriscan_infosys_wpconfig(),
     );
 
-    echo sucuriscan_get_template('infosys', $template_variables);
+    echo SucuriScanTemplate::get_template('infosys', $template_variables);
 }
 
 /**
@@ -7140,7 +8146,7 @@ function sucuriscan_infosys_page(){
  * @return string The HTML code displaying the information about the HTAccess rules.
  */
 function sucuriscan_infosys_htaccess(){
-    $htaccess_path = sucuriscan_get_htaccess_path();
+    $htaccess_path = SucuriScan::get_htaccess_path();
 
     $template_variables = array(
         'HTAccess.Content' => '',
@@ -7175,7 +8181,7 @@ function sucuriscan_infosys_htaccess(){
         $template_variables['HTAccess.MessageVisible'] = 'visible';
     }
 
-    return sucuriscan_get_section('infosys-htaccess', $template_variables);
+    return SucuriScanTemplate::get_section('infosys-htaccess', $template_variables);
 }
 
 /**
@@ -7187,7 +8193,7 @@ function sucuriscan_infosys_htaccess(){
  */
 function sucuriscan_htaccess_is_standard($rules=FALSE){
     if( $rules===FALSE ){
-        $htaccess_path = sucuriscan_get_htaccess_path();
+        $htaccess_path = SucuriScan::get_htaccess_path();
         $rules = $htaccess_path ? file_get_contents($htaccess_path) : '';
     }
 
@@ -7244,7 +8250,7 @@ function sucuriscan_infosys_wpconfig(){
         'inlineId' => 'sucuriscan-wpconfig-content',
     ));
 
-    $wp_config_path = sucuriscan_get_wpconfig_path();
+    $wp_config_path = SucuriScan::get_wpconfig_path();
     if( $wp_config_path ){
         add_thickbox();
         $wp_config_content = file($wp_config_path);
@@ -7296,7 +8302,7 @@ function sucuriscan_infosys_wpconfig(){
         foreach( $wp_config_rules as $var_name=>$var_value ){
             $counter += 1;
             $template_variables['WordpressConfig.Total'] += 1;
-            $template_variables['WordpressConfig.Rules'] .= sucuriscan_get_snippet('infosys-wpconfig', array(
+            $template_variables['WordpressConfig.Rules'] .= SucuriScanTemplate::get_snippet('infosys-wpconfig', array(
                 'WordpressConfig.VariableName' => $var_name,
                 'WordpressConfig.VariableValue' => htmlentities($var_value),
                 'WordpressConfig.CssClass' => ( $counter%2 == 0 ) ? '' : 'alternate'
@@ -7304,7 +8310,7 @@ function sucuriscan_infosys_wpconfig(){
         }
     }
 
-    return sucuriscan_get_section('infosys-wpconfig', $template_variables);
+    return SucuriScanTemplate::get_section('infosys-wpconfig', $template_variables);
 }
 
 /**
@@ -7329,7 +8335,7 @@ function sucuriscan_show_cronjobs(){
                 $counter += 1;
                 $cronjob_snippet = '';
                 $template_variables['Cronjobs.Total'] += 1;
-                $template_variables['Cronjobs.List'] .= sucuriscan_get_snippet('infosys-cronjobs', array(
+                $template_variables['Cronjobs.List'] .= SucuriScanTemplate::get_snippet('infosys-cronjobs', array(
                     'Cronjob.Task' => ucwords(str_replace('_',chr(32),$hook)),
                     'Cronjob.Schedule' => $event['schedule'],
                     'Cronjob.Nexttime' => date_i18n($date_format, $timestamp),
@@ -7341,7 +8347,7 @@ function sucuriscan_show_cronjobs(){
         }
     }
 
-    return sucuriscan_get_section('infosys-cronjobs', $template_variables);
+    return SucuriScanTemplate::get_section('infosys-cronjobs', $template_variables);
 }
 
 /**
@@ -7357,7 +8363,7 @@ function sucuriscan_server_info(){
         $mysql_version = $wpdb->get_var('SELECT VERSION() AS version');
         $mysql_info = $wpdb->get_results('SHOW VARIABLES LIKE "sql_mode"');
         $sql_mode = ( is_array($mysql_info) && !empty($mysql_info[0]->Value) ) ? $mysql_info[0]->Value : 'Not set';
-        $runtime_scan = sucuriscan_get_option('sucuriscan_runtime');
+        $runtime_scan = SucuriScanOption::get_option('sucuriscan_runtime');
         $runtime_scan_human = date( 'd/M/Y H:i:s', $runtime_scan );
 
         $template_variables = array(
@@ -7390,531 +8396,6 @@ function sucuriscan_server_info(){
         }
     }
 
-    return sucuriscan_get_section('infosys-serverinfo', $template_variables);
-}
-
-/**
- * Global variables used by the functions bellow.
- *
- * These are lists of options allowed to use in the execution of the monitoring
- * tool, and the administrator can select among them in the settings page.
- *
- * @var array
- */
-$sucuriscan_notify_options = array(
-    'sucuriscan_notify_user_registration' => 'Enable email alerts for new user registration',
-    'sucuriscan_notify_success_login' => 'Enable email alerts for successful logins',
-    'sucuriscan_notify_failed_login' => 'Enable email alerts for failed logins',
-    'sucuriscan_notify_bruteforce_attack' => 'Enable email alerts for login brute-force attack',
-    'sucuriscan_notify_post_publication' => 'Enable email alerts for new site content',
-    'sucuriscan_notify_theme_editor' => 'Enable email alerts when a file is modified via the theme/plugin editor',
-    'sucuriscan_notify_website_updated' => 'Enable email alerts when your website is updated',
-    'sucuriscan_notify_settings_updated' => 'Enable email alerts when your website settings are updated',
-    'sucuriscan_notify_theme_switched' => 'Enable email alerts when the website theme is switched',
-    'sucuriscan_notify_theme_updated' => 'Enable email alerts when a theme is updated',
-    'sucuriscan_notify_widget_added' => 'Enable email alerts when a widget is added to a sidebar',
-    'sucuriscan_notify_widget_deleted' => 'Enable email alerts when a widget is deleted from a sidebar',
-    'sucuriscan_notify_plugin_change' => 'Enable email alerts for Sucuri plugin changes',
-    'sucuriscan_notify_plugin_activated' => 'Enable email alerts when a plugin is activated',
-    'sucuriscan_notify_plugin_deactivated' => 'Enable email alerts when a plugin is deactivated',
-    'sucuriscan_notify_plugin_updated' => 'Enable email alerts when a plugin is updated',
-    'sucuriscan_notify_plugin_installed' => 'Enable email alerts when a plugin is installed',
-    'sucuriscan_notify_plugin_deleted' => 'Enable email alerts when a plugin is deleted',
-    'sucuriscan_prettify_mails' => 'Enable email alerts in HTML (uncheck to get email in text/plain)',
-    'sucuriscan_lastlogin_redirection' => 'Allow redirection after login to report the last-login information',
-);
-
-$sucuriscan_schedule_allowed = array(
-    'hourly' => 'Every three hours (3 hours)',
-    'twicedaily' => 'Twice daily (12 hours)',
-    'daily' => 'Once daily (24 hours)',
-    '_oneoff' => 'Never',
-);
-
-$sucuriscan_interface_allowed = array(
-    'spl' => 'SPL (high performance)',
-    'opendir' => 'OpenDir (medium)',
-    'glob' => 'Glob (low)',
-);
-
-$sucuriscan_emails_per_hour = array(
-    '5' => 'Maximum 5 per hour',
-    '10' => 'Maximum 10 per hour',
-    '20' => 'Maximum 20 per hour',
-    '40' => 'Maximum 40 per hour',
-    '80' => 'Maximum 80 per hour',
-    '160' => 'Maximum 160 per hour',
-    'unlimited' => 'Unlimited',
-);
-
-$sucuriscan_maximum_failed_logins = array(
-    '30' => '30 failed logins per hour',
-    '60' => '60 failed logins per hour',
-    '120' => '120 failed logins per hour',
-    '240' => '240 failed logins per hour',
-    '480' => '480 failed logins per hour',
-);
-
-$sucuriscan_verify_ssl_cert = array(
-    'true' => 'Verify peer\'s cert',
-    'false' => 'Stop peer\'s cert verification',
-);
-
-/**
- * Print a HTML code with the settings of the plugin.
- *
- * @return void
- */
-function sucuriscan_settings_page(){
-    $template_variables = array(
-        'PageTitle' => 'Settings',
-        'Settings.General' => sucuriscan_settings_general(),
-        'Settings.Notifications' => sucuriscan_settings_notifications(),
-        'Settings.IgnoreRules' => sucuriscan_settings_ignore_rules(),
-    );
-
-    echo sucuriscan_get_template('settings', $template_variables);
-}
-
-/**
- * Process the requests sent by the form submissions originated in the settings
- * page, all forms must have a nonce field that will be checked against the one
- * generated in the template render function.
- *
- * @param  boolean $page_nonce True if the nonce is valid, False otherwise.
- * @return void
- */
-function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
-
-    global $sucuriscan_schedule_allowed,
-        $sucuriscan_interface_allowed,
-        $sucuriscan_notify_options,
-        $sucuriscan_emails_per_hour,
-        $sucuriscan_maximum_failed_logins,
-        $sucuriscan_verify_ssl_cert;
-
-    // Use this conditional to avoid double checking.
-    if( is_null($page_nonce) ){
-        $page_nonce = sucuriscan_check_page_nonce();
-    }
-
-    if( $page_nonce ){
-
-        // Recover API key through the email registered previously.
-        if( isset($_POST['sucuriscan_recover_api_key']) ){
-            sucuriscan_recover_api_key();
-        }
-
-        // Save API key after it was recovered by the administrator.
-        if( isset($_POST['sucuriscan_manual_api_key']) ){
-            sucuriscan_set_api_key( $_POST['sucuriscan_manual_api_key'], TRUE );
-            sucuriscan_create_scheduled_task();
-        }
-
-        // Remove API key from the local storage.
-        if( isset($_POST['sucuriscan_remove_api_key']) ){
-            sucuriscan_set_api_key('');
-            wp_clear_scheduled_hook('sucuriscan_scheduled_scan');
-            sucuriscan_notify_event( 'plugin_change', 'Sucuri API key removed' );
-        }
-
-        // Modify the schedule of the filesystem scanner.
-        if(
-            isset($_POST['sucuriscan_scan_frequency'])
-            && isset($sucuriscan_schedule_allowed)
-        ){
-            $frequency = $_POST['sucuriscan_scan_frequency'];
-            $current_frequency = sucuriscan_get_option('sucuriscan_scan_frequency');
-            $allowed_frequency = array_keys($sucuriscan_schedule_allowed);
-
-            if( in_array($frequency, $allowed_frequency) && $current_frequency != $frequency ){
-                update_option('sucuriscan_scan_frequency', $frequency);
-                wp_clear_scheduled_hook('sucuriscan_scheduled_scan');
-
-                if( $frequency != '_oneoff' ){
-                    wp_schedule_event( time()+10, $frequency, 'sucuriscan_scheduled_scan' );
-                }
-
-                sucuriscan_notify_event( 'plugin_change', 'Filesystem scanning frequency changed to: ' . $frequency );
-                sucuriscan_info( 'Filesystem scan scheduled to run <code>'.$frequency.'</code>' );
-            }
-        }
-
-        // Set the method (aka. interface) that will be used to scan the site.
-        if(
-            isset($_POST['sucuriscan_scan_interface'])
-            && isset($sucuriscan_interface_allowed)
-        ){
-            $interface = trim($_POST['sucuriscan_scan_interface']);
-            $allowed_values = array_keys($sucuriscan_interface_allowed);
-
-            if( in_array($interface, $allowed_values) ){
-                update_option('sucuriscan_scan_interface', $interface);
-                sucuriscan_notify_event( 'plugin_change', 'Filesystem scanning interface changed to: ' . $interface );
-                sucuriscan_info( 'Filesystem scan interface set to <code>'.$interface.'</code>' );
-            }
-        }
-
-        // Update the value for the maximum emails per hour.
-        if( isset($_POST['sucuriscan_emails_per_hour']) ){
-            $per_hour = esc_attr($_POST['sucuriscan_emails_per_hour']);
-
-            if( array_key_exists($per_hour, $sucuriscan_emails_per_hour) ){
-                $per_hour_label = $sucuriscan_emails_per_hour[$per_hour];
-                update_option( 'sucuriscan_emails_per_hour', $per_hour );
-                sucuriscan_notify_event( 'plugin_change', 'Maximum email notifications per hour changed' );
-                sucuriscan_info( 'E-mail notifications: <code>' . $per_hour_label . '</code>' );
-            } else {
-                sucuriscan_error( 'Invalid value for the maximum emails per hour.' );
-            }
-        }
-
-        // Update the email where the event notifications will be sent.
-        if( isset($_POST['sucuriscan_notify_to']) ){
-            $new_email = esc_attr($_POST['sucuriscan_notify_to']);
-
-            if( is_valid_email($new_email) ){
-                update_option( 'sucuriscan_notify_to', $new_email );
-                sucuriscan_notify_event( 'plugin_change', 'Email address to get the event notifications was changed' );
-                sucuriscan_info( 'All the event notifications will be sent to the email specified.' );
-            } else {
-                sucuriscan_error( 'Email format not supported.' );
-            }
-        }
-
-        // Update the maximum failed logins per hour before consider it a brute-force attack.
-        if( isset($_POST['sucuriscan_maximum_failed_logins']) ){
-            $failed_logins = esc_attr($_POST['sucuriscan_maximum_failed_logins']);
-
-            if( array_key_exists($failed_logins, $sucuriscan_maximum_failed_logins) ){
-                update_option( 'sucuriscan_maximum_failed_logins', $failed_logins );
-                sucuriscan_notify_event( 'plugin_change', 'Maximum failed logins before consider it a brute-force attack was changed' );
-                sucuriscan_info(
-                    'A brute-force attack event will be reported if there are more than '
-                    . '<code>' . $failed_logins . '</code> failed logins per hour.'
-                );
-            } else {
-                sucuriscan_error( 'Invalid value for the maximum failed logins per hour before consider it a brute-force attack.' );
-            }
-        }
-
-        // Update the configuration for the SSL certificate verification.
-        if( isset($_POST['sucuriscan_verify_ssl_cert']) ){
-            $verify_ssl_cert = esc_attr($_POST['sucuriscan_verify_ssl_cert']);
-
-            if( array_key_exists($verify_ssl_cert, $sucuriscan_verify_ssl_cert) ){
-                update_option( 'sucuriscan_verify_ssl_cert', $verify_ssl_cert );
-                $message = 'SSL certificates will not be verified when executing a HTTP request '
-                    . 'while communicating with the Sucuri API service, nor the official '
-                    . 'WordPress API.';
-                sucuriscan_notify_event( 'plugin_change', $message );
-                sucuriscan_info( $message );
-            } else {
-                sucuriscan_error( 'Invalid value for the SSL certificate verification.' );
-            }
-        }
-
-        // Update the notification settings.
-        if(
-            isset($_POST['sucuriscan_save_notification_settings'])
-            && isset($sucuriscan_notify_options)
-        ){
-            $options_updated_counter = 0;
-
-            foreach( $sucuriscan_notify_options as $alert_type => $alert_label ){
-                if( isset($_POST[$alert_type]) ){
-                    $option_value = ( $_POST[$alert_type] == 1 ? 'enabled' : 'disabled' );
-                    update_option( $alert_type, $option_value );
-                    $options_updated_counter += 1;
-                }
-            }
-
-            if( $options_updated_counter > 0 ){
-                sucuriscan_notify_event( 'plugin_change', 'Email notification settings changed' );
-                sucuriscan_info( 'Notification settings updated.' );
-            }
-        }
-
-        // Reset all the plugin's options.
-        if( isset($_POST['sucuriscan_reset_options']) ){
-            // Notify the event before the API key is removed.
-            $event_msg = 'All plugins options were resetted';
-            sucuriscan_report_event( 1, 'core', $event_msg );
-            sucuriscan_notify_event( 'plugin_change', $event_msg );
-
-            // Remove all plugin's options from the database.
-            $options = sucuriscan_get_options_from_db('all_sucuriscan_options');
-
-            foreach( $options as $option ){
-                delete_option( $option->option_name );
-            }
-
-            // Remove the scheduled tasks.
-            wp_clear_scheduled_hook('sucuriscan_scheduled_scan');
-
-            sucuriscan_info( 'All plugin options were resetted successfully' );
-        }
-
-        // Ignore a new event for email notifications.
-        if(
-            isset($_POST['sucuriscan_ignorerule_action'])
-            && isset($_POST['sucuriscan_ignorerule'])
-        ){
-            if( $_POST['sucuriscan_ignorerule_action'] == 'add' ){
-                $event_ignored = sucuriscan_add_ignored_event( $_POST['sucuriscan_ignorerule'] );
-
-                if( $event_ignored ){
-                    sucuriscan_info( 'Post-type ignored successfully.' );
-                } else {
-                    sucuriscan_error( 'The post-type is invalid or it may be already ignored.' );
-                }
-            } else {
-                sucuriscan_remove_ignored_event( $_POST['sucuriscan_ignorerule'] );
-                sucuriscan_info( 'Post-type removed from the list successfully.' );
-            }
-        }
-
-    }
-
-}
-
-/**
- * Read and parse the content of the general settings template.
- *
- * @return string Parsed HTML code for the general settings panel.
- */
-function sucuriscan_settings_general(){
-
-    global $sucuriscan_schedule_allowed,
-        $sucuriscan_interface_allowed,
-        $sucuriscan_emails_per_hour,
-        $sucuriscan_maximum_failed_logins,
-        $sucuriscan_verify_ssl_cert;
-
-    // Check the nonce here to populate the value through other functions.
-    $page_nonce = sucuriscan_check_page_nonce();
-
-    // Process all form submissions.
-    sucuriscan_settings_form_submissions($page_nonce);
-
-    // Register the site, get its API key, and store it locally for future usage.
-    $api_registered_modal = '';
-
-    // Whether the form to manually add the API key should be shown or not.
-    $display_manual_key_form = (bool) isset($_POST['sucuriscan_recover_api_key']);
-
-    if( $page_nonce && isset($_POST['sucuriscan_wordpress_apikey']) ){
-        $registered = sucuriscan_register_site();
-
-        if( $registered ){
-            $api_registered_modal = sucuriscan_get_modal('settings-apiregistered', array(
-                'Title' => 'Site registered successfully',
-                'CssClass' => 'sucuriscan-apikey-registered',
-            ));
-        } else {
-            $display_manual_key_form = TRUE;
-        }
-    }
-
-    // Get initial variables to decide some things bellow.
-    $api_key = sucuriscan_wordpress_apikey();
-    $scan_freq = sucuriscan_get_option('sucuriscan_scan_frequency');
-    $scan_interface = sucuriscan_get_option('sucuriscan_scan_interface');
-    $emails_per_hour = sucuriscan_get_option('sucuriscan_emails_per_hour');
-    $maximum_failed_logins = sucuriscan_get_option('sucuriscan_maximum_failed_logins');
-    $verify_ssl_cert = sucuriscan_get_option('sucuriscan_verify_ssl_cert');
-    $runtime_scan = sucuriscan_get_option('sucuriscan_runtime');
-    $runtime_scan_human = date( 'd/M/Y H:i:s', $runtime_scan );
-
-    // Generate HTML code to configure the scanning frequency from the plugin settings.
-    $scan_freq_options = '';
-    foreach( $sucuriscan_schedule_allowed as $schedule => $schedule_label ){
-        $selected = ( $scan_freq==$schedule ? 'selected="selected"' : '' );
-        $scan_freq_options .= sprintf(
-            '<option value="%s" %s>%s</option>',
-            $schedule, $selected, $schedule_label
-        );
-    }
-
-    // Generate HTML code to configure the scanning interface from the plugin settings.
-    $scan_interface_options = '';
-    foreach( $sucuriscan_interface_allowed as $interface_name => $interface_desc ){
-        $selected = ( $scan_interface == $interface_name ? 'selected="selected"' : '' );
-        $scan_interface_options .= sprintf(
-            '<option value="%s" %s>%s</option>',
-            $interface_name,
-            $selected,
-            $interface_desc
-        );
-    }
-
-    // Generate the HTML code to configure the emails per hour.
-    $emails_per_hour_options = '';
-    foreach( $sucuriscan_emails_per_hour as $per_hour => $per_hour_label ){
-        $selected = ( $emails_per_hour == $per_hour ? 'selected="selected"' : '' );
-        $emails_per_hour_options .= sprintf(
-            '<option value="%s" %s>%s</option>',
-            $per_hour,
-            $selected,
-            $per_hour_label
-        );
-    }
-
-    // Generate the HTML code to configure the emails per hour.
-    $maximum_failed_logins_options = '';
-    foreach( $sucuriscan_maximum_failed_logins as $per_hour => $per_hour_label ){
-        $selected = ( $maximum_failed_logins == $per_hour ? 'selected="selected"' : '' );
-        $maximum_failed_logins_options .= sprintf(
-            '<option value="%s" %s>%s</option>',
-            $per_hour,
-            $selected,
-            $per_hour_label
-        );
-    }
-
-    // Generate the HTML code to configure the emails per hour.
-    $verify_ssl_cert_options = '';
-    foreach( $sucuriscan_verify_ssl_cert as $verify => $verify_label ){
-        $selected = ( $verify_ssl_cert == $verify ? 'selected="selected"' : '' );
-        $verify_ssl_cert_options .= sprintf(
-            '<option value="%s" %s>%s</option>',
-            $verify,
-            $selected,
-            $verify_label
-        );
-    }
-
-    $template_variables = array(
-        'APIKey' => $api_key,
-        'APIKey.RecoverVisibility' => ( $api_key || $display_manual_key_form ? 'hidden' : 'visible' ),
-        'APIKey.ManualKeyFormVisibility' => ( $display_manual_key_form ? 'visible' : 'hidden' ),
-        'APIKey.RemoveVisibility' => ( $api_key ? 'visible' : 'hidden' ),
-        'ScanningFrequency' => 'Undefined',
-        'ScanningFrequencyOptions' => $scan_freq_options,
-        'ScanningInterface' => ( $scan_interface ? $sucuriscan_interface_allowed[$scan_interface] : 'Undefined' ),
-        'ScanningInterfaceOptions' => $scan_interface_options,
-        'ScanningInterfaceVisibility' => ( SucuriScanFileInfo::is_spl_available() ? 'hidden' : 'visible' ),
-        'ScanningRuntime' => $runtime_scan,
-        'ScanningRuntimeHuman' => $runtime_scan_human,
-        'ModalWhenAPIRegistered' => $api_registered_modal,
-        'NotifyTo' => sucuriscan_get_option('sucuriscan_notify_to'),
-        'EmailsPerHour' => 'Undefined',
-        'EmailsPerHourOptions' => $emails_per_hour_options,
-        'MaximumFailedLogins' => 'Undefined',
-        'MaximumFailedLoginsOptions' => $maximum_failed_logins_options,
-        'VerifySSLCert' => 'Undefined',
-        'VerifySSLCertOptions' => $verify_ssl_cert_options,
-        'ModalWhenAPIRegistered' => $api_registered_modal,
-    );
-
-    if( array_key_exists($scan_freq, $sucuriscan_schedule_allowed) ){
-        $template_variables['ScanningFrequency'] = $sucuriscan_schedule_allowed[$scan_freq];
-    }
-
-    if( array_key_exists($emails_per_hour, $sucuriscan_emails_per_hour) ){
-        $template_variables['EmailsPerHour'] = $sucuriscan_emails_per_hour[$emails_per_hour];
-    }
-
-    if( array_key_exists($maximum_failed_logins, $sucuriscan_maximum_failed_logins) ){
-        $template_variables['MaximumFailedLogins'] = $sucuriscan_maximum_failed_logins[$maximum_failed_logins];
-    }
-
-    if( array_key_exists($verify_ssl_cert, $sucuriscan_verify_ssl_cert) ){
-        $template_variables['VerifySSLCert'] = $sucuriscan_verify_ssl_cert[$verify_ssl_cert];
-    }
-
-    return sucuriscan_get_section('settings-general', $template_variables);
-}
-
-/**
- * Read and parse the content of the notification settings template.
- *
- * @return string Parsed HTML code for the notification settings panel.
- */
-function sucuriscan_settings_notifications(){
-    global $sucuriscan_notify_options;
-
-    $template_variables = array(
-        'NotificationOptions' => '',
-    );
-
-    $counter = 0;
-
-    foreach( $sucuriscan_notify_options as $alert_type => $alert_label ){
-        $alert_value = sucuriscan_get_option($alert_type);
-        $checked = ( $alert_value == 'enabled' ? 'checked="checked"' : '' );
-        $css_class = ( $counter % 2 == 0 ) ? 'alternate' : '';
-
-        $template_variables['NotificationOptions'] .= sucuriscan_get_snippet('settings-notifications', array(
-            'Notification.CssClass' => $css_class,
-            'Notification.Name' => $alert_type,
-            'Notification.Checked' => $checked,
-            'Notification.Label' => $alert_label,
-        ));
-        $counter += 1;
-    }
-
-    return sucuriscan_get_section('settings-notifications', $template_variables);
-}
-
-/**
- * Read and parse the content of the ignored-rules settings template.
- *
- * @return string Parsed HTML code for the ignored-rules settings panel.
- */
-function sucuriscan_settings_ignore_rules(){
-    $notify_new_site_content = sucuriscan_get_option('sucuriscan_notify_post_publication');
-
-    $template_variables = array(
-        'IgnoreRules.MessageVisibility' => 'visible',
-        'IgnoreRules.TableVisibility' => 'hidden',
-        'IgnoreRules.PostTypes' => '',
-    );
-
-    if( $notify_new_site_content == 'enabled' ){
-        $post_types = get_post_types();
-        $ignored_events = sucuriscan_get_ignored_events();
-
-        $template_variables['IgnoreRules.MessageVisibility'] = 'hidden';
-        $template_variables['IgnoreRules.TableVisibility'] = 'visible';
-        $counter = 0;
-
-        foreach( $post_types as $post_type => $post_type_object ){
-            $counter += 1;
-            $css_class = ( $counter % 2 == 0 ) ? 'alternate' : '';
-            $post_type_title = ucwords( str_replace('_', chr(32), $post_type) );
-
-            if( array_key_exists($post_type, $ignored_events) ){
-                $is_ignored_text = 'YES';
-                $was_ignored_at = @date('d/M/Y - H:i:s', $ignored_events[$post_type]);
-                $is_ignored_class = 'danger';
-                $button_action = 'remove';
-                $button_class = 'button-primary';
-                $button_text = 'Allow';
-            } else {
-                $is_ignored_text = 'NO';
-                $button_action = 'add';
-                $was_ignored_at = 'Not ignored';
-                $is_ignored_class = 'success';
-                $button_class = 'button-primary button-danger';
-                $button_text = 'Ignore';
-            }
-
-            $template_variables['IgnoreRules.PostTypes'] .= sucuriscan_get_snippet('settings-ignorerules', array(
-                'IgnoreRules.CssClass' => $css_class,
-                'IgnoreRules.Num' => $counter,
-                'IgnoreRules.PostTypeTitle' => $post_type_title,
-                'IgnoreRules.IsIgnored' => $is_ignored_text,
-                'IgnoreRules.WasIgnoredAt' => $was_ignored_at,
-                'IgnoreRules.IsIgnoredClass' => $is_ignored_class,
-                'IgnoreRules.PostType' => $post_type,
-                'IgnoreRules.Action' => $button_action,
-                'IgnoreRules.ButtonClass' => 'button ' . $button_class,
-                'IgnoreRules.ButtonText' => $button_text,
-            ));
-        }
-    }
-
-    return sucuriscan_get_section('settings-ignorerules', $template_variables);
+    return SucuriScanTemplate::get_section('infosys-serverinfo', $template_variables);
 }
 

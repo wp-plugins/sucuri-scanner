@@ -6,7 +6,7 @@
         <tr>
             <th colspan="3" class="thead-with-button">
                 <span>Plugin Settings</span>
-                <form method="post" class="thead-topright-action">
+                <form action="%%SUCURI.URL.Settings%%" method="post" class="thead-topright-action">
                     <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
                     <button type="submit" name="sucuriscan_reset_options" class="button-primary">Reset plugin options</button>
                 </form>
@@ -34,18 +34,18 @@
                 <span class="sucuriscan-monospace">%%SUCURI.APIKey%%</span>
             </td>
             <td class="td-with-button">
-                <form method="post" class="sucuriscan-%%SUCURI.APIKey.RecoverVisibility%%">
+                <form action="%%SUCURI.URL.Settings%%" method="post" class="sucuriscan-%%SUCURI.APIKey.RecoverVisibility%%">
                     <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
-                    <button type="submit" name="sucuriscan_recover_api_key" class="button-primary">Recover</button>
+                    <button type="submit" name="sucuriscan_recover_key" class="button-primary">Recover</button>
                 </form>
 
-                <form method="post" class="sucuriscan-%%SUCURI.APIKey.ManualKeyFormVisibility%%">
+                <form action="%%SUCURI.URL.Settings%%" method="post" class="sucuriscan-%%SUCURI.APIKey.ManualKeyFormVisibility%%">
                     <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
                     <input type="text" name="sucuriscan_manual_api_key" class="input-text" placeholder="API key sent to your email" />
                     <button type="submit" class="button-primary">Save</button>
                 </form>
 
-                <form method="post" class="sucuriscan-%%SUCURI.APIKey.RemoveVisibility%%">
+                <form action="%%SUCURI.URL.Settings%%" method="post" class="sucuriscan-%%SUCURI.APIKey.RemoveVisibility%%">
                     <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
                     <button type="submit" name="sucuriscan_remove_api_key" class="button-primary button-danger">Remove</button>
                 </form>
@@ -67,7 +67,7 @@
             <td>Notify events to</td>
             <td><a href="mailto:%%SUCURI.NotifyTo%%">%%SUCURI.NotifyTo%%</a></td>
             <td class="td-with-button">
-                <form method="post">
+                <form action="%%SUCURI.URL.Settings%%" method="post">
                     <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
                     <input type="text" name="sucuriscan_notify_to" class="input-text" placeholder="Send notifications to..." />
                     <button type="submit" class="button-primary">Change</button>
@@ -79,7 +79,7 @@
             <td>Alerts per hour</td>
             <td>%%SUCURI.EmailsPerHour%%</td>
             <td class="td-with-button">
-                <form method="post">
+                <form action="%%SUCURI.URL.Settings%%" method="post">
                     <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
                     <select name="sucuriscan_emails_per_hour">
                         %%SUCURI.EmailsPerHourOptions%%
@@ -93,7 +93,7 @@
             <td>Consider brute-force after</td>
             <td>%%SUCURI.MaximumFailedLogins%%</td>
             <td class="td-with-button">
-                <form method="post">
+                <form action="%%SUCURI.URL.Settings%%" method="post">
                     <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
                     <select name="sucuriscan_maximum_failed_logins">
                         %%SUCURI.MaximumFailedLoginsOptions%%
@@ -107,7 +107,7 @@
             <td>Verify SSL Cert</td>
             <td>%%SUCURI.VerifySSLCert%%</td>
             <td class="td-with-button">
-                <form method="post">
+                <form action="%%SUCURI.URL.Settings%%" method="post">
                     <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
                     <select name="sucuriscan_verify_ssl_cert">
                         %%SUCURI.VerifySSLCertOptions%%
@@ -121,7 +121,7 @@
             <td>Scanning frequency</td>
             <td><span class="sucuriscan-monospace">%%SUCURI.ScanningFrequency%%</span></td>
             <td class="td-with-button">
-                <form method="post">
+                <form action="%%SUCURI.URL.Settings%%" method="post">
                     <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
                     <select name="sucuriscan_scan_frequency">
                         %%SUCURI.ScanningFrequencyOptions%%
@@ -135,7 +135,7 @@
             <td>Scanning interface</td>
             <td><span class="sucuriscan-monospace">%%SUCURI.ScanningInterface%%</span></td>
             <td class="td-with-button">
-                <form method="post">
+                <form action="%%SUCURI.URL.Settings%%" method="post">
                     <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
                     <select name="sucuriscan_scan_interface">
                         %%SUCURI.ScanningInterfaceOptions%%
