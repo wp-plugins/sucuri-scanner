@@ -32,6 +32,14 @@
 .sucuriscan-modal-close{display:inline-block;position:absolute;top:0;right:0;font-size:16px;font-weight:bold;text-decoration:none;line-height:39px;padding:0 15px;border-left:1px solid #ddd}
 .sucuriscan-modal-inside p:first-child{margin-top:0}
 .sucuriscan-modal-inside p:last-child{margin-bottom:0}
+/* Label and Tags */
+.sucuriscan-label, .sucuriscan-label-default, .sucuriscan-label-primary, .sucuriscan-label-success, .sucuriscan-label-info, .sucuriscan-label-warning, .sucuriscan-label-danger{display:inline;font-size:75%;font-weight:700;line-height:1;color:#fff;text-align:center;white-space:nowrap;vertical-align:baseline;padding:0.2em 0.6em 0.3em;border-radius:0.25em}
+.sucuriscan-label-default{background:#777}
+.sucuriscan-label-primary{background:#428bca}
+.sucuriscan-label-success{background:#5cb85c}
+.sucuriscan-label-info{background:#5bc0de}
+.sucuriscan-label-warning{background:#f0ad4e}
+.sucuriscan-label-danger{background:#d9534f}
 /* Interface Wrapper */
 .sucuriscan-wrap{margin-top:20px}
 .sucuriscan-wrap .sucuriscan-maincontent{margin:20px 0}
@@ -63,6 +71,8 @@
 .sucuriscan-table-double-title tr:first-child th{border-bottom:0}
 .sucuriscan-table-triple-title tr:first-child th, .sucuriscan-table-triple-title tr:first-child + tr th{border-bottom:0}
 .sucuriscan-table-quad-title tr:first-child th, .sucuriscan-table-quad-title tr:first-child + tr th, .sucuriscan-table-quad-title tr:first-child + tr + tr th{border-bottom:0}
+.sucuriscan-table-description{border-left-width:1px !important;box-shadow:none}
+.sucuriscan-table-description .inside{border-bottom:0 !important}
 .sucuriscan-maincontent .sucuriscan-lastmodified td{font-family:Monospace, Courier, serif;font-weight:bold}
 .widefat td.td-with-button{text-align:right;padding:3px 10px}
 .widefat td.td-with-button button{min-width:90px}
@@ -87,6 +97,10 @@
 /* WordPress Alerts */
 div.sucuriscan-alert{position:relative;margin:0 0 20px 0}
 div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:18px;font-weight:bold;text-decoration:none}
+.sucuriscan-inline-alert, .sucuriscan-inline-alert-updated, .sucuriscan-inline-alert-error{background:#fff;box-shadow:0 1px 1px 0 rgba(0,0,0,.1);padding:0;border-left:4px solid #ddd}
+.sucuriscan-inline-alert > p, .sucuriscan-inline-alert-updated > p, .sucuriscan-inline-alert-error > p{margin:0;padding:8px 12px;border:1px solid #ddd;border-left:0}
+.sucuriscan-inline-alert-updated{border-left-color:#7ad03a}
+.sucuriscan-inline-alert-error{border-left-color:#dd3d36}
 /* Tabulation Panels */
 .sucuriscan-tabs{}
 .sucuriscan-tabs > ul{margin:0}
@@ -165,6 +179,11 @@ div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:1
 .sucuriscan-hstatus-1{background-color:#dff0d8;color:#3c763d;border-color:#d6e9c6}
 .sucuriscan-hstatus-0{background-color:#f2dede;color:#a94442;border-color:#ebccd1}
 .sucuriscan-hstatus .button-primary, .sucuriscan-hstatus .button-secondary{position:absolute;top:5px;right:5px}
+/* Last Logins Styles */
+.sucuriscan-lastlogin-outof{font-style:italic;color:#999;margin-right:10px}
+.sucuriscan-admins-lastlogins .sucuriscan-ellipsis{width:170px}
+.sucuriscan-admins-lastlogins td{padding:4px 8px}
+.sucuriscan-lastlogins-failed{}
 /* About Page */
 .sucuriscan-about ul{margin-left:20px}
 .sucuriscan-about ul li{list-style:initial}
@@ -173,6 +192,13 @@ div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:1
 .sucuriscan-apikey-registered{}
 .sucuriscan-apikey-registered .sucuriscan-pull-right{width:400px;margin-left:20px}
 .sucuriscan-apikey-registered .sucuriscan-sitelogo{background-position:0 -17px;height:83px}
+/* Pagination Styles */
+.sucuriscan-pagination{display:inline-block;margin:0;padding:0;border-radius:4px}
+.sucuriscan-pagination>li{display:inline}
+.sucuriscan-pagination>li>a, .sucuriscan-pagination>li>span{position:relative;background:#fff;color:#428bca;line-height:1.42857143;text-decoration: none;float:left;margin-left:-1px;padding:6px 12px;border:1px solid #ddd}
+.sucuriscan-pagination>li:first-child>a, .sucuriscan-pagination>li:first-child>span{margin-left:0;border-radius:4px 0 0 4px}
+.sucuriscan-pagination>li:last-child>a, .sucuriscan-pagination>li:last-child>span{border-radius:0 4px 4px 0}
+.sucuriscan-pagination>li>a.sucuriscan-pagination-active, .sucuriscan-pagination>li>a:hover{background:#0074a2;color:#fff}
 /* Resetter Styles */
 .sucuriscan_wpconfig_keys_updated textarea{width:100%;height:250px;background:#f5f5f5;font-family:monospace;font-size:12px;resize:vertical;margin:20px 0 0 0}
 .sucuriscan-maincontent .sucuriscan-last-logins{margin-top:0}
@@ -184,8 +210,8 @@ div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:1
 .sucuriscan-maincontent .sucuriscan-auditlogs .sucuriscan-maxper-page{text-align:right}
 .sucuriscan-maincontent .sucuriscan-settings{margin-top:0}
 .sucuriscan-maincontent .sucuriscan-settings form{display:inline-block}
-.sucuriscan-maincontent .sucuriscan-settings select, .sucuriscan-maincontent .sucuriscan-settings .input-text{min-width:245px}
-.sucuriscan-maincontent .sucuriscan-settings-notifications{margin-top:20px}
+.sucuriscan-maincontent .sucuriscan-settings select, .sucuriscan-maincontent .sucuriscan-settings .input-text{min-width:220px}
+.sucuriscan-maincontent .sucuriscan-settings-notifications{margin-top:0}
 .sucuriscan-wpconfig-textarea{width:600px;height:525px;background:#f5f5f5;font-size:12px;line-height:1.4em;resize:none;margin:15px 0 0 0;padding:10px}
 /* Responsive Styles */
 @media (max-width: 620px) {
@@ -210,7 +236,6 @@ div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:1
 .sucuriscan-maincontent #poststuff{min-width:initial;padding-top:0}
 .sucuriscan-maincontent .widefat tbody th.check-column{padding:6px 0 3px 0}
 .sucuriscan-maincontent .hardening-box .primary-secondary{margin:0 0 0 10px}
-.sucuriscan-maincontent a.lastlogins-showall{display:inline-block;float:right}
 .sucuri-inline-error{font-weight:bold;color:red}
 .sucuriscan-maincontent .alternate{background:#f5f5f5}
 .sucuriscan-maincontent hr{border:none;border-top:1px solid #999}

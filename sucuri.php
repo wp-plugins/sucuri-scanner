@@ -4,7 +4,7 @@ Plugin Name: Sucuri Security - Auditing, Malware Scanner and Hardening
 Plugin URI: http://wordpress.sucuri.net/
 Description: The <a href="http://sucuri.net/" target="_blank">Sucuri Security</a> <em>(Auditing, Malware Scanner and Hardening)</em> plugin enables you to scan your WordPress site using <a href="http://sitecheck.sucuri.net/" target="_blank">Sucuri SiteCheck</a> right in your dashboard. SiteCheck will check for malware, spam, blacklisting and other security issues like .htaccess redirects, hidden eval code, etc. The best thing about it is it's completely free.
 Author: Sucuri, INC
-Version: 1.6.1
+Version: 1.6.2
 Author URI: http://sucuri.net
 */
 
@@ -36,7 +36,7 @@ define('SUCURISCAN','sucuriscan');
 /**
  * Current version of the plugin's code.
  */
-define('SUCURISCAN_VERSION','1.6.1');
+define('SUCURISCAN_VERSION','1.6.2');
 
 /**
  * The local URL where the plugin's files and assets are served.
@@ -91,7 +91,7 @@ define('SUCURISCAN_CLOUDPROXY_API_VERSION', 'v2');
 /**
  * The maximum quantity of entries that will be displayed in the last login page.
  */
-define('SUCURISCAN_LASTLOGINS_USERSLIMIT', 50);
+define('SUCURISCAN_LASTLOGINS_USERSLIMIT', 25);
 
 /**
  * The maximum quantity of entries that will be displayed in the audit logs page.
@@ -107,6 +107,11 @@ define('SUCURISCAN_MINIMUM_RUNTIME', 10800);
  * The life time of the cache for the results of the SiteCheck scans.
  */
 define('SUCURISCAN_SITECHECK_LIFETIME', 1200);
+
+/**
+ * The life time of the cache for the results of the get_plugins function.
+ */
+define('SUCURISCAN_GET_PLUGINS_LIFETIME', 1800);
 
 /**
  * Miscellaneous library.
@@ -863,228 +868,6 @@ class SucuriScanDatabase extends SucuriScan {
 }
 
 /**
- * Class responsible for the processing of the generation of backups for the database.
- *
- * Here are implemented the functions needed to get the list of databases, information
- * of single tables, generate the backup file (which can be a SQL or Zip file), a way
- * to download and remove old backup files.
- */
-class SucuriScanBackup extends SucuriScanDatabase {
-
-    /**
-     * Class constructor.
-     */
-    public function __construct(){
-        ini_set('memory_limit', '-1');
-    }
-
-    /**
-     * Generate a SQL or Zip file with the current state of the database in use.
-     *
-     * @return string Returns the SQL or Zip full file path created.
-     */
-    public function all_database(){
-        $sql_output = '';
-        $tables = $this->get_dbtables();
-
-        foreach($tables as $table_name){
-            $sql_output .= $this->single_table($table_name, TRUE);
-            $sql_output .= PHP_EOL.PHP_EOL;
-        }
-
-        $sql_output .= PHP_EOL.PHP_EOL;
-
-        return $this->generate_backup($sql_output);
-    }
-
-    /**
-     * Generate a SQL or Zip file containing all the content inside a single table in the current database.
-     *
-     * @param  string  $table_name Specify the table name to dump.
-     * @param  boolean $batch_mode Specify whether if return the SQL generated or generate the SQL/Zip file.
-     * @return string              Returns the SQL generated or the SQL/Zip full file path created.
-     */
-    public function single_table( $table_name='', $batch_mode=FALSE ){
-        global $wpdb;
-
-        if( $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'")==$table_name ){
-            $sql_output = '';
-
-            $results = $wpdb->get_results("SELECT * FROM `{$table_name}`", ARRAY_N);
-            $fields = $wpdb->get_col("DESCRIBE `{$table_name}`", 0);
-            $num_fields = count($fields);
-
-            $sql_output .= "DROP TABLE IF EXISTS `{$table_name}`;";
-            $table_definition = $wpdb->get_row("SHOW CREATE TABLE `{$table_name}`", ARRAY_N);
-            $sql_output .= PHP_EOL.PHP_EOL . $table_definition[1].';' . PHP_EOL.PHP_EOL;
-
-            foreach($results as $row){
-                $sql_output .= "INSERT INTO `{$table_name}` VALUES(";
-
-                for( $i=0; $i<$num_fields; $i++ ) {
-                    $row[$i] = esc_sql($row[$i]);
-                    $row[$i] = preg_replace('#'.PHP_EOL.'#', "\n", $row[$i]);
-
-                    if( isset($row[$i]) ){
-                        $sql_output .= "'{$row[$i]}'";
-                    } else {
-                        $sql_output .= "''";
-                    }
-
-                    if( $i < ($num_fields-1) ){
-                        $sql_output .= ','.chr(32);
-                    }
-                }
-
-                $sql_output .= ');'.PHP_EOL;
-            }
-
-            return $batch_mode===TRUE ? $sql_output : $this->generate_backup($sql_output);
-        }
-
-        return FALSE;
-    }
-
-    /**
-     * Create a SQL or Zip file with the passed content.
-     *
-     * @param  string         $content SQL generated.
-     * @return string|boolean          Return FALSE or the SQL/Zip full file path created.
-     */
-    private function generate_backup( $content='' ){
-        $plugin_upload_folder = $this->datastore_folder_path();
-
-        if( is_writable($plugin_upload_folder) ){
-            $filename = 'sucuri-dbbackup-'.current_time('timestamp').'.sql';
-            $filepath = rtrim($plugin_upload_folder,'/').'/'.$filename;
-            $handle = @fopen($filepath, 'w+');
-            @fwrite($handle, $content);
-            @fclose($handle);
-
-            if( class_exists('ZipArchive') ){
-                $package_path = $filepath.'.zip';
-
-                $zip = new ZipArchive();
-                $archive = $zip->open($package_path, ZipArchive::CREATE);
-                $zip->addFile($filepath, $filename);
-                $zip->close();
-
-                if( file_exists($package_path) && filesize($package_path)>0 ){
-                    @unlink($filepath); /* Remove the old SQL file to keep the new Zip file */
-                    $filename = $filename.'.zip';
-                    $filepath = $package_path;
-                }
-            }
-
-            return ( file_exists($filepath) && filesize($filepath)>0 ) ? $filepath : FALSE;
-        } else {
-            sucuriscan_error('Upload folder is not writable, can not continue with the backup: <code>'.$plugin_upload_folder.'</code>');
-        }
-
-        return FALSE;
-    }
-
-    /**
-     * Get extra information of the filepath specified, including full filepath, filesize, timeatime, etc.
-     *
-     * @param  string $filepath Relative path of the file.
-     * @return object           Extra information of the file specified.
-     */
-    private function get_backup_file_info( $filepath='' ){
-        $backup_file = FALSE;
-        $plugin_upload_folder = $this->datastore_folder_path();
-
-        if( file_exists($filepath) && is_file($filepath) && is_readable($filepath) ){
-            $filesize = filesize($filepath);
-            $filename_exploded = explode('.', $filepath);
-            $backup_file = (object)array(
-                'filepath' => $filepath,
-                'filename' => basename($filepath),
-                'filesize' => $filesize,
-                'filehumansize' => $this->human_filesize($filesize),
-                'filetime' => fileatime($filepath),
-                'fileext' => array_pop($filename_exploded),
-                'fileurl' => site_url( str_replace(ABSPATH, '', rtrim($plugin_upload_folder,'/').'/'.basename($filepath)) ),
-            );
-        }
-
-        return $backup_file;
-    }
-
-    /**
-     * List all database backup files generated with extra information.
-     *
-     * @return array Key-value list of backup files.
-     */
-    public function get_backup_files(){
-        $backup_files = array();
-        $plugin_upload_folder = $this->datastore_folder_path();
-
-        $files = glob( rtrim($plugin_upload_folder,'/').'/sucuri-dbbackup*.{sql,zip}', GLOB_BRACE );
-        if( is_array($files) && !empty($files) ){
-            $files_ordered = array_reverse($files);
-
-            foreach( $files_ordered as $filepath ){
-                $backup_file = $this->get_backup_file_info($filepath);
-
-                if( $backup_file ){
-                    $backup_files[] = $backup_file;
-                }
-            }
-        }
-
-        return $backup_files;
-    }
-
-    /**
-     * Get extra information of the filename specified, including full filepath, filesize, timeatime, etc.
-     *
-     * @param  string $filename Simple filename with extension.
-     * @return object           Extra information of the file specified.
-     */
-    public function get_backup_file_from_filename( $filename='' ){
-        $plugin_upload_folder = $this->datastore_folder_path();
-        $filepath = rtrim($plugin_upload_folder,'/').'/'.$filename;
-
-        return $this->get_backup_file_info($filepath);
-    }
-
-    /**
-     * Remove a list of backup files selected by the user through the plugin interface.
-     *
-     * @param  array  $files List of filenames that will be deleted.
-     * @return void
-     */
-    public function remove_backup_file( $files=array() ){
-        $files = is_array($files) ? $files : array($files);
-
-        if( !empty($files) ){
-            $num_files_to_remove = count($files);
-            $num_removed_files = 0;
-
-            foreach($files as $filename){
-                $backup_file = $this->get_backup_file_from_filename($filename);
-
-                if($backup_file && @unlink($backup_file->filepath) ){
-                    $num_removed_files += 1;
-                }
-            }
-
-            $message = sprintf( 'Database backups removed: %d out of %d', $num_removed_files, $num_files_to_remove );
-
-            if( $num_removed_files == $num_files_to_remove ){
-                sucuriscan_info( $message );
-            } else {
-                sucuriscan_error( $message );
-            }
-        } else {
-            sucuriscan_error('You did not select any backup file to remove.');
-        }
-    }
-
-}
-
-/**
  * File-based cache library.
  *
  * WP_Object_Cache [1] is WordPress' class for caching data which may be
@@ -1529,7 +1312,22 @@ if( !function_exists('sucuriscan_create_uploaddir') ){
 
         if( !file_exists($plugin_upload_folder) ){
             if( @mkdir($plugin_upload_folder) ){
+                // Create last-logins datastore file.
                 sucuriscan_lastlogins_datastore_exists();
+
+                // Create a htaccess file to deny access from all.
+                @file_put_contents(
+                    $plugin_upload_folder . '/.htaccess',
+                    "Order Deny,Allow\nDeny from all",
+                    LOCK_EX
+                );
+
+                // Create an index.html to avoid directory listing.
+                @file_put_contents(
+                    $plugin_upload_folder . '/index.html',
+                    '<!-- Attemp to prevent the directory listing. -->',
+                    LOCK_EX
+                );
             } else {
                 sucuriscan_error(
                     'Data folder does not exists and could not be created. You will need to
@@ -1696,32 +1494,137 @@ function is_valid_email( $email='' ){
 }
 
 /**
+ * Cut a long text to the length specified, and append suspensive points at the end.
+ *
+ * @param  string  $text   String of characters that will be cut.
+ * @param  integer $length Maximum length of the returned string, default is 10.
+ * @return string          Short version of the text specified.
+ */
+function sucuriscan_excerpt( $text='', $length=10 ){
+    $text_length = strlen($text);
+
+    if( $text_length > $length ){
+        return substr( $text, 0, $length ) . '...';
+    }
+
+    return $text;
+}
+
+/**
+ * Check whether the email notifications will be sent in HTML or Plain/Text.
+ *
+ * @return boolean Whether the emails will be in HTML or Plain/Text.
+ */
+function sucuriscan_prettify_mails(){
+    return ( sucuriscan_get_option('sucuriscan_prettify_mails') === 'enabled' );
+}
+
+/**
+ * Check whether the SSL certificates will be verified while executing a HTTP
+ * request or not. This is only for customization of the administrator, in fact
+ * not verifying the SSL certificates can lead to a "Man in the Middle" attack.
+ *
+ * @return boolean Whether the SSL certs will be verified while sending a request.
+ */
+function sucuriscan_verify_ssl_cert(){
+    return ( sucuriscan_get_option('sucuriscan_verify_ssl_cert') === 'true' );
+}
+
+/**
  * Send a message to a specific email address.
  *
- * @param  string  $to       The email address of the recipient that will receive the message.
+ * @param  string  $email    The email address of the recipient that will receive the message.
  * @param  string  $subject  The reason of the message that will be sent.
  * @param  string  $message  Body of the message that will be sent.
  * @param  array   $data_set Optional parameter to add more information to the notification.
- * @param  boolean $debug    TRUE if you want to test the function printing the email before sending it.
- * @return void
+ * @return boolean           Whether the email contents were sent successfully.
  */
-function sucuriscan_send_mail( $to='', $subject='', $message='', $data_set=array(), $debug=FALSE ){
+function sucuriscan_send_mail( $email='', $subject='', $message='', $data_set=array() ){
     $headers = array();
     $subject = ucwords(strtolower($subject));
     $wp_domain = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : get_option('siteurl');
+    $force = FALSE;
+    $debug = FALSE;
 
-    if( sucuriscan_get_option('sucuriscan_prettify_mails') == 'enabled' ){
+    // Check whether the mail will be printed in the site instead of sent.
+    if(
+        isset($data_set['Debug'])
+        && $data_set['Debug'] == TRUE
+    ){
+        $debug = TRUE;
+        unset($data_set['Debug']);
+    }
+
+    // Check whether the mail will be even if the limit per hour was reached or not.
+    if(
+        isset($data_set['Force'])
+        && $data_set['Force'] == TRUE
+    ){
+        $force = TRUE;
+        unset($data_set['Force']);
+    }
+
+    // Check whether the email notifications will be sent in HTML or Plain/Text.
+    if( sucuriscan_prettify_mails() ){
         $headers = array( 'Content-type: text/html' );
         $data_set['PrettifyType'] = 'pretty';
     }
 
-    $message = sucuriscan_prettify_mail($subject, $message, $data_set);
+    if( !sucuriscan_emails_per_hour_reached() || $force || $debug ){
+        $message = sucuriscan_prettify_mail($subject, $message, $data_set);
 
-    if( $debug ){
-        die($message);
+        if( $debug ){ die($message); }
+
+        $email_sent = wp_mail(
+            $email,
+            "Sucuri WP Notification: {$wp_domain} - {$subject}",
+            $message,
+            $headers
+        );
+
+        if( $email_sent ){
+            $emails_sent_num = (int) sucuriscan_get_option('sucuriscan_emails_sent');
+            update_option( 'sucuriscan_emails_sent', $emails_sent_num + 1 );
+            update_option( 'sucuriscan_last_email_at', time() );
+
+            return TRUE;
+        }
     } else {
-        wp_mail($to, "Sucuri WP Notification: {$wp_domain} - {$subject}" , $message, $headers);
+        // sucuriscan_error( 'Cant send more emails for the next hour' );
     }
+
+    return FALSE;
+}
+
+/**
+ * Check whether the maximum quantity of emails per hour was reached.
+ *
+ * @return boolean Whether the quota emails per hour was reached.
+ */
+function sucuriscan_emails_per_hour_reached(){
+    $max_emails_per_hour = sucuriscan_get_option('sucuriscan_emails_per_hour');
+
+    if( $max_emails_per_hour != 'unlimited' ){
+        // Check if we are still in that sixty minutes.
+        $current_time = time();
+        $last_email_at = sucuriscan_get_option('sucuriscan_last_email_at');
+        $diff_time = abs( $current_time - $last_email_at );
+
+        if( $diff_time <= 3600 ){
+            // Check if the quantity of emails sent is bigger than the configured.
+            $emails_sent = (int) sucuriscan_get_option('sucuriscan_emails_sent');
+            $max_emails_per_hour = intval($max_emails_per_hour);
+
+            if( $emails_sent >= $max_emails_per_hour ){
+                return TRUE;
+            }
+        } else {
+            // Reset the counter of emails sent.
+            update_option( 'sucuriscan_emails_sent', 0 );
+        }
+    }
+
+    return FALSE;
 }
 
 /**
@@ -2196,6 +2099,19 @@ function sucuriscan_get_remoteaddr(){
 }
 
 /**
+ * Retrieve the user-agent from the current request.
+ *
+ * @return string The user-agent from the current request.
+ */
+function sucuriscan_get_useragent(){
+    if( isset($_SERVER['HTTP_USER_AGENT']) ){
+        return esc_attr($_SERVER['HTTP_USER_AGENT']);
+    }
+
+    return FALSE;
+}
+
+/**
  * Check whether the site is behing the Sucuri CloudProxy network.
  *
  * @return boolean Either TRUE or FALSE if the site is behind CloudProxy.
@@ -2325,7 +2241,7 @@ function sucuriscan_time_ago($timestamp=0){
         $timestamp = strtotime($timestamp);
     }
 
-    $diff = time() - (int)$timestamp;
+    $diff = abs( time() - intval($timestamp) );
 
     if( $diff == 0 ){ return 'just now'; }
 
@@ -2340,7 +2256,14 @@ function sucuriscan_time_ago($timestamp=0){
     );
 
     $value = floor($diff/$intervals[1][1]);
-    return $value.chr(32).$intervals[1][0].($value > 1 ? 's' : '').' ago';
+    $time_ago = sprintf(
+        '%s %s%s ago',
+        $value,
+        $intervals[1][0],
+        ( $value > 1 ? 's' : '' )
+    );
+
+    return $time_ago;
 }
 
 /**
@@ -2461,18 +2384,26 @@ function sucuriscan_get_single_option( $option_name='' ){
  * @return string|array           The default values for the specified options.
  */
 function sucuriscan_get_default_options( $settings='' ){
+    $admin_email = get_option('admin_email');
     $default_options = array(
         'sucuriscan_api_key' => FALSE,
-        'sucuriscan_account' => get_option('admin_email'),
+        'sucuriscan_account' => $admin_email,
         'sucuriscan_scan_frequency' => 'hourly',
         'sucuriscan_scan_interface' => 'spl',
         'sucuriscan_runtime' => 0,
         'sucuriscan_lastlogin_redirection' => 'enabled',
+        'sucuriscan_notify_to' => $admin_email,
+        'sucuriscan_emails_sent' => 0,
+        'sucuriscan_emails_per_hour' => 5,
+        'sucuriscan_last_email_at' => time(),
         'sucuriscan_prettify_mails' => 'enabled',
         'sucuriscan_notify_success_login' => 'enabled',
         'sucuriscan_notify_failed_login' => 'enabled',
         'sucuriscan_notify_post_publication' => 'enabled',
         'sucuriscan_notify_theme_editor' => 'enabled',
+        'sucuriscan_maximum_failed_logins' => 30,
+        'sucuriscan_ignored_events' => '',
+        'sucuriscan_verify_ssl_cert' => 'true',
     );
 
     if( is_array($settings) ){
@@ -2537,6 +2468,82 @@ function sucuriscan_what_options_were_changed( $request=array() ){
     return $options_changed;
 }
 
+/**
+ * Get a list of the post types ignored to receive email notifications when the
+ * "new site content" hook is triggered.
+ *
+ * @return array List of ignored posts-types to send notifications.
+ */
+function sucuriscan_get_ignored_events(){
+    $post_types = sucuriscan_get_option('sucuriscan_ignored_events');
+    $post_types_arr = @unserialize($post_types);
+
+    if( !is_array($post_types_arr) ){ $post_types_arr = array(); }
+
+    return $post_types_arr;
+}
+
+/**
+ * Add a new post type to the list of ignored events to send notifications.
+ *
+ * @param  string  $event_name Unique post-type name.
+ * @return boolean             Whether the event was ignored or not.
+ */
+function sucuriscan_add_ignored_event( $event_name='' ){
+    $post_types = get_post_types();
+
+    // Check if the event is a registered post-type.
+    if( array_key_exists($event_name, $post_types) ){
+        $ignored_events = sucuriscan_get_ignored_events();
+
+        // Check if the event is not ignored already.
+        if( !array_key_exists($event_name, $ignored_events) ){
+            $ignored_events[$event_name] = time();
+            $saved = update_option( 'sucuriscan_ignored_events', serialize($ignored_events) );
+
+            return $saved;
+        }
+    }
+
+    return FALSE;
+}
+
+/**
+ * Remove a post type from the list of ignored events to send notifications.
+ *
+ * @param  string  $event_name Unique post-type name.
+ * @return boolean             Whether the event was removed from the list or not.
+ */
+function sucuriscan_remove_ignored_event( $event_name='' ){
+    $ignored_events = sucuriscan_get_ignored_events();
+
+    if( array_key_exists($event_name, $ignored_events) ){
+        unset( $ignored_events[$event_name] );
+        $saved = update_option( 'sucuriscan_ignored_events', serialize($ignored_events) );
+
+        return $saved;
+    }
+
+    return FALSE;
+}
+
+/**
+ * Check whether an event is being ignored to send notifications or not.
+ *
+ * @param  string  $event_name Unique post-type name.
+ * @return boolean             Whether an event is being ignored or not.
+ */
+function sucuriscan_is_ignored_event( $event_name='' ){
+    $event_name = strtolower($event_name);
+    $ignored_events = sucuriscan_get_ignored_events();
+
+    if( array_key_exists($event_name, $ignored_events) ){
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
 if( !function_exists('sucuriscan_plugin_setup_notice') ){
     /**
      * Display a notice message with instructions to continue the setup of the
@@ -2546,13 +2553,181 @@ if( !function_exists('sucuriscan_plugin_setup_notice') ){
      * @return void
      */
     function sucuriscan_plugin_setup_notice(){
-        echo sucuriscan_get_section('setup_notice');
+        if(
+            current_user_can('manage_options')
+            && !sucuriscan_wordpress_apikey()
+            && !isset($_POST['sucuriscan_wordpress_apikey'])
+            && !isset($_POST['sucuriscan_recover_api_key'])
+        ){
+            echo sucuriscan_get_section('setup_notice');
+        }
     }
 
-    if( !sucuriscan_wordpress_apikey() ){
-        $sucuriscan_admin_notice_name = sucuriscan_is_multisite() ? 'network_admin_notices' : 'admin_notices';
-        add_action( $sucuriscan_admin_notice_name, 'sucuriscan_plugin_setup_notice' );
+    $sucuriscan_admin_notice_name = sucuriscan_is_multisite() ? 'network_admin_notices' : 'admin_notices';
+    add_action( $sucuriscan_admin_notice_name, 'sucuriscan_plugin_setup_notice' );
+}
+
+/**
+ * Check the plugins directory and retrieve all plugin files with plugin data.
+ * This function will also retrieve the URL and name of the repository/page
+ * where it is being published at the WordPress plugins market.
+ *
+ * @return array Key is the plugin file path and the value is an array of the plugin data.
+ */
+function sucuriscan_get_plugins(){
+    $sucuri_cache = new SucuriScanCache('plugindata');
+    $cached_data = $sucuri_cache->get( 'plugins', SUCURISCAN_GET_PLUGINS_LIFETIME, 'array' );
+
+    // Return the previously cached results of this function.
+    if( $cached_data !== FALSE ){
+        return $cached_data;
     }
+
+    // Get the plugin's basic information from WordPress transient data.
+    $plugins = get_plugins();
+    $pattern = '/^http:\/\/wordpress\.org\/plugins\/(.*)\/$/';
+    $wp_market = 'http://wordpress.org/plugins/%s/';
+
+    // Loop through each plugin data and complement its information with more attributes.
+    foreach( $plugins as $plugin_path => $plugin_data ){
+        // Default values for the plugin extra attributes.
+        $repository = '';
+        $repository_name = '';
+        $is_free_plugin = FALSE;
+
+        // If the plugin's info object has already a plugin_uri.
+        if(
+            isset($plugin_data['PluginURI'])
+            && preg_match($pattern, $plugin_data['PluginURI'], $match)
+        ){
+            $repository = $match[0];
+            $repository_name = $match[1];
+            $is_free_plugin = TRUE;
+        }
+
+        // Retrieve the WordPress plugin page from the plugin's filename.
+        else {
+            if( strpos($plugin_path, '/') !== FALSE ){
+                $plugin_path_parts = explode('/', $plugin_path, 2);
+            } else {
+                $plugin_path_parts = explode('.', $plugin_path, 2);
+            }
+
+            if( isset($plugin_path_parts[0]) ){
+                $possible_repository = sprintf($wp_market, $plugin_path_parts[0]);
+                $resp = wp_remote_head($possible_repository);
+
+                if(
+                    !is_wp_error($resp)
+                    && $resp['response']['code'] == 200
+                ){
+                    $repository = $possible_repository;
+                    $repository_name = $plugin_path_parts[0];
+                    $is_free_plugin = TRUE;
+                }
+            }
+        }
+
+        // Complement the plugin's information with these attributes.
+        $plugins[$plugin_path]['Repository'] = $repository;
+        $plugins[$plugin_path]['RepositoryName'] = $repository_name;
+        $plugins[$plugin_path]['IsFreePlugin'] = $is_free_plugin;
+        $plugins[$plugin_path]['PluginType'] = ( $is_free_plugin ? 'free' : 'premium' );
+        $plugins[$plugin_path]['IsPluginActive'] = FALSE;
+
+        if( is_plugin_active($plugin_path) ){
+            $plugins[$plugin_path]['IsPluginActive'] = TRUE;
+        }
+    }
+
+    // Add the information of the plugins to the file-based cache.
+    $sucuri_cache->add( 'plugins', $plugins );
+
+    return $plugins;
+}
+
+/**
+ * Retrieve plugin installer pages from WordPress Plugins API.
+ *
+ * It is possible for a plugin to override the Plugin API result with three
+ * filters. Assume this is for plugins, which can extend on the Plugin Info to
+ * offer more choices. This is very powerful and must be used with care, when
+ * overriding the filters.
+ *
+ * The first filter, 'plugins_api_args', is for the args and gives the action as
+ * the second parameter. The hook for 'plugins_api_args' must ensure that an
+ * object is returned.
+ *
+ * The second filter, 'plugins_api', is the result that would be returned.
+ *
+ * @param  string $repository_name Frienly name of the plugin.
+ * @return object                  Object on success, WP_Error on failure.
+ */
+function sucuriscan_get_remote_plugin_data( $repository_name='' ){
+    $repository_base = 'http://api.wordpress.org/plugins/info/1.0/%s/';
+    $repository_url = sprintf( $repository_base, $repository_name );
+    $resp = wp_remote_get($repository_url);
+
+    if( !is_wp_error($resp) ){
+        $plugin_data = @unserialize($resp['body']);
+
+        if( $plugin_data instanceof stdClass ){
+            return $plugin_data;
+        }
+    }
+
+    return FALSE;
+}
+
+/**
+ * Detect which number in a pagination was clicked.
+ *
+ * @return integer Page number of the link clicked in a pagination.
+ */
+function sucuriscan_get_page_number(){
+    $page_number = 1;
+
+    // Check if there page was specified in the request.
+    if(
+        isset($_GET['num'])
+        && preg_match('/^[0-9]{1,2}$/', $_GET['num'])
+        && $_GET['num'] <= 10
+    ){
+        $page_number = intval($_GET['num']);
+    }
+
+    return $page_number;
+}
+
+/**
+ * Generate the HTML code to display a pagination.
+ *
+ * @param  string  $base_url     Base URL for the links before the page number.
+ * @param  integer $total_items  Total quantity of items retrieved from a query.
+ * @param  integer $max_per_page Maximum number of items that will be shown per page.
+ * @return string                HTML code for a pagination generated using the provided data.
+ */
+function sucuriscan_generate_pagination( $base_url='', $total_items=0, $max_per_page=1 ){
+    // Calculate the number of links for the pagination.
+    $html_links = '';
+    $page_number = sucuriscan_get_page_number();
+    $max_pages = ceil($total_items / $max_per_page);
+
+    // Generate the HTML links for the pagination.
+    for( $j=1; $j<=$max_pages; $j++ ){
+        $link_class = 'sucuriscan-pagination-link';
+
+        if( $page_number == $j ){
+            $link_class .= chr(32) . 'sucuriscan-pagination-active';
+        }
+
+        $html_links .= sprintf(
+            '<li><a href="%s&num=%d" class="%s">%s</a></li>',
+            $base_url, $j, $link_class, $j
+        );
+    }
+
+    return $html_links;
 }
 
 /**
@@ -2718,11 +2893,11 @@ function sucuriscan_sitecheck_info(){
 
                                 <?php if( !$malware_warns_exist ): ?>
                                     <p>
-                                        <span><strong>Malware:</strong> No.</span><br>
-                                        <span><strong>Malicious javascript:</strong> No.</span><br>
-                                        <span><strong>Malicious iframes:</strong> No.</span><br>
-                                        <span><strong>Suspicious redirections (htaccess):</strong> No.</span><br>
-                                        <span><strong>Blackhat SEO Spam:</strong> No.</span><br>
+                                        <span><strong>Malware:</strong> Clean.</span><br>
+                                        <span><strong>Malicious javascript:</strong> Clean.</span><br>
+                                        <span><strong>Malicious iframes:</strong> Clean.</span><br>
+                                        <span><strong>Suspicious redirections (htaccess):</strong> Clean.</span><br>
+                                        <span><strong>Blackhat SEO Spam:</strong> Clean.</span><br>
                                         <span><strong>Anomaly detection:</strong> Clean.</span>
                                     </p>
                                 <?php else: ?>
@@ -3018,7 +3193,7 @@ function sucuriscan_api_call( $url='', $method='GET', $params=array(), $args=arr
         'cookies' => array(),
         'compress' => FALSE,
         'decompress' => FALSE,
-        'sslverify' => TRUE,
+        'sslverify' => sucuriscan_verify_ssl_cert(),
     );
 
     // Update the request arguments with the values passed tot he function.
@@ -3092,7 +3267,7 @@ function sucuriscan_set_api_key( $api_key='', $validate=FALSE ){
  * @return string|boolean The API key or FALSE if it does not exists.
  */
 function sucuriscan_wordpress_apikey(){
-    $api_key = get_option('sucuriscan_api_key');
+    $api_key = sucuriscan_get_option('sucuriscan_api_key');
 
     if( $api_key && strlen($api_key) > 10 ){
         return $api_key;
@@ -3130,7 +3305,20 @@ function sucuriscan_valid_cloudproxy_apikey( $api_key='', $return_match=FALSE ){
  * @return array|boolean FALSE if the key is invalid or not present, an array otherwise.
  */
 function sucuriscan_cloudproxy_apikey(){
-    $api_key = get_option('sucuriscan_cloudproxy_apikey');
+    $option_name = 'sucuriscan_cloudproxy_apikey';
+    $api_key = sucuriscan_get_option($option_name);
+
+    // Check if the cloudproxy-waf plugin was previously installed.
+    if( !$api_key ){
+        $api_key = sucuriscan_get_option('sucuriwaf_apikey');
+
+        if( $api_key ){
+            update_option( $option_name, $api_key );
+            delete_option('sucuriwaf_apikey');
+        }
+    }
+
+    // Check the validity of the API key.
     $match = sucuriscan_valid_cloudproxy_apikey( $api_key, TRUE );
 
     if( $match ){
@@ -3308,12 +3496,13 @@ function sucuriscan_send_log( $event='' ){
 /**
  * Retrieve the event logs registered by the API service.
  *
- * @return string The response of the API service.
+ * @param  integer $lines How many lines from the log file will be retrieved.
+ * @return string         The response of the API service.
  */
-function sucuriscan_get_logs(){
+function sucuriscan_get_logs( $lines=50 ){
     $response = sucuriscan_api_call_wordpress( 'GET', array(
         'a' => 'get_logs',
-        'l' => 50,
+        'l' => $lines,
     ) );
 
     if( sucuriscan_handle_response($response) ){
@@ -3383,7 +3572,7 @@ function sucuriscan_send_hashes( $hashes='' ){
  */
 function sucuriscan_verify_run( $runtime=0, $force_scan=FALSE ){
     $runtime_name = 'sucuriscan_runtime';
-    $last_run = get_option($runtime_name);
+    $last_run = sucuriscan_get_option($runtime_name);
     $current_time = time();
 
     if( $last_run && !$force_scan ){
@@ -3406,7 +3595,7 @@ function sucuriscan_verify_run( $runtime=0, $force_scan=FALSE ){
  */
 function sucuriscan_report_wpversion(){
     $option_name = 'sucuriscan_wp_version';
-    $reported_version = get_option($option_name);
+    $reported_version = sucuriscan_get_option($option_name);
     $wp_version = sucuriscan_get_wpversion();
 
     if( $reported_version != $wp_version ){
@@ -3454,7 +3643,7 @@ function sucuriscan_filesystem_scan( $force_scan=FALSE ){
         sucuriscan_report_wpversion();
 
         $sucuri_fileinfo = new SucuriScanFileInfo();
-        $scan_interface = get_option('sucuriscan_scan_interface');
+        $scan_interface = sucuriscan_get_option('sucuriscan_scan_interface');
         $signatures = $sucuri_fileinfo->get_directory_tree_md5(ABSPATH, $scan_interface);
 
         if( $signatures ){
@@ -3540,15 +3729,30 @@ function sucuriscan_report_event( $severity=0, $location='', $message='' ){
 function sucuriscan_notify_event( $event='', $content='' ){
     $event_name = 'sucuriscan_notify_' . $event;
     $notify = sucuriscan_get_option($event_name);
-    $email = sucuriscan_get_option('admin_email');
+    $email = sucuriscan_get_option('sucuriscan_notify_to');
+    $email_params = array();
 
     if( $notify == 'enabled' ){
         if( $event == 'post_publication' ){
             $event = 'post_update';
         }
 
+        elseif( $event == 'failed_login' ){
+            $content .= '<br><br><em>Explanation: Someone failed to login to your site. If you
+                are getting too many of these messages, it is likely your site is under a brute
+                force attack. You can disable the notifications for failed logins from
+                <a href="' . sucuriscan_get_url('settings') . '" target="_blank">here</a>.
+                More details at <a href="http://kb.sucuri.net/definitions/attacks/brute-force/password-guessing"
+                target="_blank">Password Guessing Brute Force Attacks</a>.</em>';
+        }
+
+        // Send a notification even if the limit of emails per hour was reached.
+        elseif( $event == 'bruteforce_attack' ){
+            $email_params['Force'] = TRUE;
+        }
+
         $title = sprintf( 'Sucuri notification (%s)', str_replace('_', chr(32), $event) );
-        $mail_sent = sucuriscan_send_mail( $email, $title, $content );
+        $mail_sent = sucuriscan_send_mail( $email, $title, $content, $email_params );
 
         return $mail_sent;
     }
@@ -3717,9 +3921,12 @@ function sucuriscan_hook_private_to_published( $id=0 ){
         $p_type = 'Publication';
     }
 
-    $message = $p_type.' changed from private to published #'.$id.' ('.$title.')';
-    sucuriscan_report_event( 2, 'core', $message );
-    sucuriscan_notify_event( 'post_publication', $message );
+    // Check whether the post-type is being ignored to send notifications.
+    if( !sucuriscan_is_ignored_event($p_type) ){
+        $message = $p_type.' changed from private to published #'.$id.' ('.$title.')';
+        sucuriscan_report_event( 2, 'core', $message );
+        sucuriscan_notify_event( 'post_publication', $message );
+    }
 }
 
 /**
@@ -3880,6 +4087,47 @@ function sucuriscan_hook_wp_login_failed( $title='' ){
     $message = 'User authentication failed: '.$title;
     sucuriscan_report_event( 2, 'core', $message );
     sucuriscan_notify_event( 'failed_login', $message );
+
+    // Log the failed login in the internal datastore for future reports.
+    $logged = sucuriscan_log_failed_login($title);
+
+    // Check if the quantity of failed logins will be considered as a brute-force attack.
+    if( $logged ){
+        $failed_logins = sucuriscan_get_failed_logins();
+
+        if( $failed_logins ){
+            $max_time = 3600;
+            $maximum_failed_logins = sucuriscan_get_option('sucuriscan_maximum_failed_logins');
+
+            /**
+             * If the time passed is within the hour, and the quantity of failed logins
+             * registered in the datastore file is bigger than the maximum quantity of
+             * failed logins allowed per hour (value configured by the administrator in the
+             * settings page), then send an email notification reporting the event and
+             * specifying that it may be a brute-force attack against the login page.
+             */
+            if(
+                $failed_logins['diff_time'] <= $max_time
+                && $failed_logins['count'] >= $maximum_failed_logins
+            ){
+                sucuriscan_report_failed_logins($failed_logins);
+            }
+
+            /**
+             * If there time passed is superior to the hour, then reset the content of the
+             * datastore file containing the failed logins so far, any entry in that file
+             * will not be considered as part of a brute-force attack (if it exists) because
+             * the time passed between the first and last login attempt is big enough to
+             * mitigate the attack. We will consider the current failed login event as the
+             * first entry of that file in case of future attempts during the next sixty
+             * minutes.
+             */
+            elseif( $failed_logins['diff_time'] > $max_time ){
+                sucuriscan_reset_failed_logins();
+                sucuriscan_log_failed_login($title);
+            }
+        }
+    }
 }
 
 /**
@@ -3889,7 +4137,7 @@ function sucuriscan_hook_wp_login_failed( $title='' ){
  * @return void
  */
 function sucuriscan_hook_login_form_resetpass(){
-    // Detecting wordpress 2.8.3 vulnerability - $key is array.
+    // Detecting WordPress 2.8.3 vulnerability - $key is array.
     if( isset($_GET['key']) && is_array($_GET['key']) ){
         sucuriscan_report_event( 3, 'core', 'Attempt to reset password by attacking WP/2.8.3 bug' );
     }
@@ -4316,6 +4564,11 @@ function sucuriscan_monitoring_settings( $api_key='' ){
             $settings = sucuriscan_explain_monitoring_settings($settings);
 
             foreach( $settings as $option_name => $option_value ){
+                // Change the name of some options.
+                if( $option_name == 'internal_ip' ){
+                    $option_name = 'hosting_ip';
+                }
+
                 $css_class = ( $counter % 2 == 0 ) ? 'alternate' : '';
                 $option_title = ucwords(str_replace('_', chr(32), $option_name));
 
@@ -4769,18 +5022,18 @@ function sucuriscan_harden_version(){
     global $wp_version;
 
     $updates = get_core_updates();
-    if(
-        !is_array($updates)
-        || empty($updates)
-        || $updates[0]->response == 'latest'
-    ){
-        $cp = 1;
-    } else {
-        $cp = 0;
+    $cp = ( !is_array($updates) || empty($updates) ? 1 : 0 );
+
+    if( isset($updates[0]) && $updates[0] instanceof stdClass ){
+        if(
+            $updates[0]->response == 'latest'
+            || $updates[0]->response == 'development'
+        ){
+            $cp = 1;
+        }
     }
 
-    if(strcmp($wp_version, "3.7") < 0)
-    {
+    if( strcmp($wp_version, '3.7') < 0 ){
         $cp = 0;
     }
 
@@ -5182,7 +5435,7 @@ function sucuriscan_harden_readme(){
     sucuriscan_harden_status(
         'Information leakage (readme.html)',
         $cp,
-        'sucuriscan_harden_readme',
+        ( $cp == 0 ? 'sucuriscan_harden_readme' : NULL ),
         '<code>readme.html</code> file properly deleted',
         '<code>readme.html</code> not deleted and leaking the WordPress version',
         'It checks whether you have the <code>readme.html</code> file available that leaks your WordPress version',
@@ -5244,7 +5497,7 @@ function sucuriscan_harden_fileeditor(){
                 }
 
                 @file_put_contents($wp_config_path, $new_wpconfig, LOCK_EX);
-                sucuriscan_info( 'WP-Config file updated successfully, the plugin and theme editor was disabled.' );
+                sucuriscan_info( 'WP-Config file updated successfully, the plugin and theme editor were disabled.' );
                 $file_editor_disabled = TRUE;
             } else {
                 sucuriscan_error( 'The <code>wp-config.php</code> file is not in the default location
@@ -5258,7 +5511,7 @@ function sucuriscan_harden_fileeditor(){
                 if( $wp_config_writable ){
                     $new_wpconfig = str_replace("\n{$match[1]}", '', $new_wpconfig);
                     file_put_contents($wp_config_path, $new_wpconfig, LOCK_EX);
-                    sucuriscan_info( 'WP-Config file updated successfully, the plugin and theme editor was enabled.' );
+                    sucuriscan_info( 'WP-Config file updated successfully, the plugin and theme editor were enabled.' );
                     $file_editor_disabled = FALSE;
                 } else {
                     sucuriscan_error( 'The <code>wp-config.php</code> file is not in the default location
@@ -5299,37 +5552,10 @@ function sucuriscan_harden_dbtables(){
 
     $hardened = ( $table_prefix == 'wp_' ? 0 : 1 );
 
-    if(
-        isset($_POST['wpsucuri-doharden'])
-        && (
-            isset($_POST['sucuriscan_harden_dbtables']) ||
-            isset($_POST['sucuriscan_harden_dbtables_unharden'])
-        )
-    ){
-        $sucuri_backup = new SucuriScanBackup();
-        $dbbackup_filepath = $sucuri_backup->all_database();
-
-        if( $dbbackup_filepath ){
-            sucuriscan_info( 'A new database table prefix change was initialized, if you have
-                problems after this operation finishes you can find a backup of the current
-                database here: <code>'.$dbbackup_filepath.'</code>' );
-
-            if( isset($_POST['sucuriscan_harden_dbtables']) ){
-                $hardened = 1;
-                $sucuri_backup->new_table_prefix();
-            } elseif( isset($_POST['sucuriscan_harden_dbtables_unharden']) ){
-                $hardened = 0;
-                $sucuri_backup->reset_table_prefix();
-            }
-        } else {
-            sucuriscan_error( 'Error generating a backup for your database.' );
-        }
-    }
-
     sucuriscan_harden_status(
         'Database table prefix',
         $hardened,
-        'sucuriscan_harden_dbtables',
+        NULL,
         'Database table prefix properly modified',
         'Database table set to the default value <code>wp_</code>.',
         'It checks whether your database table prefix has been changed from the default <code>wp_</code>',
@@ -5417,55 +5643,74 @@ function sucuriscan_get_integrity_tree( $dir='./', $recursive=FALSE ){
  */
 function sucuriscan_auditlogs(){
 
-    $audit_logs = sucuriscan_get_logs();
+    // Initialize the values for the pagination.
     $max_per_page = SUCURISCAN_AUDITLOGS_PER_PAGE;
-    $show_all = isset($_GET['show_all']) ? TRUE : FALSE;
+    $page_number = sucuriscan_get_page_number();
+    $logs_limit = $page_number * $max_per_page;
+    $audit_logs = sucuriscan_get_logs($logs_limit);
+
+    $show_all = TRUE;
 
     $template_variables = array(
         'PageTitle' => 'Audit Logs',
         'AuditLogs.List' => '',
         'AuditLogs.Count' => 0,
-        'AuditLogs.NoItemsVisibility' => 'visible',
-        'AuditLogs.MaxItemsVisibility' => 'hidden',
         'AuditLogs.MaxPerPage' => $max_per_page,
+        'AuditLogs.NoItemsVisibility' => 'visible',
+        'AuditLogs.PaginationVisibility' => 'hidden',
+        'AuditLogs.PaginationLinks' => '',
     );
 
     if( $audit_logs ){
         $counter_i = 0;
         $total_items = count($audit_logs->output_data);
+        $offset = 0; // The initial position to start counting the data.
 
-        $template_variables['AuditLogs.Count'] = $total_items;
-        $template_variables['AuditLogs.NoItemsVisibility'] = 'hidden';
-
-        if( $total_items > $max_per_page && !$show_all ){
-            $template_variables['AuditLogs.MaxItemsVisibility'] = 'visible';
+        if( $logs_limit == $total_items ){
+            $offset = $logs_limit - ( $max_per_page + 1 );
         }
 
-        foreach( $audit_logs->output_data as $audit_log ){
-            if( $counter_i > $max_per_page && !$show_all ){ break; }
+        for( $i=$offset; $i<$total_items; $i++ ){
+            if( $counter_i > $max_per_page ){ break; }
 
-            $css_class = ( $counter_i % 2 == 0 ) ? '' : 'alternate';
-            $snippet_data = array(
-                'AuditLog.CssClass' => $css_class,
-                'AuditLog.DateTime' => date( 'd/M/Y H:i:s', $audit_log['timestamp'] ),
-                'AuditLog.Account' => $audit_log['account'],
-                'AuditLog.Message' => $audit_log['message'],
-                'AuditLog.Extra' => '',
-            );
+            if( isset($audit_logs->output_data[$i]) ){
+                $audit_log = $audit_logs->output_data[$i];
 
-            // Print every extra information item in a separate table.
-            if( $audit_log['extra'] ){
-                $css_scrollable = $audit_log['extra_total'] > 10 ? 'sucuriscan-list-as-table-scrollable' : '';
-                $snippet_data['AuditLog.Extra'] .= '<ul class="sucuriscan-list-as-table ' . $css_scrollable . '">';
-                foreach( $audit_log['extra'] as $log_extra ){
-                    $snippet_data['AuditLog.Extra'] .= '<li>' . $log_extra . '</li>';
+                $css_class = ( $counter_i % 2 == 0 ) ? '' : 'alternate';
+                $snippet_data = array(
+                    'AuditLog.CssClass' => $css_class,
+                    'AuditLog.DateTime' => date( 'd/M/Y H:i:s', $audit_log['timestamp'] ),
+                    'AuditLog.Account' => $audit_log['account'],
+                    'AuditLog.Message' => $audit_log['message'],
+                    'AuditLog.Extra' => '',
+                );
+
+                // Print every extra information item in a separate table.
+                if( $audit_log['extra'] ){
+                    $css_scrollable = $audit_log['extra_total'] > 10 ? 'sucuriscan-list-as-table-scrollable' : '';
+                    $snippet_data['AuditLog.Extra'] .= '<ul class="sucuriscan-list-as-table ' . $css_scrollable . '">';
+                    foreach( $audit_log['extra'] as $log_extra ){
+                        $snippet_data['AuditLog.Extra'] .= '<li>' . $log_extra . '</li>';
+                    }
+                    $snippet_data['AuditLog.Extra'] .= '</ul>';
+                    $snippet_data['AuditLog.Extra'] .= '<small>For Mac users, this is a scrollable container</small>';
                 }
-                $snippet_data['AuditLog.Extra'] .= '</ul>';
-                $snippet_data['AuditLog.Extra'] .= '<small>For Mac users, this is a scrollable container</small>';
-            }
 
-            $template_variables['AuditLogs.List'] .= sucuriscan_get_snippet('integrity-auditlogs', $snippet_data);
-            $counter_i += 1;
+                $template_variables['AuditLogs.List'] .= sucuriscan_get_snippet('integrity-auditlogs', $snippet_data);
+                $counter_i += 1;
+            }
+        }
+
+        $template_variables['AuditLogs.Count'] = $counter_i;
+        $template_variables['AuditLogs.NoItemsVisibility'] = 'hidden';
+
+        if( $total_items > 0 ){
+            $template_variables['AuditLogs.PaginationVisibility'] = 'visible';
+            $template_variables['AuditLogs.PaginationLinks'] = sucuriscan_generate_pagination(
+                '%%SUCURI.URL.Home%%',
+                $max_per_page * 5, /* Temporary value while we get the total logs. */
+                $max_per_page
+            );
         }
     }
 
@@ -5480,28 +5725,35 @@ function sucuriscan_auditlogs(){
 function sucuriscan_wordpress_outdated(){
     global $wp_version;
 
-    $cp = 0;
     $updates = get_core_updates();
+    $cp = ( !is_array($updates) || empty($updates) ? 1 : 0 );
 
-    if(
-        !is_array($updates)
-        || empty($updates)
-        || $updates[0]->response=='latest'
-    ){
-        $cp = 1;
+    $template_variables = array(
+        'WordPress.Version' => htmlspecialchars($wp_version),
+        'WordPress.UpgradeURL' => admin_url('update-core.php'),
+        'WordPress.UpdateVisibility' => 'hidden',
+        'WordPressBeta.Visibility' => 'hidden',
+        'WordPressBeta.Version' => '0.0.0',
+        'WordPressBeta.UpdateURL' => admin_url('update-core.php'),
+        'WordPressBeta.DownloadURL' => '#',
+    );
+
+    if( isset($updates[0]) && $updates[0] instanceof stdClass ){
+        if( $updates[0]->response == 'latest' ){
+            $cp = 1;
+        }
+
+        elseif( $updates[0]->response == 'development' ){
+            $cp = 1;
+            $template_variables['WordPressBeta.Visibility'] = 'visible';
+            $template_variables['WordPressBeta.Version'] = $updates[0]->version;
+            $template_variables['WordPressBeta.DownloadURL'] = $updates[0]->download;
+        }
     }
 
     if( strcmp($wp_version, '3.7') < 0 ){
         $cp = 0;
     }
-
-    $template_variables = array(
-        'WordPress.Version' => $wp_version,
-        'WordPress.UpgradeURL' => admin_url('update-core.php'),
-        'WordPress.UpdateVisibility' => 'hidden',
-    );
-
-    $wp_version = htmlspecialchars($wp_version);
 
     if( $cp == 0 ){
         $template_variables['WordPress.UpdateVisibility'] = 'visible';
@@ -5791,7 +6043,7 @@ function sucuriscan_posthack_page(){
         'PageTitle' => 'Post-Hack',
         'UpdateSecretKeys' => sucuriscan_update_secret_keys($process_form),
         'ResetPassword' => sucuriscan_posthack_users($process_form),
-        'DatabaseBackups' => sucuriscan_database_backups($process_form),
+        'ResetPlugins' => sucuriscan_posthack_plugins($process_form),
     );
 
     echo sucuriscan_get_template('posthack', $template_variables);
@@ -5878,7 +6130,7 @@ function sucuriscan_posthack_users( $process_form=FALSE ){
             $user->user_registered_formatted = date('D, M/Y H:i', $user->user_registered_timestamp);
             $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
 
-            $user_snippet = sucuriscan_get_snippet('resetpassword', array(
+            $user_snippet = sucuriscan_get_snippet('posthack-resetpassword', array(
                 'ResetPassword.UserId' => $user->ID,
                 'ResetPassword.Username' => $user->user_login,
                 'ResetPassword.Displayname' => $user->display_name,
@@ -5932,119 +6184,99 @@ function sucuriscan_reset_user_password( $process_form=FALSE ){
 }
 
 /**
- * List and offer a way to download the database backups generates so far.
+ * Reset all the FREE plugins, even if they are not activated.
  *
- * @param  $process_form Whether a form was submitted or not.
+ * @param  boolean $process_form Whether a form was submitted or not.
  * @return void
  */
-function sucuriscan_database_backups( $process_form=FALSE ){
+function sucuriscan_posthack_plugins( $process_form=FALSE ){
     $template_variables = array(
-        'BackupList' => '',
+        'ResetPlugin.PluginList' => '',
     );
 
-    // Process the form submission (if any).
-    sucuriscan_process_database_backups_form($process_form);
+    sucuriscan_posthack_reinstall_plugins($process_form);
+    $all_plugins = sucuriscan_get_plugins();
+    $counter = 0;
 
-    // Instantiate the database/backup library and get all files.
-    $sucuri_backup = new SucuriScanBackup();
-    $backup_files = $sucuri_backup->get_backup_files();
+    foreach( $all_plugins as $plugin_path => $plugin_data ){
+        $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
+        $plugin_type_class = ( $plugin_data['PluginType'] == 'free' ) ? 'primary' : 'warning';
+        $input_disabled = ( $plugin_data['PluginType'] == 'free' ) ? '' : 'disabled="disabled"';
+        $plugin_status = $plugin_data['IsPluginActive'] ? 'active' : 'not active';
+        $plugin_status_class = $plugin_data['IsPluginActive'] ? 'success' : 'default';
 
-    if( $backup_files ){
-        $counter = 0;
+        $template_variables['ResetPlugin.PluginList'] .= sucuriscan_get_snippet('posthack-resetplugins', array(
+            'ResetPlugin.CssClass' => $css_class,
+            'ResetPlugin.Disabled' => $input_disabled,
+            'ResetPlugin.PluginPath' => $plugin_path,
+            'ResetPlugin.Plugin' => sucuriscan_excerpt($plugin_data['Name'], 35),
+            'ResetPlugin.Version' => $plugin_data['Version'],
+            'ResetPlugin.Type' => $plugin_data['PluginType'],
+            'ResetPlugin.TypeClass' => $plugin_type_class,
+            'ResetPlugin.Status' => $plugin_status,
+            'ResetPlugin.StatusClass' => $plugin_status_class,
+        ));
 
-        foreach( $backup_files as $backup_file ){
-            $backupfile_snippet = sucuriscan_get_snippet('posthack-databasebackups', array(
-                'BackupList.FileURL' => admin_url('?sucuriscan_download=' . $backup_file->filename),
-                'BackupList.Filename' => $backup_file->filename,
-                'BackupList.Filetype' => strtoupper($backup_file->fileext),
-                'BackupList.Filesize' => ( $backup_file->filesize>0 ? "{$backup_file->filesize} (~ {$backup_file->filehumansize})" : 0 ),
-                'BackupList.Filetime' => date('Y/M/d H:i', $backup_file->filetime),
-                'BackupList.CssClass' => ( $counter % 2 == 0 ) ? '' : 'alternate',
-            ));
-
-            $template_variables['BackupList'] .= $backupfile_snippet;
-            $counter += 1;
-        }
+        $counter += 1;
     }
 
-    return sucuriscan_get_section('posthack-databasebackups', $template_variables);
+    return sucuriscan_get_section('posthack-resetplugins', $template_variables);
 }
 
 /**
- * Process the form submissions of the database backups panel.
+ * Process the request that will start the execution of the plugin
+ * reinstallation, it will check if the plugins submitted are (in fact)
+ * installed in the system, then check if they are free download from the
+ * WordPress market place, and finally download and install them.
  *
- * @param  $process_form Whether a form was submitted or not.
+ * @param  boolean $process_form Whether a form was submitted or not.
  * @return void
  */
-function sucuriscan_process_database_backups_form( $process_form=FALSE ){
-    if( $process_form && isset($_POST['sucuriscan_database_backup']) ){
+function sucuriscan_posthack_reinstall_plugins( $process_form=FALSE ){
+    if( $process_form && isset($_POST['sucuriscan_reset_plugins']) ){
+        include_once( ABSPATH . 'wp-admin/includes/class-wp-upgrader.php' );
+        include_once( ABSPATH . 'wp-admin/includes/plugin-install.php' ); // For plugins_api.
 
-        if( isset($_POST['generate_dbbackup']) ){
-            $sucuri_backup = new SucuriScanBackup();
-            $dbbackup_filepath = $sucuri_backup->all_database();
-
-            if( $dbbackup_filepath ){
-                $dbbackup_fileurl = admin_url( '?sucuriscan_download=' . basename($dbbackup_filepath) );
-                sucuriscan_info( 'Database backup generated and stored in the plugin upload folder, you can download the
-                    file from here: <a href="'.$dbbackup_fileurl.'" target="_blank"><strong>Download DB Backup</strong></a>' );
-            } else {
-                sucuriscan_error( 'Could not generate a new database backup' );
-            }
-        }
-
-        elseif( isset($_POST['remove_dbbackup']) ){
-            $sucuri_backup = new SucuriScanBackup();
-            $backups_to_remove = isset($_POST['dbbackup_filenames']) ? $_POST['dbbackup_filenames'] : array();
-            $sucuri_backup->remove_backup_file($backups_to_remove);
-        }
-
-    }
-}
-
-if( !function_exists('sucuriscan_download_file') ){
-    /**
-     * Download the SQL or Zip file generated to hold a backup of the database.
-     *
-     * @return void
-     */
-    function sucuriscan_download_file(){
         if(
-            current_user_can('manage_options')
-            AND isset($_GET['sucuriscan_download'])
+            isset($_POST['plugin_path'])
+            && !empty($_POST['plugin_path'])
         ){
-            $sucuri_backup = new SucuriScanBackup();
-            $backup_file = $sucuri_backup->get_backup_file_from_filename($_GET['sucuriscan_download']);
+            // Create an instance of the FileInfo interface.
+            $sucuri_fileinfo = new SucuriScanFileInfo();
+            $sucuri_fileinfo->ignore_files = FALSE;
+            $sucuri_fileinfo->ignore_directories = FALSE;
 
-            if( $backup_file ){
-                switch($backup_file->fileext){
-                    case 'sql':
-                        $download_filename = sprintf('%s.sql', DB_NAME);
-                        header('Content-Type: application/x-sql');
-                        break;
-                    case 'zip':
-                        $download_filename = sprintf('%s.sql.zip', DB_NAME);
-                        header('Content-Type: application/zip');
-                        break;
-                    default:
-                        $download_filename = $backup_file->filename;
-                        header('Content-Type: application/octet-stream');
-                        break;
+            // Get (possible) cached information from the installed plugins.
+            $all_plugins = sucuriscan_get_plugins();
+
+            // Loop through all the installed plugins.
+            foreach( $_POST['plugin_path'] as $plugin_path ){
+                if( array_key_exists($plugin_path, $all_plugins) ){
+                    $plugin_data = $all_plugins[$plugin_path];
+
+                    // Check if the plugin can be downloaded from the free market.
+                    if( $plugin_data['IsFreePlugin'] === TRUE ){
+                        $plugin_info = sucuriscan_get_remote_plugin_data($plugin_data['RepositoryName']);
+
+                        if( $plugin_info ){
+                            // First, remove all files/sub-folders from the plugin's directory.
+                            $plugin_directory = dirname( WP_PLUGIN_DIR . '/' . $plugin_path );
+                            $sucuri_fileinfo->remove_directory_tree($plugin_directory);
+
+                            // Install a fresh copy of the plugin's files.
+                            $upgrader_skin = new Plugin_Installer_Skin();
+                            $upgrader = new Plugin_Upgrader($upgrader_skin);
+                            $upgrader->install($plugin_info->download_link);
+                        } else {
+                            sucuriscan_error( 'Could not establish a stable connection with the WordPress plugins market.' );
+                        }
+                    }
                 }
-
-                header('Content-Disposition: attachment; filename='.$download_filename);
-                header('Content-Length: '.$backup_file->filesize);
-                header('Cache-Control: private');
-
-                if( $fd=fopen($backup_file->filepath,'r') ){
-                    while( !feof($fd) ){ echo fread($fd, 2048); }
-                }
-
-                fclose($fd);
             }
+        } else {
+            sucuriscan_error( 'You did not select a free plugin to reinstall.' );
         }
     }
-
-    add_action('admin_init', 'sucuriscan_download_file');
 }
 
 /**
@@ -6062,11 +6294,10 @@ function sucuriscan_lastlogins_page(){
     // Page pseudo-variables initialization.
     $template_variables = array(
         'PageTitle' => 'Last Logins',
-        'LastLoginsNonce' => wp_create_nonce('sucuriscan_lastlogins_nonce'),
         'LastLogins.Admins' => sucuriscan_lastlogins_admins(),
         'LastLogins.AllUsers' => sucuriscan_lastlogins_all(),
-        'UserList' => '',
-        'UserListLimit' => SUCURISCAN_LASTLOGINS_USERSLIMIT,
+        'LoggedInUsers' => sucuriscan_loggedin_users_panel(),
+        'FailedLogins' => sucuriscan_failed_logins_panel(),
     );
 
     echo sucuriscan_get_template('lastlogins', $template_variables);
@@ -6088,13 +6319,15 @@ function sucuriscan_lastlogins_admins(){
     $user_query = new WP_User_Query(array( 'role' => 'Administrator' ));
     $admins = $user_query->get_results();
 
-    foreach( (array)$admins as $admin ){
-        $admin->lastlogins = sucuriscan_get_logins(5, $admin->ID);
+    foreach( (array) $admins as $admin ){
+        $last_logins = sucuriscan_get_logins(5, 0, $admin->ID);
+        $admin->lastlogins = $last_logins['entries'];
 
         $user_snippet = array(
             'AdminUsers.Username' => $admin->user_login,
             'AdminUsers.Email' => $admin->user_email,
             'AdminUsers.LastLogins' => '',
+            'AdminUsers.RegisteredAt' => 'Undefined',
             'AdminUsers.UserURL' => admin_url('user-edit.php?user_id='.$admin->ID),
             'AdminUsers.NoLastLogins' => 'visible',
             'AdminUsers.NoLastLoginsTable' => 'hidden',
@@ -6103,6 +6336,7 @@ function sucuriscan_lastlogins_admins(){
         if( !empty($admin->lastlogins) ){
             $user_snippet['AdminUsers.NoLastLogins'] = 'hidden';
             $user_snippet['AdminUsers.NoLastLoginsTable'] = 'visible';
+            $user_snippet['AdminUsers.RegisteredAt'] = $admin->user_registered;
             $counter = 0;
 
             foreach( $admin->lastlogins as $lastlogin ){
@@ -6130,27 +6364,38 @@ function sucuriscan_lastlogins_admins(){
  * @return string Last-logings for all user accounts.
  */
 function sucuriscan_lastlogins_all(){
+    $max_per_page = SUCURISCAN_LASTLOGINS_USERSLIMIT;
+    $page_number = sucuriscan_get_page_number();
+    $offset = ($max_per_page * $page_number) - $max_per_page;
+
     $template_variables = array(
         'UserList' => '',
-        'UserListLimit' => SUCURISCAN_LASTLOGINS_USERSLIMIT,
+        'UserList.Limit' => $max_per_page,
+        'UserList.Total' => 0,
+        'UserList.Pagination' => '',
+        'UserList.PaginationVisibility' => 'hidden',
+        'UserList.NoItemsVisibility' => 'visible',
     );
 
     if( !sucuriscan_lastlogins_datastore_is_writable() ){
         sucuriscan_error( 'Last-logins datastore file is not writable: <code>'.sucuriscan_lastlogins_datastore_filepath().'</code>' );
     }
 
-    $limit = isset($_GET['limit']) ? intval($_GET['limit']) : SUCURISCAN_LASTLOGINS_USERSLIMIT;
-    $template_variables['UserList.ShowAll'] = $limit>0 ? 'visible' : 'hidden';
-
     $counter = 0;
-    $user_list = sucuriscan_get_logins($limit);
+    $last_logins = sucuriscan_get_logins( $max_per_page, $offset );
+    $template_variables['UserList.Total'] = $last_logins['total'];
 
-    foreach( $user_list as $user ){
+    if( $last_logins['total'] > $max_per_page ){
+        $template_variables['UserList.PaginationVisibility'] = 'visible';
+        $template_variables['UserList.NoItemsVisibility'] = 'hidden';
+    }
+
+    foreach( $last_logins['entries'] as $user ){
         $counter += 1;
         $css_class = ( $counter % 2 == 0 ) ? 'alternate' : '';
 
         $user_dataset = array(
-            'UserList.Number' => $counter,
+            'UserList.Number' => $user->line_num,
             'UserList.UserId' => $user->user_id,
             'UserList.Username' => '<em>Unknown</em>',
             'UserList.Displayname' => '',
@@ -6174,6 +6419,13 @@ function sucuriscan_lastlogins_all(){
         $template_variables['UserList'] .= sucuriscan_get_snippet('lastlogins-all', $user_dataset);
     }
 
+    // Generate the pagination for the list.
+    $template_variables['UserList.Pagination'] = sucuriscan_generate_pagination(
+        '%%SUCURI.URL.Lastlogins%%',
+        $last_logins['total'],
+        $max_per_page
+    );
+
     return sucuriscan_get_section('lastlogins-all', $template_variables);
 }
 
@@ -6183,9 +6435,7 @@ function sucuriscan_lastlogins_all(){
  * @return string Absolute filepath where the user's last login information is stored.
  */
 function sucuriscan_lastlogins_datastore_filepath(){
-    $plugin_upload_folder = sucuriscan_dir_filepath();
-    $datastore_filepath = rtrim($plugin_upload_folder,'/').'/sucuri-lastlogins.php';
-    return $datastore_filepath;
+    return sucuriscan_dir_filepath( 'sucuri-lastlogins.php' );
 }
 
 /**
@@ -6272,57 +6522,86 @@ if( !function_exists('sucuri_set_lastlogin') ){
  * or limiting the quantity of entries.
  *
  * @param  integer $limit   How many entries will be returned from the operation.
+ * @param  integer $offset  Initial point where the logs will be start counting.
  * @param  integer $user_id Optional user identifier to filter the results.
- * @return array            The list of all the user logins through the time until now.
+ * @return array            The list of all the user logins, and total of entries registered.
  */
-function sucuriscan_get_logins( $limit=10, $user_id=0 ){
-    $lastlogins = array();
+function sucuriscan_get_logins( $limit=10, $offset=0, $user_id=0 ){
     $datastore_filepath = sucuriscan_lastlogins_datastore_is_readable();
+    $last_logins = array(
+        'total' => 0,
+        'entries' => array(),
+    );
 
     if( $datastore_filepath ){
         $parsed_lines = 0;
-        $lastlogins_lines = array_reverse(file($datastore_filepath));
+        $data_lines = @file($datastore_filepath);
 
-        foreach( $lastlogins_lines as $line ){
-            $line = str_replace("\n", '', $line);
+        if( $data_lines ){
+            /**
+             * This count will not be 100% accurate considering that we are checking the
+             * syntax of each line in the loop bellow, there may be some lines without the
+             * right syntax which will differ from the total entries returned, but there's
+             * not other EASY way to do this without affect the performance of the code.
+             *
+             * @var integer
+             */
+            $total_lines = count($data_lines);
+            $last_logins['total'] = $total_lines;
 
-            if( preg_match('/^a:/', $line) ){
-                $user_lastlogin = unserialize($line);
+            // Get a list with the latest entries in the first positions.
+            $reversed_lines = array_reverse($data_lines);
 
-                /* Only administrators can see all login stats */
-                if( !current_user_can('manage_options') ){
-                    $current_user = wp_get_current_user();
-                    if( $current_user->user_login!=$user_lastlogin['user_login'] ){ continue; }
-                }
+            /**
+             * Only the user accounts with administrative privileges can see the logs of all
+             * the users, for the rest of the accounts they will only see their own logins.
+             *
+             * @var object
+             */
+            $current_user = wp_get_current_user();
+            $is_admin_user = (bool) current_user_can('manage_options');
 
-                /* If an User_Id was specified when this function was called, filter by that number */
-                if( $user_id>0 ){
-                    if( $user_lastlogin['user_id']!=$user_id ){ continue; }
-                }
+            for( $i=$offset; $i<$total_lines; $i++ ){
+                $line = $reversed_lines[$i] ? trim($reversed_lines[$i]) : '';
 
-                /* Get the WP_User object and add extra information from the last-login data */
-                $user_lastlogin['user_exists'] = FALSE;
-                $user_account = get_userdata($user_lastlogin['user_id']);
+                if( preg_match('/^a:/', $line) ){
+                    $last_login = @unserialize($line);
 
-                if( $user_account ){
-                    $user_lastlogin['user_exists'] = TRUE;
-
-                    foreach( $user_account->data as $var_name=>$var_value ){
-                        $user_lastlogin[$var_name] = $var_value;
+                    // Only administrators can see all login stats.
+                    if( !$is_admin_user && $current_user->user_login != $last_login['user_login'] ){
+                        continue;
                     }
+
+                    // Filter the user identifiers using the value passed tot his function.
+                    if( $user_id > 0 && $last_login['user_id'] != $user_id ){
+                        continue;
+                    }
+
+                    // Get the WP_User object and add extra information from the last-login data.
+                    $last_login['user_exists'] = FALSE;
+                    $user_account = get_userdata($last_login['user_id']);
+
+                    if( $user_account ){
+                        $last_login['user_exists'] = TRUE;
+
+                        foreach( $user_account->data as $var_name=>$var_value ){
+                            $last_login[$var_name] = $var_value;
+                        }
+                    }
+
+                    $last_login['line_num'] = $i + 1;
+                    $last_logins['entries'][] = (object) $last_login;
+                    $parsed_lines += 1;
                 }
 
-                $lastlogins[] = (object)$user_lastlogin;
-                $parsed_lines += 1;
-            }
-
-            if( preg_match('/^([0-9]+)$/', $limit) && $limit>0 ){
-                if( $parsed_lines>=$limit ){ break; }
+                if( preg_match('/^([0-9]+)$/', $limit) && $limit>0 ){
+                    if( $parsed_lines >= $limit ){ break; }
+                }
             }
         }
     }
 
-    return $lastlogins;
+    return $last_logins;
 }
 
 if( !function_exists('sucuri_login_redirect') ){
@@ -6362,18 +6641,470 @@ if( !function_exists('sucuri_get_user_lastlogin') ){
             $current_user = wp_get_current_user();
 
             // Select the penultimate entry, not the last one.
-            $user_lastlogins = sucuriscan_get_logins(2, $current_user->ID);
-            $row = isset($user_lastlogins[1]) ? $user_lastlogins[1] : FALSE;
+            $last_logins = sucuriscan_get_logins(2, 0, $current_user->ID);
 
-            if($row){
-                $message_tpl  = 'The last time you logged in was: %s, from %s - %s';
-                $lastlogin_message = sprintf( $message_tpl, date('Y/M/d'), $row->user_remoteaddr, $row->user_hostname );
-                $lastlogin_message .= chr(32).'(<a href="'.site_url('wp-admin/admin.php?page='.SUCURISCAN.'_lastlogins').'">View Last-Logins</a>)';
+            if( isset($last_logins['entries'][1]) ){
+                $row = $last_logins['entries'][1];
+
+                $message_tpl  = 'Last time you logged in was at <code>%s</code> from <code>%s</code> - <code>%s</code>';
+                $lastlogin_message = sprintf( $message_tpl, date('d/M/Y H:i'), $row->user_remoteaddr, $row->user_hostname );
+                $lastlogin_message .= chr(32).'(<a href="'.site_url('wp-admin/admin.php?page='.SUCURISCAN.'_lastlogins').'">view all logs</a>)';
                 sucuriscan_info( $lastlogin_message );
             }
         }
     }
+
     add_action('admin_notices', 'sucuriscan_get_user_lastlogin');
+}
+
+/**
+ * Print a list of all the registered users that are currently in session.
+ *
+ * @return string The HTML code displaying a list of all the users logged in at the moment.
+ */
+function sucuriscan_loggedin_users_panel(){
+    // Get user logged in list.
+    $template_variables = array(
+        'LoggedInUsers.List' => '',
+        'LoggedInUsers.Total' => 0,
+    );
+
+    $logged_in_users = sucuriscan_get_online_users(TRUE);
+    if( is_array($logged_in_users) && !empty($logged_in_users) ){
+        $template_variables['LoggedInUsers.Total'] = count($logged_in_users);
+        $counter = 0;
+
+        foreach( (array) $logged_in_users as $logged_in_user ){
+            $counter += 1;
+            $logged_in_user['last_activity_datetime'] = date('d/M/Y H:i', $logged_in_user['last_activity']);
+            $logged_in_user['user_registered_datetime'] = date('d/M/Y H:i', strtotime($logged_in_user['user_registered']));
+
+            $template_variables['LoggedInUsers.List'] .= sucuriscan_get_snippet('lastlogins-loggedin', array(
+                'LoggedInUsers.Id' => $logged_in_user['user_id'],
+                'LoggedInUsers.UserURL' => admin_url('user-edit.php?user_id='.$logged_in_user['user_id']),
+                'LoggedInUsers.UserLogin' => $logged_in_user['user_login'],
+                'LoggedInUsers.UserEmail' => $logged_in_user['user_email'],
+                'LoggedInUsers.LastActivity' => $logged_in_user['last_activity_datetime'],
+                'LoggedInUsers.Registered' => $logged_in_user['user_registered_datetime'],
+                'LoggedInUsers.RemoveAddr' => $logged_in_user['remote_addr'],
+                'LoggedInUsers.CssClass' => ( $counter % 2 == 0 ) ? '' : 'alternate'
+            ));
+        }
+    }
+
+    return sucuriscan_get_section('lastlogins-loggedin', $template_variables);
+}
+
+/**
+ * Get a list of all the registered users that are currently in session.
+ *
+ * @param  boolean $add_current_user Whether the current user should be added to the list or not.
+ * @return array                     List of registered users currently in session.
+ */
+function sucuriscan_get_online_users( $add_current_user=FALSE ){
+    $users = array();
+
+    if( sucuriscan_is_multisite() ){
+        $users = get_site_transient('online_users');
+    } else {
+        $users = get_transient('online_users');
+    }
+
+    // If not online users but current user is logged in, add it to the list.
+    if( empty($users) && $add_current_user ){
+        $current_user = wp_get_current_user();
+
+        if( $current_user->ID > 0 ){
+            sucuriscan_set_online_user( $current_user->user_login, $current_user );
+
+            return sucuriscan_get_online_users();
+        }
+    }
+
+    return $users;
+}
+
+/**
+ * Update the list of the registered users currently in session.
+ *
+ * Useful when you are removing users and need the list of the remaining users.
+ *
+ * @param  array   $logged_in_users List of registered users currently in session.
+ * @return boolean                  Either TRUE or FALSE representing the success or fail of the operation.
+ */
+function sucuriscan_save_online_users( $logged_in_users=array() ){
+    $expiration = 30 * 60;
+
+    if( sucuriscan_is_multisite() ){
+        return set_site_transient('online_users', $logged_in_users, $expiration);
+    } else {
+        return set_transient('online_users', $logged_in_users, $expiration);
+    }
+}
+
+if( !function_exists('sucuriscan_unset_online_user_on_logout') ){
+    /**
+     * Remove a logged in user from the list of registered users in session when
+     * the logout page is requested.
+     *
+     * @return void
+     */
+    function sucuriscan_unset_online_user_on_logout(){
+        $remote_addr = sucuriscan_get_remoteaddr();
+        $current_user = wp_get_current_user();
+        $user_id = $current_user->ID;
+
+        sucuriscan_unset_online_user($user_id, $remote_addr);
+    }
+
+    add_action('wp_logout', 'sucuriscan_unset_online_user_on_logout');
+}
+
+/**
+ * Remove a logged in user from the list of registered users in session using
+ * the user identifier and the ip address of the last computer used to login.
+ *
+ * @param  integer $user_id     User identifier of the account that will be logged out.
+ * @param  integer $remote_addr IP address of the computer where the user logged in.
+ * @return boolean              Either TRUE or FALSE representing the success or fail of the operation.
+ */
+function sucuriscan_unset_online_user( $user_id=0, $remote_addr=0 ){
+    $logged_in_users = sucuriscan_get_online_users();
+
+    // Remove the specified user identifier from the list.
+    if( is_array($logged_in_users) && !empty($logged_in_users) ){
+        foreach( $logged_in_users as $i => $user ){
+            if(
+                $user['user_id']==$user_id
+                && strcmp($user['remote_addr'], $remote_addr) == 0
+            ){
+                unset($logged_in_users[$i]);
+                break;
+            }
+        }
+    }
+
+    return sucuriscan_save_online_users($logged_in_users);
+}
+
+if( !function_exists('sucuriscan_set_online_user') ){
+    /**
+     * Add an user account to the list of registered users in session.
+     *
+     * @param  string  $user_login The name of the user account that just logged in the site.
+     * @param  boolean $user       The WordPress object containing all the information associated to the user.
+     * @return void
+     */
+    function sucuriscan_set_online_user( $user_login='', $user=FALSE ){
+        if( $user ){
+            // Get logged in user information.
+            $current_user = ($user instanceof WP_User) ? $user : wp_get_current_user();
+            $current_user_id = $current_user->ID;
+            $remote_addr = sucuriscan_get_remoteaddr();
+            $current_time = current_time('timestamp');
+            $logged_in_users = sucuriscan_get_online_users();
+
+            // Build the dataset array that will be stored in the transient variable.
+            $current_user_info = array(
+                'user_id' => $current_user_id,
+                'user_login' => $current_user->user_login,
+                'user_email' => $current_user->user_email,
+                'user_registered' => $current_user->user_registered,
+                'last_activity' => $current_time,
+                'remote_addr' => $remote_addr
+            );
+
+            if( !is_array($logged_in_users) || empty($logged_in_users) ){
+                $logged_in_users = array( $current_user_info );
+                sucuriscan_save_online_users($logged_in_users);
+            } else {
+                $do_nothing = FALSE;
+                $update_existing = FALSE;
+                $item_index = 0;
+
+                // Check if the user is already in the logged-in-user list and update it if is necessary.
+                foreach( $logged_in_users as $i => $user ){
+                    if(
+                        $user['user_id'] == $current_user_id
+                        && strcmp($user['remote_addr'], $remote_addr) == 0
+                    ){
+                        if( $user['last_activity'] < ($current_time - (15 * 60)) ){
+                            $update_existing = TRUE;
+                            $item_index = $i;
+                            break;
+                        } else {
+                            $do_nothing = TRUE;
+                            break;
+                        }
+                    }
+                }
+
+                if( $update_existing ){
+                    $logged_in_users[$item_index] = $current_user_info;
+                    sucuriscan_save_online_users($logged_in_users);
+                } elseif($do_nothing){
+                    // Do nothing.
+                } else {
+                    $logged_in_users[] = $current_user_info;
+                    sucuriscan_save_online_users($logged_in_users);
+                }
+            }
+        }
+    }
+
+    add_action('wp_login', 'sucuriscan_set_online_user', 10, 2);
+}
+
+/**
+ * Print a list with the failed logins occurred during the last hour.
+ *
+ * @return string A list with the failed logins occurred during the last hour.
+ */
+function sucuriscan_failed_logins_panel(){
+    $template_variables = array(
+        'FailedLogins.List' => '',
+        'FailedLogins.Total' => '',
+        'FailedLogins.MaxFailedLogins' => 0,
+        'FailedLogins.NoItemsVisibility' => 'visible',
+        'FailedLogins.WarningVisibility' => 'visible',
+    );
+
+    $max_failed_logins = sucuriscan_get_option('sucuriscan_maximum_failed_logins');
+    $notify_bruteforce_attack = sucuriscan_get_option('sucuriscan_notify_bruteforce_attack');
+    $failed_logins = sucuriscan_get_failed_logins();
+
+    if( $failed_logins ){
+        $counter = 0;
+
+        foreach( $failed_logins['entries'] as $login_data ){
+            $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
+
+            $template_variables['FailedLogins.List'] .= sucuriscan_get_snippet('lastlogins-failedlogins', array(
+                'FailedLogins.CssClass' => $css_class,
+                'FailedLogins.Num' => ($counter + 1),
+                'FailedLogins.Username' => $login_data['user_login'],
+                'FailedLogins.RemoteAddr' => $login_data['remote_addr'],
+                'FailedLogins.Datetime' => date('d/M/Y H:i', $login_data['attempt_time']),
+                'FailedLogins.UserAgent' => esc_attr($login_data['user_agent']),
+            ));
+
+            $counter += 1;
+        }
+
+        if( $counter > 0 ){
+            $template_variables['FailedLogins.NoItemsVisibility'] = 'hidden';
+        }
+    }
+
+    $template_variables['FailedLogins.MaxFailedLogins'] = $max_failed_logins;
+
+    if( $notify_bruteforce_attack == 'enabled' ){
+        $template_variables['FailedLogins.WarningVisibility'] = 'hidden';
+    }
+
+    return sucuriscan_get_section('lastlogins-failedlogins', $template_variables);
+}
+
+/**
+ * Find the full path of the file where the information of the failed logins
+ * will be stored, it will be created automatically if does not exists (and if
+ * the destination folder has permissions to write). This function can also be
+ * used to reset the content of the datastore file.
+ *
+ * @see sucuriscan_reset_failed_logins()
+ *
+ * @param  boolean $reset Whether the file will be resetted or not.
+ * @return string         The full (relative) path where the file is located.
+ */
+function sucuriscan_failed_logins_datastore_path( $reset=FALSE ){
+    $datastore_path = sucuriscan_dir_filepath('sucuri-failedlogins.php');
+    $default_content = sucuriscan_failed_logins_default_content();
+
+    // Create the file if it does not exists.
+    if( !file_exists($datastore_path) || $reset ){
+        @file_put_contents( $datastore_path, $default_content, LOCK_EX );
+    }
+
+    // Return the datastore path if the file exists (or was created).
+    if(
+        file_exists($datastore_path)
+        && is_readable($datastore_path)
+    ){
+        return $datastore_path;
+    }
+
+    return FALSE;
+}
+
+/**
+ * Default content of the datastore file where the failed logins are being kept.
+ *
+ * @return string Default content of the file.
+ */
+function sucuriscan_failed_logins_default_content(){
+    $default_content = "<?php exit(0); ?>\n";
+
+    return $default_content;
+}
+
+/**
+ * Read and parse the content of the datastore file where the failed logins are
+ * being kept. This function will also calculate the difference in time between
+ * the first and last login attempt registered in the file to later decide if
+ * there is a brute-force attack in progress (and send an email notification
+ * with the report) or reset the file after considering it a normal behavior of
+ * the site.
+ *
+ * @return array Information and entries gathered from the failed logins datastore file.
+ */
+function sucuriscan_get_failed_logins(){
+    $datastore_path = sucuriscan_failed_logins_datastore_path();
+    $default_content = sucuriscan_failed_logins_default_content();
+    $default_content_n = substr_count($default_content, "\n");
+
+    if( $datastore_path ){
+        $lines = @file($datastore_path);
+
+        if( $lines ){
+            $failed_logins = array(
+                'count' => 0,
+                'first_attempt' => 0,
+                'last_attempt' => 0,
+                'diff_time' => 0,
+                'entries' => array(),
+            );
+
+            // Read and parse all the entries found in the datastore file.
+            foreach( $lines as $i => $line ){
+                if( $i >= $default_content_n ){
+                    $login_data = json_decode( trim($line), TRUE );
+                    $login_data['attempt_date'] = date('r', $login_data['attempt_time']);
+
+                    if( !$login_data['user_agent'] ){
+                        $login_data['user_agent'] = 'Unknown';
+                    }
+
+                    $failed_logins['entries'][] = $login_data;
+                    $failed_logins['count'] += 1;
+                }
+            }
+
+            // Calculate the different time between the first and last attempt.
+            if( $failed_logins['count'] > 0 ){
+                $z = abs($failed_logins['count'] - 1);
+                $failed_logins['last_attempt'] = $failed_logins['entries'][$z]['attempt_time'];
+                $failed_logins['first_attempt'] = $failed_logins['entries'][0]['attempt_time'];
+                $failed_logins['diff_time'] = abs( $failed_logins['last_attempt'] - $failed_logins['first_attempt'] );
+
+                return $failed_logins;
+            }
+        }
+    }
+
+    return FALSE;
+}
+
+
+/**
+ * Add a new entry in the datastore file where the failed logins are being kept,
+ * this entry will contain the username, timestamp of the login attempt, remote
+ * address of the computer sending the request, and the user-agent.
+ *
+ * @param  string  $user_login Information from the current failed login event.
+ * @return boolean             Whether the information of the current failed login event was stored or not.
+ */
+function sucuriscan_log_failed_login( $user_login='' ){
+    $datastore_path = sucuriscan_failed_logins_datastore_path();
+
+    if( $datastore_path ){
+        $login_data = json_encode(array(
+            'user_login' => $user_login,
+            'attempt_time' => time(),
+            'remote_addr' => sucuriscan_get_remoteaddr(),
+            'user_agent' => sucuriscan_get_useragent(),
+        ));
+
+        $logged = @file_put_contents( $datastore_path, $login_data . "\n", FILE_APPEND );
+
+        return $logged;
+    }
+
+    return FALSE;
+}
+
+/**
+ * Read and parse all the entries in the datastore file where the failed logins
+ * are being kept, this will loop through all these items and generate a table
+ * in HTML code to send as a report via email according to the plugin settings
+ * for the email notifications.
+ *
+ * @param  array   $failed_logins Information and entries gathered from the failed logins datastore file.
+ * @return boolean                Whether the report was sent via email or not.
+ */
+function sucuriscan_report_failed_logins( $failed_logins=array() ){
+    if( $failed_logins && $failed_logins['count'] > 0 ){
+        $prettify_mails = sucuriscan_prettify_mails();
+        $mail_content = '';
+
+        if( $prettify_mails ){
+            $table_html  = '<table border="1" cellspacing="0" cellpadding="0">';
+
+            // Add the table headers.
+            $table_html .= '<thead>';
+            $table_html .= '<tr>';
+            $table_html .= '<th>Username</th>';
+            $table_html .= '<th>IP Address</th>';
+            $table_html .= '<th>Attempt Timestamp</th>';
+            $table_html .= '<th>Attempt Date/Time</th>';
+            $table_html .= '</tr>';
+            $table_html .= '</thead>';
+
+            $table_html .= '<tbody>';
+        }
+
+        foreach( $failed_logins['entries'] as $login_data ){
+            if( $prettify_mails ){
+                $table_html .= '<tr>';
+                $table_html .= '<td>' . esc_attr($login_data['user_login']) . '</td>';
+                $table_html .= '<td>' . esc_attr($login_data['remote_addr']) . '</td>';
+                $table_html .= '<td>' . $login_data['attempt_time'] . '</td>';
+                $table_html .= '<td>' . $login_data['attempt_date'] . '</td>';
+                $table_html .= '</tr>';
+            } else {
+                $mail_content .= "\n";
+                $mail_content .= 'Username: ' . $login_data['user_login'] . "\n";
+                $mail_content .= 'IP Address: ' . $login_data['remote_addr'] . "\n";
+                $mail_content .= 'Attempt Timestamp: ' . $login_data['attempt_time'] . "\n";
+                $mail_content .= 'Attempt Date/Time: ' . $login_data['attempt_date'] . "\n";
+            }
+        }
+
+        if( $prettify_mails ){
+            $table_html .= '</tbody>';
+            $table_html .= '</table>';
+            $mail_content = $table_html;
+        }
+
+        if( sucuriscan_notify_event( 'bruteforce_attack', $mail_content ) ){
+            sucuriscan_reset_failed_logins();
+
+            return TRUE;
+        }
+    }
+
+    return FALSE;
+}
+
+/**
+ * Remove all the entries in the datastore file where the failed logins are
+ * being kept. The execution of this function will not delete the file (which is
+ * likely the best move) but rather will clean its content and append the
+ * default code defined by another function above.
+ *
+ * @return boolean Whether the datastore file was resetted or not.
+ */
+function sucuriscan_reset_failed_logins(){
+    return (bool) sucuriscan_failed_logins_datastore_path(TRUE);
 }
 
 /**
@@ -6387,14 +7118,13 @@ if( !function_exists('sucuri_get_user_lastlogin') ){
  */
 function sucuriscan_infosys_page(){
     if( !current_user_can('manage_options') ){
-        wp_die(__('You do not have sufficient permissions to access this page: Sucuri Last-Logins') );
+        wp_die(__('You do not have sufficient permissions to access this page: Sucuri InfoSys') );
     }
 
     // Page pseudo-variables initialization.
     $template_variables = array(
         'PageTitle' => 'Site Info',
         'ServerInfo' => sucuriscan_server_info(),
-        'LoggedInUsers' => sucuriscan_infosys_loggedin(),
         'Cronjobs' => sucuriscan_show_cronjobs(),
         'HTAccessIntegrity' => sucuriscan_infosys_htaccess(),
         'WordpressConfig' => sucuriscan_infosys_wpconfig(),
@@ -6578,201 +7308,6 @@ function sucuriscan_infosys_wpconfig(){
 }
 
 /**
- * Print a list of all the registered users that are currently in session.
- *
- * @return string The HTML code displaying a list of all the users logged in at the moment.
- */
-function sucuriscan_infosys_loggedin(){
-    // Get user logged in list.
-    $template_variables = array(
-        'LoggedInUsers.List' => '',
-        'LoggedInUsers.Total' => 0,
-    );
-
-    $logged_in_users = sucuriscan_get_online_users(TRUE);
-    if( is_array($logged_in_users) && !empty($logged_in_users) ){
-        $template_variables['LoggedInUsers.Total'] = count($logged_in_users);
-
-        $counter = 0;
-        foreach( (array)$logged_in_users as $logged_in_user ){
-            $counter += 1;
-            $logged_in_user['last_activity_datetime'] = date('d/M/Y H:i', $logged_in_user['last_activity']);
-            $logged_in_user['user_registered_datetime'] = date('d/M/Y H:i', strtotime($logged_in_user['user_registered']));
-
-            $template_variables['LoggedInUsers.List'] .= sucuriscan_get_snippet('infosys-loggedin', array(
-                'LoggedInUsers.Id' => $logged_in_user['user_id'],
-                'LoggedInUsers.UserURL' => admin_url('user-edit.php?user_id='.$logged_in_user['user_id']),
-                'LoggedInUsers.UserLogin' => $logged_in_user['user_login'],
-                'LoggedInUsers.UserEmail' => $logged_in_user['user_email'],
-                'LoggedInUsers.LastActivity' => $logged_in_user['last_activity_datetime'],
-                'LoggedInUsers.Registered' => $logged_in_user['user_registered_datetime'],
-                'LoggedInUsers.RemoveAddr' => $logged_in_user['remote_addr'],
-                'LoggedInUsers.CssClass' => ( $counter%2 == 0 ) ? '' : 'alternate'
-            ));
-        }
-    }
-
-    return sucuriscan_get_section('infosys-loggedin', $template_variables);
-}
-
-/**
- * Get a list of all the registered users that are currently in session.
- *
- * @param  boolean $add_current_user Whether the current user should be added to the list or not.
- * @return array                     List of registered users currently in session.
- */
-function sucuriscan_get_online_users($add_current_user=FALSE){
-    $users = array();
-
-    if( sucuriscan_is_multisite() ){
-        $users = get_site_transient('online_users');
-    }else{
-        $users = get_transient('online_users');
-    }
-
-    // If not online users but current user is logged in, add it to the list.
-    if( empty($users) && $add_current_user ){
-        $current_user = wp_get_current_user();
-        if( $current_user->ID > 0 ){
-            sucuriscan_set_online_user($current_user->user_login, $current_user);
-            return sucuriscan_get_online_users();
-        }
-    }
-
-    return $users;
-}
-
-/**
- * Update the list of the registered users currently in session.
- *
- * Useful when you are removing users and need the list of the remaining users.
- *
- * @param  array   $logged_in_users List of registered users currently in session.
- * @return boolean                  Either TRUE or FALSE representing the success or fail of the operation.
- */
-function sucuriscan_save_online_users($logged_in_users=array()){
-    $expiration = 30 * 60;
-    if( sucuriscan_is_multisite() ){
-        return set_site_transient('online_users', $logged_in_users, $expiration);
-    }else{
-        return set_transient('online_users', $logged_in_users, $expiration);
-    }
-}
-
-if( !function_exists('sucuriscan_unset_online_user_on_logout') ){
-    /**
-     * Remove a logged in user from the list of registered users in session when
-     * the logout page is requested.
-     *
-     * @return void
-     */
-    function sucuriscan_unset_online_user_on_logout(){
-        $current_user = wp_get_current_user();
-        $user_id = $current_user->ID;
-        $remote_addr = sucuriscan_get_remoteaddr();
-
-        sucuriscan_unset_online_user($user_id, $remote_addr);
-    }
-
-    add_action('wp_logout', 'sucuriscan_unset_online_user_on_logout');
-}
-
-/**
- * Remove a logged in user from the list of registered users in session using
- * the user identifier and the ip address of the last computer used to login.
- *
- * @param  integer $user_id     User identifier of the account that will be logged out.
- * @param  integer $remote_addr IP address of the computer where the user logged in.
- * @return boolean              Either TRUE or FALSE representing the success or fail of the operation.
- */
-function sucuriscan_unset_online_user($user_id=0, $remote_addr=0){
-    $logged_in_users = sucuriscan_get_online_users();
-
-    // Remove the specified user identifier from the list.
-    if( is_array($logged_in_users) && !empty($logged_in_users) ){
-        foreach($logged_in_users as $i=>$user){
-            if(
-                $user['user_id']==$user_id
-                && strcmp($user['remote_addr'],$remote_addr)==0
-            ){
-                unset($logged_in_users[$i]);
-                break;
-            }
-        }
-    }
-
-    return sucuriscan_save_online_users($logged_in_users);
-}
-
-if( !function_exists('sucuriscan_set_online_user') ){
-    /**
-     * Add an user account to the list of registered users in session.
-     *
-     * @param  string  $user_login The name of the user account that just logged in the site.
-     * @param  boolean $user       The WordPress object containing all the information associated to the user.
-     * @return void
-     */
-    function sucuriscan_set_online_user($user_login='', $user=FALSE){
-        if( $user ){
-            // Get logged in user information.
-            $current_user = ($user instanceof WP_User) ? $user : wp_get_current_user();
-            $current_user_id = $current_user->ID;
-            $remote_addr = sucuriscan_get_remoteaddr();
-            $current_time = current_time('timestamp');
-            $logged_in_users = sucuriscan_get_online_users();
-
-            // Build the dataset array that will be stored in the transient variable.
-            $current_user_info = array(
-                'user_id' => $current_user_id,
-                'user_login' => $current_user->user_login,
-                'user_email' => $current_user->user_email,
-                'user_registered' => $current_user->user_registered,
-                'last_activity' => $current_time,
-                'remote_addr' => $remote_addr
-            );
-
-            if( !is_array($logged_in_users) || empty($logged_in_users) ){
-                $logged_in_users = array( $current_user_info );
-                sucuriscan_save_online_users($logged_in_users);
-            }else{
-                $do_nothing = FALSE;
-                $update_existing = FALSE;
-                $item_index = 0;
-
-                // Check if the user is already in the logged-in-user list and update it if is necessary.
-                foreach($logged_in_users as $i=>$user){
-                    if(
-                        $user['user_id']==$current_user_id
-                        && strcmp($user['remote_addr'],$remote_addr)==0
-                    ){
-                        if( $user['last_activity'] < ($current_time - (15 * 60)) ){
-                            $update_existing = TRUE;
-                            $item_index = $i;
-                            break;
-                        }else{
-                            $do_nothing = TRUE;
-                            break;
-                        }
-                    }
-                }
-
-                if($update_existing){
-                    $logged_in_users[$item_index] = $current_user_info;
-                    sucuriscan_save_online_users($logged_in_users);
-                }else if($do_nothing){
-                    // Do nothing.
-                }else{
-                    $logged_in_users[] = $current_user_info;
-                    sucuriscan_save_online_users($logged_in_users);
-                }
-            }
-        }
-    }
-
-    add_action('wp_login', 'sucuriscan_set_online_user', 10, 2);
-}
-
-/**
  * Retrieve a list with the scheduled tasks configured for the site.
  *
  * @return array A list of pseudo-variables and values that will replace them in the HTML template.
@@ -6858,7 +7393,6 @@ function sucuriscan_server_info(){
     return sucuriscan_get_section('infosys-serverinfo', $template_variables);
 }
 
-
 /**
  * Global variables used by the functions bellow.
  *
@@ -6871,6 +7405,7 @@ $sucuriscan_notify_options = array(
     'sucuriscan_notify_user_registration' => 'Enable email alerts for new user registration',
     'sucuriscan_notify_success_login' => 'Enable email alerts for successful logins',
     'sucuriscan_notify_failed_login' => 'Enable email alerts for failed logins',
+    'sucuriscan_notify_bruteforce_attack' => 'Enable email alerts for login brute-force attack',
     'sucuriscan_notify_post_publication' => 'Enable email alerts for new site content',
     'sucuriscan_notify_theme_editor' => 'Enable email alerts when a file is modified via the theme/plugin editor',
     'sucuriscan_notify_website_updated' => 'Enable email alerts when your website is updated',
@@ -6897,9 +7432,32 @@ $sucuriscan_schedule_allowed = array(
 );
 
 $sucuriscan_interface_allowed = array(
-    'spl' => 'SPL (Standard PHP Library)',
-    'opendir' => 'OpenDir (Medium performance)',
-    'glob' => 'Glob (Low performance)',
+    'spl' => 'SPL (high performance)',
+    'opendir' => 'OpenDir (medium)',
+    'glob' => 'Glob (low)',
+);
+
+$sucuriscan_emails_per_hour = array(
+    '5' => 'Maximum 5 per hour',
+    '10' => 'Maximum 10 per hour',
+    '20' => 'Maximum 20 per hour',
+    '40' => 'Maximum 40 per hour',
+    '80' => 'Maximum 80 per hour',
+    '160' => 'Maximum 160 per hour',
+    'unlimited' => 'Unlimited',
+);
+
+$sucuriscan_maximum_failed_logins = array(
+    '30' => '30 failed logins per hour',
+    '60' => '60 failed logins per hour',
+    '120' => '120 failed logins per hour',
+    '240' => '240 failed logins per hour',
+    '480' => '480 failed logins per hour',
+);
+
+$sucuriscan_verify_ssl_cert = array(
+    'true' => 'Verify peer\'s cert',
+    'false' => 'Stop peer\'s cert verification',
 );
 
 /**
@@ -6908,99 +7466,12 @@ $sucuriscan_interface_allowed = array(
  * @return void
  */
 function sucuriscan_settings_page(){
-
-    global $sucuriscan_schedule_allowed, $sucuriscan_interface_allowed, $sucuriscan_notify_options;
-
-    // Check the nonce here to populate the value through other functions.
-    $page_nonce = sucuriscan_check_page_nonce();
-
-    // Process all form submissions.
-    sucuriscan_settings_form_submissions($page_nonce);
-
-    // Register the site, get its API key, and store it locally for future usage.
-    $api_registered_modal = '';
-
-    // Whether the form to manually add the API key should be shown or not.
-    $display_manual_key_form = (bool) isset($_POST['sucuriscan_recover_api_key']);
-
-    if( $page_nonce && isset($_POST['sucuriscan_wordpress_apikey']) ){
-        $registered = sucuriscan_register_site();
-
-        if( $registered ){
-            $api_registered_modal = sucuriscan_get_modal('settings-apiregistered', array(
-                'Title' => 'Site registered successfully',
-                'CssClass' => 'sucuriscan-apikey-registered',
-            ));
-        } else {
-            $display_manual_key_form = TRUE;
-        }
-    }
-
-    // Get initial variables to decide some things bellow.
-    $api_key = sucuriscan_wordpress_apikey();
-    $scan_freq = sucuriscan_get_option('sucuriscan_scan_frequency');
-    $scan_interface = sucuriscan_get_option('sucuriscan_scan_interface');
-    $runtime_scan = sucuriscan_get_option('sucuriscan_runtime');
-    $runtime_scan_human = date( 'd/M/Y H:i:s', $runtime_scan );
-
-    // Generate HTML code to configure the scanning frequency from the plugin settings.
-    $scan_freq_options = '';
-    foreach( $sucuriscan_schedule_allowed as $schedule => $schedule_label ){
-        $selected = ( $scan_freq==$schedule ? 'selected="selected"' : '' );
-        $scan_freq_options .= sprintf(
-            '<option value="%s" %s>%s</option>',
-            $schedule, $selected, $schedule_label
-        );
-    }
-
-    // Generate HTML code to configure the scanning interface from the plugin settings.
-    $scan_interface_options = '';
-    foreach( $sucuriscan_interface_allowed as $interface_name => $interface_desc ){
-        $selected = ( $scan_interface==$interface_name ? 'selected="selected"' : '' );
-        $scan_interface_options .= sprintf(
-            '<option value="%s" %s>%s</option>',
-            $interface_name, $selected, $interface_desc
-        );
-    }
-
-    // Generate HTML code to configure the notifications of the plugin.
-    $notification_options = '';
-    $counter = 0;
-
-    foreach( $sucuriscan_notify_options as $alert_type => $alert_label ){
-        $alert_value = sucuriscan_get_option($alert_type);
-        $checked = ( $alert_value == 'enabled' ? 'checked="checked"' : '' );
-        $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
-
-        $notification_options .= sucuriscan_get_snippet('settings-notification', array(
-            'Notification.CssClass' => $css_class,
-            'Notification.Name' => $alert_type,
-            'Notification.Checked' => $checked,
-            'Notification.Label' => $alert_label,
-        ));
-        $counter += 1;
-    }
-
     $template_variables = array(
         'PageTitle' => 'Settings',
-        'APIKey' => $api_key,
-        'APIKey.RecoverVisibility' => ( $api_key || $display_manual_key_form ? 'hidden' : 'visible' ),
-        'APIKey.ManualKeyFormVisibility' => ( $display_manual_key_form ? 'visible' : 'hidden' ),
-        'APIKey.RemoveVisibility' => ( $api_key ? 'visible' : 'hidden' ),
-        'ScanningFrequency' => 'Undefined',
-        'ScanningFrequencyOptions' => $scan_freq_options,
-        'ScanningInterface' => ( $scan_interface ? $sucuriscan_interface_allowed[$scan_interface] : 'Undefined' ),
-        'ScanningInterfaceOptions' => $scan_interface_options,
-        'ScanningInterfaceVisibility' => ( SucuriScanFileInfo::is_spl_available() ? 'hidden' : 'visible' ),
-        'ScanningRuntime' => $runtime_scan,
-        'ScanningRuntimeHuman' => $runtime_scan_human,
-        'NotificationOptions' => $notification_options,
-        'ModalWhenAPIRegistered' => $api_registered_modal,
+        'Settings.General' => sucuriscan_settings_general(),
+        'Settings.Notifications' => sucuriscan_settings_notifications(),
+        'Settings.IgnoreRules' => sucuriscan_settings_ignore_rules(),
     );
-
-    if( array_key_exists($scan_freq, $sucuriscan_schedule_allowed) ){
-        $template_variables['ScanningFrequency'] = $sucuriscan_schedule_allowed[$scan_freq];
-    }
 
     echo sucuriscan_get_template('settings', $template_variables);
 }
@@ -7015,7 +7486,12 @@ function sucuriscan_settings_page(){
  */
 function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
 
-    global $sucuriscan_schedule_allowed, $sucuriscan_interface_allowed, $sucuriscan_notify_options;
+    global $sucuriscan_schedule_allowed,
+        $sucuriscan_interface_allowed,
+        $sucuriscan_notify_options,
+        $sucuriscan_emails_per_hour,
+        $sucuriscan_maximum_failed_logins,
+        $sucuriscan_verify_ssl_cert;
 
     // Use this conditional to avoid double checking.
     if( is_null($page_nonce) ){
@@ -7079,20 +7555,84 @@ function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
             }
         }
 
+        // Update the value for the maximum emails per hour.
+        if( isset($_POST['sucuriscan_emails_per_hour']) ){
+            $per_hour = esc_attr($_POST['sucuriscan_emails_per_hour']);
+
+            if( array_key_exists($per_hour, $sucuriscan_emails_per_hour) ){
+                $per_hour_label = $sucuriscan_emails_per_hour[$per_hour];
+                update_option( 'sucuriscan_emails_per_hour', $per_hour );
+                sucuriscan_notify_event( 'plugin_change', 'Maximum email notifications per hour changed' );
+                sucuriscan_info( 'E-mail notifications: <code>' . $per_hour_label . '</code>' );
+            } else {
+                sucuriscan_error( 'Invalid value for the maximum emails per hour.' );
+            }
+        }
+
+        // Update the email where the event notifications will be sent.
+        if( isset($_POST['sucuriscan_notify_to']) ){
+            $new_email = esc_attr($_POST['sucuriscan_notify_to']);
+
+            if( is_valid_email($new_email) ){
+                update_option( 'sucuriscan_notify_to', $new_email );
+                sucuriscan_notify_event( 'plugin_change', 'Email address to get the event notifications was changed' );
+                sucuriscan_info( 'All the event notifications will be sent to the email specified.' );
+            } else {
+                sucuriscan_error( 'Email format not supported.' );
+            }
+        }
+
+        // Update the maximum failed logins per hour before consider it a brute-force attack.
+        if( isset($_POST['sucuriscan_maximum_failed_logins']) ){
+            $failed_logins = esc_attr($_POST['sucuriscan_maximum_failed_logins']);
+
+            if( array_key_exists($failed_logins, $sucuriscan_maximum_failed_logins) ){
+                update_option( 'sucuriscan_maximum_failed_logins', $failed_logins );
+                sucuriscan_notify_event( 'plugin_change', 'Maximum failed logins before consider it a brute-force attack was changed' );
+                sucuriscan_info(
+                    'A brute-force attack event will be reported if there are more than '
+                    . '<code>' . $failed_logins . '</code> failed logins per hour.'
+                );
+            } else {
+                sucuriscan_error( 'Invalid value for the maximum failed logins per hour before consider it a brute-force attack.' );
+            }
+        }
+
+        // Update the configuration for the SSL certificate verification.
+        if( isset($_POST['sucuriscan_verify_ssl_cert']) ){
+            $verify_ssl_cert = esc_attr($_POST['sucuriscan_verify_ssl_cert']);
+
+            if( array_key_exists($verify_ssl_cert, $sucuriscan_verify_ssl_cert) ){
+                update_option( 'sucuriscan_verify_ssl_cert', $verify_ssl_cert );
+                $message = 'SSL certificates will not be verified when executing a HTTP request '
+                    . 'while communicating with the Sucuri API service, nor the official '
+                    . 'WordPress API.';
+                sucuriscan_notify_event( 'plugin_change', $message );
+                sucuriscan_info( $message );
+            } else {
+                sucuriscan_error( 'Invalid value for the SSL certificate verification.' );
+            }
+        }
+
         // Update the notification settings.
         if(
             isset($_POST['sucuriscan_save_notification_settings'])
             && isset($sucuriscan_notify_options)
         ){
+            $options_updated_counter = 0;
+
             foreach( $sucuriscan_notify_options as $alert_type => $alert_label ){
                 if( isset($_POST[$alert_type]) ){
                     $option_value = ( $_POST[$alert_type] == 1 ? 'enabled' : 'disabled' );
                     update_option( $alert_type, $option_value );
-                    sucuriscan_notify_event( 'plugin_change', 'Email notification settings changed' );
+                    $options_updated_counter += 1;
                 }
             }
 
-            sucuriscan_info( 'Notification settings updated.' );
+            if( $options_updated_counter > 0 ){
+                sucuriscan_notify_event( 'plugin_change', 'Email notification settings changed' );
+                sucuriscan_info( 'Notification settings updated.' );
+            }
         }
 
         // Reset all the plugin's options.
@@ -7115,7 +7655,266 @@ function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
             sucuriscan_info( 'All plugin options were resetted successfully' );
         }
 
+        // Ignore a new event for email notifications.
+        if(
+            isset($_POST['sucuriscan_ignorerule_action'])
+            && isset($_POST['sucuriscan_ignorerule'])
+        ){
+            if( $_POST['sucuriscan_ignorerule_action'] == 'add' ){
+                $event_ignored = sucuriscan_add_ignored_event( $_POST['sucuriscan_ignorerule'] );
+
+                if( $event_ignored ){
+                    sucuriscan_info( 'Post-type ignored successfully.' );
+                } else {
+                    sucuriscan_error( 'The post-type is invalid or it may be already ignored.' );
+                }
+            } else {
+                sucuriscan_remove_ignored_event( $_POST['sucuriscan_ignorerule'] );
+                sucuriscan_info( 'Post-type removed from the list successfully.' );
+            }
+        }
+
     }
 
+}
+
+/**
+ * Read and parse the content of the general settings template.
+ *
+ * @return string Parsed HTML code for the general settings panel.
+ */
+function sucuriscan_settings_general(){
+
+    global $sucuriscan_schedule_allowed,
+        $sucuriscan_interface_allowed,
+        $sucuriscan_emails_per_hour,
+        $sucuriscan_maximum_failed_logins,
+        $sucuriscan_verify_ssl_cert;
+
+    // Check the nonce here to populate the value through other functions.
+    $page_nonce = sucuriscan_check_page_nonce();
+
+    // Process all form submissions.
+    sucuriscan_settings_form_submissions($page_nonce);
+
+    // Register the site, get its API key, and store it locally for future usage.
+    $api_registered_modal = '';
+
+    // Whether the form to manually add the API key should be shown or not.
+    $display_manual_key_form = (bool) isset($_POST['sucuriscan_recover_api_key']);
+
+    if( $page_nonce && isset($_POST['sucuriscan_wordpress_apikey']) ){
+        $registered = sucuriscan_register_site();
+
+        if( $registered ){
+            $api_registered_modal = sucuriscan_get_modal('settings-apiregistered', array(
+                'Title' => 'Site registered successfully',
+                'CssClass' => 'sucuriscan-apikey-registered',
+            ));
+        } else {
+            $display_manual_key_form = TRUE;
+        }
+    }
+
+    // Get initial variables to decide some things bellow.
+    $api_key = sucuriscan_wordpress_apikey();
+    $scan_freq = sucuriscan_get_option('sucuriscan_scan_frequency');
+    $scan_interface = sucuriscan_get_option('sucuriscan_scan_interface');
+    $emails_per_hour = sucuriscan_get_option('sucuriscan_emails_per_hour');
+    $maximum_failed_logins = sucuriscan_get_option('sucuriscan_maximum_failed_logins');
+    $verify_ssl_cert = sucuriscan_get_option('sucuriscan_verify_ssl_cert');
+    $runtime_scan = sucuriscan_get_option('sucuriscan_runtime');
+    $runtime_scan_human = date( 'd/M/Y H:i:s', $runtime_scan );
+
+    // Generate HTML code to configure the scanning frequency from the plugin settings.
+    $scan_freq_options = '';
+    foreach( $sucuriscan_schedule_allowed as $schedule => $schedule_label ){
+        $selected = ( $scan_freq==$schedule ? 'selected="selected"' : '' );
+        $scan_freq_options .= sprintf(
+            '<option value="%s" %s>%s</option>',
+            $schedule, $selected, $schedule_label
+        );
+    }
+
+    // Generate HTML code to configure the scanning interface from the plugin settings.
+    $scan_interface_options = '';
+    foreach( $sucuriscan_interface_allowed as $interface_name => $interface_desc ){
+        $selected = ( $scan_interface == $interface_name ? 'selected="selected"' : '' );
+        $scan_interface_options .= sprintf(
+            '<option value="%s" %s>%s</option>',
+            $interface_name,
+            $selected,
+            $interface_desc
+        );
+    }
+
+    // Generate the HTML code to configure the emails per hour.
+    $emails_per_hour_options = '';
+    foreach( $sucuriscan_emails_per_hour as $per_hour => $per_hour_label ){
+        $selected = ( $emails_per_hour == $per_hour ? 'selected="selected"' : '' );
+        $emails_per_hour_options .= sprintf(
+            '<option value="%s" %s>%s</option>',
+            $per_hour,
+            $selected,
+            $per_hour_label
+        );
+    }
+
+    // Generate the HTML code to configure the emails per hour.
+    $maximum_failed_logins_options = '';
+    foreach( $sucuriscan_maximum_failed_logins as $per_hour => $per_hour_label ){
+        $selected = ( $maximum_failed_logins == $per_hour ? 'selected="selected"' : '' );
+        $maximum_failed_logins_options .= sprintf(
+            '<option value="%s" %s>%s</option>',
+            $per_hour,
+            $selected,
+            $per_hour_label
+        );
+    }
+
+    // Generate the HTML code to configure the emails per hour.
+    $verify_ssl_cert_options = '';
+    foreach( $sucuriscan_verify_ssl_cert as $verify => $verify_label ){
+        $selected = ( $verify_ssl_cert == $verify ? 'selected="selected"' : '' );
+        $verify_ssl_cert_options .= sprintf(
+            '<option value="%s" %s>%s</option>',
+            $verify,
+            $selected,
+            $verify_label
+        );
+    }
+
+    $template_variables = array(
+        'APIKey' => $api_key,
+        'APIKey.RecoverVisibility' => ( $api_key || $display_manual_key_form ? 'hidden' : 'visible' ),
+        'APIKey.ManualKeyFormVisibility' => ( $display_manual_key_form ? 'visible' : 'hidden' ),
+        'APIKey.RemoveVisibility' => ( $api_key ? 'visible' : 'hidden' ),
+        'ScanningFrequency' => 'Undefined',
+        'ScanningFrequencyOptions' => $scan_freq_options,
+        'ScanningInterface' => ( $scan_interface ? $sucuriscan_interface_allowed[$scan_interface] : 'Undefined' ),
+        'ScanningInterfaceOptions' => $scan_interface_options,
+        'ScanningInterfaceVisibility' => ( SucuriScanFileInfo::is_spl_available() ? 'hidden' : 'visible' ),
+        'ScanningRuntime' => $runtime_scan,
+        'ScanningRuntimeHuman' => $runtime_scan_human,
+        'ModalWhenAPIRegistered' => $api_registered_modal,
+        'NotifyTo' => sucuriscan_get_option('sucuriscan_notify_to'),
+        'EmailsPerHour' => 'Undefined',
+        'EmailsPerHourOptions' => $emails_per_hour_options,
+        'MaximumFailedLogins' => 'Undefined',
+        'MaximumFailedLoginsOptions' => $maximum_failed_logins_options,
+        'VerifySSLCert' => 'Undefined',
+        'VerifySSLCertOptions' => $verify_ssl_cert_options,
+        'ModalWhenAPIRegistered' => $api_registered_modal,
+    );
+
+    if( array_key_exists($scan_freq, $sucuriscan_schedule_allowed) ){
+        $template_variables['ScanningFrequency'] = $sucuriscan_schedule_allowed[$scan_freq];
+    }
+
+    if( array_key_exists($emails_per_hour, $sucuriscan_emails_per_hour) ){
+        $template_variables['EmailsPerHour'] = $sucuriscan_emails_per_hour[$emails_per_hour];
+    }
+
+    if( array_key_exists($maximum_failed_logins, $sucuriscan_maximum_failed_logins) ){
+        $template_variables['MaximumFailedLogins'] = $sucuriscan_maximum_failed_logins[$maximum_failed_logins];
+    }
+
+    if( array_key_exists($verify_ssl_cert, $sucuriscan_verify_ssl_cert) ){
+        $template_variables['VerifySSLCert'] = $sucuriscan_verify_ssl_cert[$verify_ssl_cert];
+    }
+
+    return sucuriscan_get_section('settings-general', $template_variables);
+}
+
+/**
+ * Read and parse the content of the notification settings template.
+ *
+ * @return string Parsed HTML code for the notification settings panel.
+ */
+function sucuriscan_settings_notifications(){
+    global $sucuriscan_notify_options;
+
+    $template_variables = array(
+        'NotificationOptions' => '',
+    );
+
+    $counter = 0;
+
+    foreach( $sucuriscan_notify_options as $alert_type => $alert_label ){
+        $alert_value = sucuriscan_get_option($alert_type);
+        $checked = ( $alert_value == 'enabled' ? 'checked="checked"' : '' );
+        $css_class = ( $counter % 2 == 0 ) ? 'alternate' : '';
+
+        $template_variables['NotificationOptions'] .= sucuriscan_get_snippet('settings-notifications', array(
+            'Notification.CssClass' => $css_class,
+            'Notification.Name' => $alert_type,
+            'Notification.Checked' => $checked,
+            'Notification.Label' => $alert_label,
+        ));
+        $counter += 1;
+    }
+
+    return sucuriscan_get_section('settings-notifications', $template_variables);
+}
+
+/**
+ * Read and parse the content of the ignored-rules settings template.
+ *
+ * @return string Parsed HTML code for the ignored-rules settings panel.
+ */
+function sucuriscan_settings_ignore_rules(){
+    $notify_new_site_content = sucuriscan_get_option('sucuriscan_notify_post_publication');
+
+    $template_variables = array(
+        'IgnoreRules.MessageVisibility' => 'visible',
+        'IgnoreRules.TableVisibility' => 'hidden',
+        'IgnoreRules.PostTypes' => '',
+    );
+
+    if( $notify_new_site_content == 'enabled' ){
+        $post_types = get_post_types();
+        $ignored_events = sucuriscan_get_ignored_events();
+
+        $template_variables['IgnoreRules.MessageVisibility'] = 'hidden';
+        $template_variables['IgnoreRules.TableVisibility'] = 'visible';
+        $counter = 0;
+
+        foreach( $post_types as $post_type => $post_type_object ){
+            $counter += 1;
+            $css_class = ( $counter % 2 == 0 ) ? 'alternate' : '';
+            $post_type_title = ucwords( str_replace('_', chr(32), $post_type) );
+
+            if( array_key_exists($post_type, $ignored_events) ){
+                $is_ignored_text = 'YES';
+                $was_ignored_at = @date('d/M/Y - H:i:s', $ignored_events[$post_type]);
+                $is_ignored_class = 'danger';
+                $button_action = 'remove';
+                $button_class = 'button-primary';
+                $button_text = 'Allow';
+            } else {
+                $is_ignored_text = 'NO';
+                $button_action = 'add';
+                $was_ignored_at = 'Not ignored';
+                $is_ignored_class = 'success';
+                $button_class = 'button-primary button-danger';
+                $button_text = 'Ignore';
+            }
+
+            $template_variables['IgnoreRules.PostTypes'] .= sucuriscan_get_snippet('settings-ignorerules', array(
+                'IgnoreRules.CssClass' => $css_class,
+                'IgnoreRules.Num' => $counter,
+                'IgnoreRules.PostTypeTitle' => $post_type_title,
+                'IgnoreRules.IsIgnored' => $is_ignored_text,
+                'IgnoreRules.WasIgnoredAt' => $was_ignored_at,
+                'IgnoreRules.IsIgnoredClass' => $is_ignored_class,
+                'IgnoreRules.PostType' => $post_type,
+                'IgnoreRules.Action' => $button_action,
+                'IgnoreRules.ButtonClass' => 'button ' . $button_class,
+                'IgnoreRules.ButtonText' => $button_text,
+            ));
+        }
+    }
+
+    return sucuriscan_get_section('settings-ignorerules', $template_variables);
 }
 
