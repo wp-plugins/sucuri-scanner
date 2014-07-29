@@ -7949,7 +7949,7 @@ function sucuriscan_settings_general(){
     // Whether the form to manually add the API key should be shown or not.
     $display_manual_key_form = (bool) SucuriScanRequest::post(':recover_api_key');
 
-    if( $page_nonce && SucuriScanRequest::post(':wordpress_apikey') ){
+    if( $page_nonce && SucuriScanRequest::post(':plugin_api_key') !== FALSE ){
         $registered = SucuriScanAPI::register_site();
 
         if( $registered ){
