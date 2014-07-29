@@ -2,7 +2,10 @@
 <div class="sucuriscan-tabs">
     <ul>
         <li>
-            <a href="#" data-tabname="server-info">Plugin &amp; Server Info</a>
+            <a href="#" data-tabname="server-info">Plugin & Server Info</a>
+        </li>
+        <li>
+            <a href="#" data-tabname="loggedin-users">Logged In Users</a>
         </li>
         <li>
             <a href="#" data-tabname="wordpress-cronjobs">WordPress Cronjobs</a>
@@ -18,6 +21,10 @@
     <div class="sucuriscan-tab-containers">
         <div id="sucuriscan-server-info">
             %%SUCURI.ServerInfo%%
+        </div>
+
+        <div id="sucuriscan-loggedin-users">
+            %%SUCURI.LoggedInUsers%%
         </div>
 
         <div id="sucuriscan-wordpress-cronjobs">

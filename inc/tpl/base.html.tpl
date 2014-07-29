@@ -26,7 +26,7 @@
 
             <div class="sucuriscan-ad">
                 <h2>Is your website infected with malware? Blacklisted by Google?</h2>
-                <p>Don't know where to start? Get cleared today by <a href="http://sucuri.net/signup" target="_blank">Sucuri Security</a>!</p>
+                <p>Don't know where to start? Get cleared today by <a href="http://sucuri.net/signup">Sucuri Security</a>!</p>
                 <p><a href="http://sucuri.net/tour" target="_blank" class="button-primary">Read more</a></p>
             </div>
 

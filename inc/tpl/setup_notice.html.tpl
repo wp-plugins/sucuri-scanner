@@ -14,7 +14,7 @@
     <div class="sucuriscan-pull-right sucuriscan-setup-form">
         <form action="%%SUCURI.URL.Settings%%" method="post">
             <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
-            <button type="submit" name="sucuriscan_plugin_api_key" class="button button-primary button-hero">
+            <button type="submit" name="sucuriscan_wordpress_apikey" class="button button-primary button-hero">
                 <span class="sucuriscan-button-title">Generate API key</span>
                 <span class="sucuriscan-button-subtitle">for <b>%%SUCURI.CleanDomain%%</b> / <b>%%SUCURI.AdminEmail%%</b></span>
             </button>

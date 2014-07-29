@@ -11,7 +11,7 @@
                 modifies this file to be able to handle pretty permalinks.
             </p>
 
-            <div class="sucuriscan-inline-alert-%%SUCURI.HTAccess.MessageType%% sucuriscan-%%SUCURI.HTAccess.MessageVisible%%">
+            <div class="sucuriscan-alert-%%SUCURI.HTAccess.MessageType%% %%SUCURI.HTAccess.MessageVisible%%">
                 <p>%%SUCURI.HTAccess.Message%%</p>
             </div>
 

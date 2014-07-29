@@ -1,13 +1,13 @@
 
 <tr>
-    <td><a href="mailto:%%SUCURI.AdminUsers.Email%%">%%SUCURI.AdminUsers.Username%%</a></td>
-    <td>%%SUCURI.AdminUsers.RegisteredAt%%</td>
+    <td>%%SUCURI.AdminUsers.Username%%</td>
+    <td><a href="mailto:%%SUCURI.AdminUsers.Email%%">%%SUCURI.AdminUsers.Email%%</a></td>
     <td class="adminusers-lastlogin">
         <div class="sucuriscan-%%SUCURI.AdminUsers.NoLastLogins%%">
             <i>There isn't information available for this account.</i>
         </div>
 
-        <table class="widefat sucuriscan-admins-lastlogins sucuriscan-%%SUCURI.AdminUsers.NoLastLoginsTable%%">
+        <table class="widefat sucuriscan-%%SUCURI.AdminUsers.NoLastLoginsTable%%">
             <thead>
                 <tr>
                     <th>IP Address</th>

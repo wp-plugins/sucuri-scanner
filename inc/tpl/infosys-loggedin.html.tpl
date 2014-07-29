@@ -2,7 +2,7 @@
 <table class="wp-list-table widefat sucuriscan-loggedin-users">
     <thead>
         <tr>
-            <th colspan="6">Logged in users (%%SUCURI.LoggedInUsers.Total%% users)</th>
+            <th colspan="6">Logged in Users (%%SUCURI.LoggedInUsers.Total%% users)</th>
         </tr>
         <tr>
             <th>ID</th>
