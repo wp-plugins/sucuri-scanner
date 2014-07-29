@@ -5956,8 +5956,8 @@ function sucuriscan_ignore_integrity_filepath( $filepath='' ){
 
     if(
         in_array($filepath, $ignore_files)
-        || strpos($filepath, 'wp-content/themes') === 0
-        || strpos($filepath, 'wp-content/plugins') === 0
+        || strpos($filepath, 'wp-content/themes') !== FALSE
+        || strpos($filepath, 'wp-content/plugins') !== FALSE
     ){
         return TRUE;
     }
