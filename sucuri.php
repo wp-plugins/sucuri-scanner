@@ -5943,6 +5943,8 @@ function sucuriscan_ignore_integrity_filepath( $filepath='' ){
     $ignore_files = array(
         'favicon.ico',
         '.htaccess',
+        'sitemap.xml',
+        'sitemap.xml.gz',
         'wp-config.php',
         'wp-pass.php',
         'wp-rss.php',
