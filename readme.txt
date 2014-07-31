@@ -3,16 +3,16 @@ Contributors: dd@sucuri.net
 Donate Link: http://sitecheck.sucuri.net
 Tags: malware, security, firewall, scan, spam, virus, sucuri, protection
 Requires at least:3.2
-Stable tag:1.6.4
+Stable tag:1.6.5
 Tested up to: 3.9.1
 
-The Sucuri Security - Auditing, SiteCheck Malware Scanner and Hardening is a security plugin enables you to scan your WordPress site using Sucuri SiteCheck for security and malware issues, and also verifies the security integrity of your core files right in your dashboard. It also includes post-hack security ions to help you reset passwords and secret keys in case it has been already hacked, or infected with malware.
+The Sucuri Security - Auditing, SiteCheck Malware Scanner and Hardening is a security plugin enables you to scan your WordPress site using Sucuri SiteCheck for security and malware issues, and also verifies the security integrity of your core files right in your dashboard. It includes audit trails and post-hack security ions to help you reset passwords and secret keys in case it has been already hacked, or infected with malware.
 
 == Description ==
 
-Sucuri SiteCheck will check your site for malware, spam, blacklisting and other security issues like .htaccess redirects, hidden eval code, etc. The best thing about it is it's completely free.
+The Sucuri Security - Auditing, SiteCheck Malware Scanner and Hardening is a security plugin enables you to scan your WordPress site using Sucuri SiteCheck for security and malware issues, and also verifies the security integrity of your core files right in your dashboard. It includes audit trails and post-hack security ions to help you reset passwords and secret keys in case it has been already hacked, or infected with malware.
 
-You can also check for malware, blacklisting, and overall security status by scanning for free at <a href="http://sitecheck.sucuri.net">SiteCheck.Sucuri.net</a>.
+You can also run the checks for malware, blacklisting, and overall security status by scanning for free at <a href="http://sitecheck.sucuri.net">SiteCheck.Sucuri.net</a>.
 
 Sucuri SiteCheck detects various types of malware, SPAM injections, website errors, disabled sites, database connection issues and code anomalies that require special attention to include:
 
@@ -65,6 +65,9 @@ the compromise on your site).
 
 
 == Changelog ==
+
+= 1.6.5 =
+* Fixed integrity checking display.
 
 = 1.6.4 =
 * Fixed API generation bug.
