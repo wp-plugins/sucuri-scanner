@@ -5943,27 +5943,26 @@ function sucuriscan_check_wp_integrity( $version=0 ){
 function sucuriscan_ignore_integrity_filepath( $filepath='' ){
     // List of files that will be ignored from the integrity checking.
     $ignore_files = array(
-        'favicon.ico',
-        '.htaccess',
-        'sitemap.xml',
-        'sitemap.xml.gz',
-        'wp-config.php',
-        'wp-pass.php',
-        'wp-rss.php',
-        'wp-feed.php',
-        'wp-register.php',
-        'wp-atom.php',
-        'wp-commentsrss2.php',
-        'wp-rss2.php',
-        'wp-rdf.php',
+        '^sucuri[0-9a-z]+\.php$',
+        '^favicon\.ico$',
+        '^\.htaccess$',
+        '^wp-includes\/\.htaccess$',
+        '^wp-admin\/setup-config\.php$',
+        '^wp-(config|pass|rss|feed|register|atom|commentsrss2|rss2|rdf)\.php$',
+        '^wp-content\/(themes|plugins)\/.+',
+        '^sitemap\.xml($|\.gz)$',
+        '^readme\.html$',
+        '^(503|404)\.php$',
+        '^40[0-9]\.shtml$',
+        '^([^\/]*)\.(pdf|css)$',
+        '^google[0-9a-z]{16}\.html$',
+        '(^|\/)error_log$',
     );
 
-    if(
-        in_array($filepath, $ignore_files)
-        || strpos($filepath, 'wp-content/themes') !== FALSE
-        || strpos($filepath, 'wp-content/plugins') !== FALSE
-    ){
-        return TRUE;
+    foreach( $ignore_files as $ignore_pattern ){
+        if( preg_match('/'.$ignore_pattern.'/', $filepath) ){
+            return TRUE;
+        }
     }
 
     return FALSE;
