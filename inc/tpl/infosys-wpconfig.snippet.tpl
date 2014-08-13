@@ -1,4 +1,5 @@
+
 <tr class="%%SUCURI.WordpressConfig.CssClass%%">
-    <td class="sucuriscan-monospace"><strong>%%SUCURI.WordpressConfig.VariableName%%</strong></td>
-    <td class="sucuriscan-monospace">%%SUCURI.WordpressConfig.VariableValue%%</td>
+    <td><span class="sucuriscan-monospace">%%SUCURI.WordpressConfig.VariableName%%</span></td>
+    <td><span class="%%SUCURI.WordpressConfig.VariableCssClass%%">%%SUCURI.WordpressConfig.VariableValue%%</span></td>
 </tr>

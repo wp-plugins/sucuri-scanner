@@ -5,13 +5,13 @@
             <a href="#" data-tabname="server-info">Plugin &amp; Server Info</a>
         </li>
         <li>
-            <a href="#" data-tabname="wordpress-cronjobs">WordPress Cronjobs</a>
+            <a href="#" data-tabname="wordpress-cronjobs">Scheduled Tasks</a>
         </li>
         <li>
-            <a href="#" data-tabname="htaccess-integrity">HTAccess Integrity</a>
+            <a href="#" data-tabname="htaccess-integrity">Access File Integrity</a>
         </li>
         <li>
-            <a href="#" data-tabname="wpconfig-vars">WP Config Variables</a>
+            <a href="#" data-tabname="wpconfig-vars">Config. Variables</a>
         </li>
     </ul>
 

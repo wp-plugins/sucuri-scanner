@@ -2,7 +2,7 @@
 <div class="sucuriscan-tabs">
     <ul>
         <li>
-            <a href="#" data-tabname="update-secret-keys">Update WordPress Keys</a>
+            <a href="#" data-tabname="update-security-keys">Security Keys</a>
         </li>
         <li>
             <a href="#" data-tabname="reset-users-password">Reset User's Password</a>
@@ -13,7 +13,7 @@
     </ul>
 
     <div class="sucuriscan-tab-containers">
-        <div id="sucuriscan-update-secret-keys">
+        <div id="sucuriscan-update-security-keys">
             %%SUCURI.UpdateSecretKeys%%
         </div>
 

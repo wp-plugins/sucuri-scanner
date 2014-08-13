@@ -1,14 +1,15 @@
 
 <div id="poststuff" class="sucuriscan-infosys-htaccess">
     <div class="postbox">
-        <h3>HTAccess Integrity</h3>
+        <h3>Access File Integrity</h3>
 
         <div class="inside">
             <p>
-                The <code>.htaccess</code> is a distributed configuration file, and is how Apache handles
-                configuration changes on a per-directory basis. WordPress uses this file to manipulate how
-                Apache serves files from its root directory, and subdirectories thereof. Most notably, WP
-                modifies this file to be able to handle pretty permalinks.
+                The <code>.htaccess</code> is a distributed configuration file, and is how the
+                Apache web server handles configuration changes on a per-directory basis.
+                WordPress uses this file to manipulate how Apache serves files from its root
+                directory and subdirectories thereof; most notably, it modifies this file to be
+                able to handle pretty permalinks.
             </p>
 
             <div class="sucuriscan-inline-alert-%%SUCURI.HTAccess.MessageType%% sucuriscan-%%SUCURI.HTAccess.MessageVisible%%">
