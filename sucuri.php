@@ -2051,6 +2051,30 @@ class SucuriScanOption extends SucuriScanRequest {
         return $response;
     }
 
+    /**
+     * Retrieve the last time when the filesystem scan was ran.
+     *
+     * @param  boolean $format Whether the timestamp must be formatted as date/time or not.
+     * @return string          The timestamp of the runtime, or an string with the date/time.
+     */
+    public static function get_filesystem_runtime( $format=FALSE ){
+        $runtime = self::get_option(':runtime');
+
+        if( $runtime > 0 ){
+            if( $format ){
+                return date( 'd/M/Y H:i:s', $runtime );
+            }
+
+            return $runtime;
+        }
+
+        if( $format ){
+            return '<em>Unknown</em>';
+        }
+
+        return FALSE;
+    }
+
 }
 
 /**
@@ -4476,8 +4500,8 @@ class SucuriScanInterface {
             current_user_can('manage_options')
             && !SucuriScanAPI::get_plugin_key()
             && SucuriScanRequest::post(':plugin_api_key') === FALSE
-            && SucuriScanRequest::post(':manual_api_key') === FALSE
             && SucuriScanRequest::post(':recover_key') === FALSE
+            && !SucuriScanRequest::post(':manual_api_key')
         ){
             echo SucuriScanTemplate::get_section('setup-notice');
         }
@@ -7856,8 +7880,7 @@ function sucuriscan_settings_general(){
     $emails_per_hour = SucuriScanOption::get_option(':emails_per_hour');
     $maximum_failed_logins = SucuriScanOption::get_option(':maximum_failed_logins');
     $verify_ssl_cert = SucuriScanOption::get_option(':verify_ssl_cert');
-    $runtime_scan = SucuriScanOption::get_option(':runtime');
-    $runtime_scan_human = date( 'd/M/Y H:i:s', $runtime_scan );
+    $runtime_scan_human = SucuriScanOption::get_filesystem_runtime(TRUE);
 
     // Generate the HTML code for the option list in the form select fields.
     $scan_freq_options = SucuriScanTemplate::get_select_options( $sucuriscan_schedule_allowed, $scan_freq );
@@ -7893,7 +7916,6 @@ function sucuriscan_settings_general(){
         'ScanningInterfaceOptions' => $scan_interface_options,
         'ScanningInterfaceVisibility' => SucuriScanTemplate::visibility( !SucuriScanFileInfo::is_spl_available() ),
         /* Filesystem scanning runtime. */
-        'ScanningRuntime' => $runtime_scan,
         'ScanningRuntimeHuman' => $runtime_scan_human,
         'ModalWhenAPIRegistered' => $api_registered_modal,
         'NotifyTo' => SucuriScanOption::get_option(':notify_to'),
@@ -8362,7 +8384,7 @@ function sucuriscan_server_info(){
     $info_vars = array(
         'Plugin_version' => SUCURISCAN_VERSION,
         'Plugin_checksum' => SUCURISCAN_PLUGIN_CHECKSUM,
-        'Last_filesystem_scan' => 'Unknown',
+        'Last_filesystem_scan' => SucuriScanOption::get_filesystem_runtime(TRUE),
         'Using_CloudProxy' => 'No',
         'Operating_system' => sprintf('%s (%d Bit)', PHP_OS, PHP_INT_SIZE*8),
         'Server' => 'Unknown',
@@ -8396,10 +8418,6 @@ function sucuriscan_server_info(){
         if( is_array($mysql_info) && !empty($mysql_info[0]->Value) ){
             $info_vars['SQL_mode'] = $mysql_info[0]->Value;
         }
-    }
-
-    if( $runtime_scan = SucuriScanOption::get_option(':runtime') ){
-        $info_vars['Last_filesystem_scan'] = @date( 'd/M/Y H:i:s', $runtime_scan );
     }
 
     $field_names = array(
