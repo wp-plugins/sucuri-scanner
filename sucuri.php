@@ -2083,7 +2083,6 @@ class SucuriScanEvent extends SucuriScan {
         }
 
         wp_schedule_single_event( time() + 300, $task_name );
-        SucuriScanInterface::info( 'The first filesystem scan was scheduled.' );
     }
 
     /**
@@ -2168,6 +2167,7 @@ class SucuriScanEvent extends SucuriScan {
 
                 if( $hashes_sent ){
                     SucuriScanInterface::info( 'Successful filesystem scan' );
+                    SucuriScanOption::update_option( ':runtime', time() );
                     return TRUE;
                 } else {
                     SucuriScanInterface::error( 'The file hashes could not be stored.' );
@@ -4476,6 +4476,7 @@ class SucuriScanInterface {
             current_user_can('manage_options')
             && !SucuriScanAPI::get_plugin_key()
             && SucuriScanRequest::post(':plugin_api_key') === FALSE
+            && SucuriScanRequest::post(':manual_api_key') === FALSE
             && SucuriScanRequest::post(':recover_key') === FALSE
         ){
             echo SucuriScanTemplate::get_section('setup-notice');
@@ -4968,7 +4969,7 @@ function sucuriscan_monitoring_page(){
 
 /**
  * Process the requests sent by the form submissions originated in the monitoring
- * page, all forms must have a nonce field that will be checked agains the one
+ * page, all forms must have a nonce field that will be checked against the one
  * generated in the template render function.
  *
  * @return void
@@ -5106,10 +5107,10 @@ function sucuriscan_explain_monitoring_settings( $settings=array() ){
 }
 
 /**
- * Get an explaination of the meaning of the value set for the account's attribute cache_mode.
+ * Get an explanation of the meaning of the value set for the account's attribute cache_mode.
  *
  * @param  string $mode The value set for the cache settings of the site.
- * @return string       Explaination of the meaning of the cache_mode value.
+ * @return string       Explanation of the meaning of the cache_mode value.
  */
 function sucuriscan_cache_mode_title( $mode='' ){
     $title = '';
@@ -5117,8 +5118,8 @@ function sucuriscan_cache_mode_title( $mode='' ){
     switch( $mode ){
         case 'docache':      $title = 'Enabled (recommended)'; break;
         case 'sitecache':    $title = 'Site caching (using your site headers)'; break;
-        case 'nocache':      $title = 'Minimial (only for a few minutes)'; break;
-        case 'nocacheatall': $title = 'Caching didabled (use with caution)'; break;
+        case 'nocache':      $title = 'Minimal (only for a few minutes)'; break;
+        case 'nocacheatall': $title = 'Caching disabled (use with caution)'; break;
         default:             $title = 'Unknown'; break;
     }
 

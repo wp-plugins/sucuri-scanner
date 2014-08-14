@@ -131,6 +131,8 @@ div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:1
 .sucuriscan-loading .title{font-size:26px;margin-bottom:10px}
 .sucuriscan-loading .description{font-size:18px}
 .sucuriscan-sitelogo{width:190px;height:100px;background:url('http://sitecheck.sucuri.net/images/sucuri-sprite.png') no-repeat;margin:0 auto}
+.sucuriscan-sitecheck-form{margin:20px 0 0 0}
+.sucuriscan-sitecheck-form .button.button-hero{padding:0 46px}
 /* Scanner Results */
 .sucuriscan-maincontent .sucuriscan-border{border:0;border-left:4px solid #ddd}
 .sucuriscan-maincontent .sucuriscan-border > h3, .sucuriscan-maincontent .sucuriscan-border > .inside{border-top:1px solid #e5e5e5;border-right:1px solid #e5e5e5}
