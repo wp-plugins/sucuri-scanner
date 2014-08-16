@@ -522,23 +522,33 @@ class SucuriScan {
      * @return string The real ip address of the user in the current request.
      */
     public static function get_remote_addr(){
-        $alternatives = array(
-            'HTTP_X_REAL_IP',
-            'HTTP_CLIENT_IP',
-            'HTTP_X_FORWARDED_FOR',
-            'HTTP_X_FORWARDED',
-            'HTTP_FORWARDED_FOR',
-            'HTTP_FORWARDED',
-            'REMOTE_ADDR',
-            'SUCURI_RIP',
-        );
+        $remote_addr = '';
 
-        foreach( $alternatives as $alternative ){
-            if( isset($_SERVER[$alternative]) ){
-                $remote_addr = preg_replace('/[^0-9a-z.,: ]/', '', $_SERVER[$alternative]);
+        if( self::is_behind_cloudproxy() ){
+            $alternatives = array(
+                'HTTP_X_REAL_IP',
+                'HTTP_CLIENT_IP',
+                'HTTP_X_FORWARDED_FOR',
+                'HTTP_X_FORWARDED',
+                'HTTP_FORWARDED_FOR',
+                'HTTP_FORWARDED',
+                'REMOTE_ADDR',
+                'SUCURI_RIP',
+            );
 
-                if( $remote_addr ){ break; }
+            foreach( $alternatives as $alternative ){
+                if(
+                    isset($_SERVER[$alternative])
+                    && self::is_valid_ip($_SERVER[$alternative])
+                ){
+                    $remote_addr = $_SERVER[$alternative];
+                    break;
+                }
             }
+        }
+
+        elseif( isset($_SERVER['REMOTE_ADDR']) ) {
+            $remote_addr = $_SERVER['REMOTE_ADDR'];
         }
 
         if( $remote_addr == '::1' ){
@@ -1333,19 +1343,37 @@ class SucuriScanCache extends SucuriScan {
     }
 
     /**
+     * Define the pattern for the regular expression that will check if a cache key
+     * is valid or not, and also will help the function that parses the file to see
+     * which characters of each line are the keys are which are the values.
+     *
+     * @param  string $action Either "valid", "content", or "header".
+     * @return string Cache key pattern.
+     */
+    private function key_pattern( $action='valid' ){
+        if( $action == 'valid' ){
+            return '/^([0-9a-zA-Z_]+)$/';
+        }
+
+        if( $action == 'content' ){
+            return '/^([0-9a-zA-Z_]+):(.+)/';
+        }
+
+        if( $action == 'header' ){
+            return '/^\/\/ ([a-z_]+)=(.*);$/';
+        }
+
+        return FALSE;
+    }
+
+    /**
      * Check whether a key has a valid name or not.
      *
      * @param  string  $key Unique name to identify the data in the datastore file.
      * @return boolean      TRUE if the format of the key name is valid, FALSE otherwise.
      */
     private function valid_key_name( $key='' ){
-        $key = trim($key);
-
-        if( !empty($key) ){
-            return (bool) preg_match('/^([a-zA-Z_]+)$/', $key);
-        }
-
-        return FALSE;
+        return (bool) preg_match( $this->key_pattern('valid'), $key );
     }
 
     /**
@@ -1391,11 +1419,11 @@ class SucuriScanCache extends SucuriScan {
 
             if( !empty($data_lines) ){
                 foreach( $data_lines as $line ){
-                    if( preg_match('/^\/\/ ([a-z_]+)=(.*);$/', $line, $match) ){
+                    if( preg_match( $this->key_pattern('header'), $line, $match ) ){
                         $data_object['info'][$match[1]] = $match[2];
                     }
 
-                    elseif( preg_match('/^([a-z_]+):(.+)/', $line, $match) ){
+                    elseif( preg_match( $this->key_pattern('content'), $line, $match ) ){
                         if(
                             $this->valid_key_name($match[1])
                             && !array_key_exists($match[1], $data_object)
@@ -1483,8 +1511,11 @@ class SucuriScanCache extends SucuriScan {
      * @return boolean           TRUE if the operation finished successfully, FALSE otherwise.
      */
     private function handle_key_data( $key='', $data=NULL, $action='', $lifetime=0, $assoc=FALSE ){
-        if( preg_match('/^(add|set|get|delete)$/', $action) ){
-            if( $this->valid_key_name($key) && $this->usable_datastore ){
+        if( preg_match('/^(add|set|get|get_all|exists|delete)$/', $action) ){
+            if(
+                $this->valid_key_name($key)
+                && $this->usable_datastore
+            ){
                 $finfo = $this->get_datastore_content($assoc);
 
                 switch( $action ){
@@ -1499,6 +1530,18 @@ class SucuriScanCache extends SucuriScan {
                             && array_key_exists($key, $finfo['entries'])
                         ){
                             return $finfo['entries'][$key];
+                        }
+                        break;
+                    case 'get_all': /* no_break */
+                        if( !$this->data_has_expired($lifetime, $finfo) ) {
+                            return $finfo['entries'];
+                        }
+                    case 'exists':
+                        if(
+                            !$this->data_has_expired($lifetime, $finfo)
+                            && array_key_exists($key, $finfo['entries'])
+                        ){
+                            return TRUE;
                         }
                         break;
                     case 'delete':
@@ -1549,6 +1592,29 @@ class SucuriScanCache extends SucuriScan {
         $assoc = ( $assoc == 'array' ? TRUE : $assoc );
 
         return $this->handle_key_data( $key, NULL, 'get', $lifetime, $assoc );
+    }
+
+    /**
+     * Retrieve all the entries found in the datastore file.
+     *
+     * @param  integer $lifetime Life time of the key in the datastore file.
+     * @param  boolean $assoc    When TRUE returned objects will be converted into associative arrays.
+     * @return string            Mixed data stored in the datastore file following the unique key name.
+     */
+    public function get_all( $lifetime=0, $assoc=FALSE ){
+        $assoc = ( $assoc == 'array' ? TRUE : $assoc );
+
+        return $this->handle_key_data( 'temp', NULL, 'get_all', $lifetime, $assoc );
+    }
+
+    /**
+     * Check whether a specific key exists in the datastore file.
+     *
+     * @param  string  $key Unique name to identify the data in the datastore file.
+     * @return boolean      TRUE if the key exists in the datastore file, FALSE otherwise.
+     */
+    public function exists( $key='' ){
+        return $this->handle_key_data( $key, NULL, 'exists' );
     }
 
     /**
@@ -1616,10 +1682,11 @@ class SucuriScanOption extends SucuriScanRequest {
      * @param  string $option_name Optional parameter with the name of the option that will be filtered.
      * @return array               List of options retrieved from the query in the database.
      */
-    public function get_options_from_db( $filter_by='', $option_name='' ){
+    public static function get_options_from_db( $filter_by='', $option_name='' ){
         global $wpdb;
 
         $output = FALSE;
+
         switch($filter_by){
             case 'all_plugin_options':
                 $output = $wpdb->get_results("SELECT * FROM {$wpdb->options} WHERE option_name LIKE 'sucuriscan%' ORDER BY option_id ASC");
@@ -3642,8 +3709,8 @@ class SucuriScanAPI extends SucuriScanOption {
         $can_cache = class_exists('SucuriScanCache');
 
         if( $can_cache ){
-            $sucuri_cache = new SucuriScanCache('plugindata');
-            $cached_data = $sucuri_cache->get( 'plugins', SUCURISCAN_GET_PLUGINS_LIFETIME, 'array' );
+            $cache = new SucuriScanCache('plugindata');
+            $cached_data = $cache->get( 'plugins', SUCURISCAN_GET_PLUGINS_LIFETIME, 'array' );
 
             // Return the previously cached results of this function.
             if( $cached_data !== FALSE ){
@@ -3710,7 +3777,7 @@ class SucuriScanAPI extends SucuriScanOption {
 
         if( $can_cache ){
             // Add the information of the plugins to the file-based cache.
-            $sucuri_cache->add( 'plugins', $plugins );
+            $cache->add( 'plugins', $plugins );
         }
 
         return $plugins;
@@ -3740,6 +3807,41 @@ class SucuriScanAPI extends SucuriScanOption {
 
             if( $response ){
                 if( $response['body'] instanceof stdClass ){
+                    return $response['body'];
+                }
+            }
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Retrieve a specific file from the official WordPress subversion repository,
+     * the content of the file is determined by the tags defined using the site
+     * version specified. Only official core files are allowed to fetch.
+     *
+     * @see http://core.svn.wordpress.org/
+     * @see http://core.svn.wordpress.org/tags/VERSION_NUMBER/
+     *
+     * @param  string $filepath Relative file path of a project core file.
+     * @param  string $version  Optional site version, default will be the global version number.
+     * @return string           Full content of the official file retrieved, FALSE if the file was not found.
+     */
+    public static function get_original_core_file( $filepath='', $version=0 ){
+        if( !empty($filepath) ){
+            if( $version == 0 ){
+                $version = self::site_version();
+            }
+
+            $url = sprintf( 'http://core.svn.wordpress.org/tags/%s/%s', $version, $filepath );
+            $response = self::api_call( $url, 'GET' );
+
+            if( $response ){
+                if(
+                    isset($response['headers']['content-length'])
+                    && $response['headers']['content-length'] > 0
+                    && is_string($response['body'])
+                ){
                     return $response['body'];
                 }
             }
@@ -4520,8 +4622,8 @@ function sucuriscan_scanner_page(){
     SucuriScanInterface::check_permissions();
 
     // Check if the information is already cached.
-    $sucuri_cache = new SucuriScanCache('sitecheck');
-    $scan_results = $sucuri_cache->get( 'scan_results', SUCURISCAN_SITECHECK_LIFETIME, 'array' );
+    $cache = new SucuriScanCache('sitecheck');
+    $scan_results = $cache->get( 'scan_results', SUCURISCAN_SITECHECK_LIFETIME, 'array' );
 
     if(
         (
@@ -4562,11 +4664,11 @@ function sucuriscan_sitecheck_info( $res=array() ){
         }
 
         else {
-            $sucuri_cache = new SucuriScanCache('sitecheck');
+            $cache = new SucuriScanCache('sitecheck');
             $display_results = TRUE;
 
             // Cache the scanning results to reduce memory lose.
-            if( !$sucuri_cache->add( 'scan_results', $res ) ){
+            if( !$cache->add( 'scan_results', $res ) ){
                 SucuriScanInterface::error( 'Could not cache the results of the SiteCheck scanning.' );
             }
         }
@@ -6062,21 +6164,133 @@ function sucuriscan_harden_dbtables(){
 function sucuriscan_page(){
     SucuriScanInterface::check_permissions();
 
-    if(
-        SucuriScanInterface::check_nonce()
-        && SucuriScanRequest::post(':force_scan')
-    ){
-        SucuriScanEvent::notify_event( 'plugin_change', 'Filesystem scan forced at: ' . date('r') );
-        SucuriScanEvent::filesystem_scan(TRUE);
-    }
+    /**
+     * To increase the performance of the code, the cache library will be passed to
+     * multiple functions starting from here. Considering that in the constructor of
+     * this class there is code that can affect the load time of the application if
+     * it is instanciated multiple times.
+     *
+     * Also, a list of all the keys found in the datastore file specified in the
+     * instantiation of this class will be passed through the same functions as the
+     * cache object, these keys will be used to determine which files are being
+     * ignored during the integrity checks, because they were marked as fixed..
+     */
+    $cache = new SucuriScanCache('integrity');
+    $ignored_files = $cache->get_all();
+
+    // Process all form submissions.
+    sucuriscan_integrity_form_submissions( $cache, $ignored_files );
 
     $template_variables = array(
         'WordpressVersion' => sucuriscan_wordpress_outdated(),
         'AuditLogs' => sucuriscan_auditlogs(),
-        'CoreFiles' => sucuriscan_core_files(),
+        'CoreFiles' => sucuriscan_core_files( $cache, $ignored_files ),
+        'IgnoredFiles' => sucuriscan_ignored_files($ignored_files),
     );
 
     echo SucuriScanTemplate::get_template('integrity', $template_variables);
+}
+
+/**
+ * Process the requests sent by the form submissions originated in the integrity
+ * page, all forms must have a nonce field that will be checked against the one
+ * generated in the template render function.
+ *
+ * @param  object $cache         An instance of the cache library, passed to increase performance.
+ * @param  array  $ignored_files List of files marked as fixed, or false/positive.
+ * @return void
+ */
+function sucuriscan_integrity_form_submissions( $cache=FALSE, $ignored_files=array() ){
+    if( SucuriScanInterface::check_nonce() ){
+
+        // Force the execution of the filesystem scanner.
+        if( SucuriScanRequest::post(':force_scan') ){
+            SucuriScanEvent::notify_event( 'plugin_change', 'Filesystem scan forced at: ' . date('r') );
+            SucuriScanEvent::filesystem_scan(TRUE);
+        }
+
+        // Restore, Remove, Mark as fixed the core files.
+        $allowed_actions = '(restore|remove|fixed)';
+        $integrity_action = SucuriScanRequest::post(':integrity_action', $allowed_actions);
+
+        if( $integrity_action !== FALSE ){
+            $integrity_files = SucuriScanRequest::post(':integrity_files', '_array');
+            $integrity_types = SucuriScanRequest::post(':integrity_types', '_array');
+            $files_selected = count($integrity_files);
+            $files_processed = 0;
+
+            foreach( $integrity_files as $i => $file_path ){
+                $full_path = ABSPATH . $file_path;
+                $status_type = $integrity_types[$i];
+
+                switch( $integrity_action ){
+                    case 'restore':
+                        $file_content = SucuriScanAPI::get_original_core_file($file_path);
+                        if( $file_content ){
+                            $restored = @file_put_contents( $full_path, $file_content, LOCK_EX );
+                            $files_processed += ( $restored ? 1 : 0 );
+                        }
+                        break;
+                    case 'remove':
+                        if( @unlink($full_path) ){
+                            $files_processed += 1;
+                        }
+                        break;
+                    case 'fixed':
+                        $cache_key = md5($file_path);
+                        $cache_value = array(
+                            'file_path' => $file_path,
+                            'file_status' => $status_type,
+                            'ignored_at' => time(),
+                        );
+                        $cached = $cache->add( $cache_key, $cache_value );
+                        $files_processed += ( $cached ? 1 : 0 );
+                        break;
+                }
+            }
+
+            SucuriScanInterface::info(sprintf(
+                '<code>%d</code> out of <code>%d</code> files were successfully processed.',
+                $files_selected,
+                $files_processed
+            ));
+        }
+
+        // Remove or extract files from the list of ignored files.
+        $allowed_actions = '(unignore|remove)';
+        $ignored_file_action = SucuriScanRequest::post(':ignored_file_action', $allowed_actions);
+
+        if( $ignored_file_action !== FALSE ){
+            $cache_keys = SucuriScanRequest::post(':cache_keys', '_array');
+            $files_selected = count($cache_keys);
+            $files_processed = 0;
+
+            foreach( $cache_keys as $cache_key ){
+                switch( $ignored_file_action ){
+                    case 'unignore':
+                        if( $cache->delete($cache_key) ){
+                            $files_processed += 1;
+                        }
+                        break;
+                    case 'remove':
+                        if( array_key_exists($cache_key, $ignored_files) ){
+                            $ignored_file = $ignored_files[$cache_key];
+                            if( @unlink($ignored_file->file_path) ){
+                                $files_processed += 1;
+                            }
+                        }
+                        break;
+                }
+            }
+
+            SucuriScanInterface::info(sprintf(
+                '<code>%d</code> out of <code>%d</code> files were successfully processed.',
+                $files_selected,
+                $files_processed
+            ));
+        }
+
+    }
 }
 
 /**
@@ -6234,9 +6448,11 @@ function sucuriscan_wordpress_outdated(){
  * remotely in Sucuri servers. These hashes are updated every time a new version
  * of WordPress is released.
  *
+ * @param  object $cache         An instance of the cache library, passed to increase performance.
+ * @param  array  $ignored_files List of files marked as fixed, or false/positive.
  * @return void
  */
-function sucuriscan_core_files(){
+function sucuriscan_core_files( $cache=FALSE, $ignored_files=array() ){
     $site_version = SucuriScan::site_version();
 
     $template_variables = array(
@@ -6247,7 +6463,8 @@ function sucuriscan_core_files(){
     );
 
     if( $site_version && SucuriScanOption::get_option(':scan_checksums') == 'enabled' ){
-        $latest_hashes = sucuriscan_check_wp_integrity($site_version);
+        // Check if there are added, removed, or modified files.
+        $latest_hashes = sucuriscan_check_core_integrity( $site_version, $cache, $ignored_files );
 
         if( $latest_hashes ){
             $counter = 0;
@@ -6261,24 +6478,10 @@ function sucuriscan_core_files(){
                 }
 
                 foreach( $file_list as $file_path ){
-                    if( $file_path == '.htaccess' ){
-                        $file_path = sprintf(
-                            '%s <a href="%s" target="_blank">%s</a>',
-                            $file_path,
-                            '%%SUCURI.URL.Infosys%%#htaccess-integrity',
-                            '<em>(Check HTAccess Integrity)</em>'
-                        );
-                    }
+                    // Skip files that were marked as fixed.
+                    if( array_key_exists(md5($file_path), $ignored_files) ){ continue; }
 
-                    elseif( $file_path == 'wp-config.php' ){
-                        $file_path = sprintf(
-                            '%s <a href="%s" target="_blank">%s</a>',
-                            $file_path,
-                            '%%SUCURI.URL.Infosys%%#wpconfig-rules',
-                            '<em>(Check WP Config Variables)</em>'
-                        );
-                    }
-
+                    // Generate the HTML code from the snippet template for this file.
                     $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
                     $template_variables['CoreFiles.List'] .= SucuriScanTemplate::get_snippet('integrity-corefiles', array(
                         'CoreFiles.CssClass' => $css_class,
@@ -6315,10 +6518,12 @@ function sucuriscan_core_files(){
  *   <li>added: Files present in the local project but not in the official WordPress packages.</li>
  * </ul>
  *
- * @param  integer $version Valid version number of the WordPress project.
- * @return array            Associative array with these keys: modified, stable, removed, added.
+ * @param  integer $version       Valid version number of the WordPress project.
+ * @param  object  $cache         An instance of the cache library, passed to increase performance.
+ * @param  array   $ignored_files List of files marked as fixed, or false/positive.
+ * @return array                  Associative array with these keys: modified, stable, removed, added.
  */
-function sucuriscan_check_wp_integrity( $version=0 ){
+function sucuriscan_check_core_integrity( $version=0, $cache=FALSE, $ignored_files=array() ){
     $latest_hashes = SucuriScanAPI::get_official_checksums($version);
 
     if( !$latest_hashes ){ return FALSE; }
@@ -6337,32 +6542,32 @@ function sucuriscan_check_wp_integrity( $version=0 ){
     $wp_core_hashes = array_merge( $wp_top_hashes, $wp_admin_hashes, $wp_includes_hashes );
 
     // Compare remote and local checksums and search removed files.
-    foreach( $latest_hashes as $filepath => $remote_checksum ){
-        if( sucuriscan_ignore_integrity_filepath($filepath) ){ continue; }
+    foreach( $latest_hashes as $file_path => $remote_checksum ){
+        if( sucuriscan_ignore_integrity_filepath( $file_path, $cache, $ignored_files ) ){ continue; }
 
-        $full_filepath = sprintf('%s/%s', ABSPATH, $filepath);
+        $full_filepath = sprintf('%s/%s', ABSPATH, $file_path);
 
         if( file_exists($full_filepath) ){
             $local_checksum = @md5_file($full_filepath);
 
             if( $local_checksum && $local_checksum == $remote_checksum ){
-                $output['stable'][] = $filepath;
+                $output['stable'][] = $file_path;
             } else {
-                $output['modified'][] = $filepath;
+                $output['modified'][] = $file_path;
             }
         } else {
-            $output['removed'][] = $filepath;
+            $output['removed'][] = $file_path;
         }
     }
 
     // Search added files (files not common in a normal wordpress installation).
-    foreach( $wp_core_hashes as $filepath => $extra_info ){
-        $filepath = preg_replace('/^\.\/(.*)/', '$1', $filepath);
+    foreach( $wp_core_hashes as $file_path => $extra_info ){
+        $file_path = preg_replace('/^\.\/(.*)/', '$1', $file_path);
 
-        if( sucuriscan_ignore_integrity_filepath($filepath) ){ continue; }
+        if( sucuriscan_ignore_integrity_filepath( $file_path, $cache, $ignored_files ) ){ continue; }
 
-        if( !isset($latest_hashes[$filepath]) ){
-            $output['added'][] = $filepath;
+        if( !isset($latest_hashes[$file_path]) ){
+            $output['added'][] = $file_path;
         }
     }
 
@@ -6372,10 +6577,12 @@ function sucuriscan_check_wp_integrity( $version=0 ){
 /**
  * Ignore irrelevant files and directories from the integrity checking.
  *
- * @param  string  $filepath File path that will be compared.
- * @return boolean           TRUE if the file should be ignored, FALSE otherwise.
+ * @param  string  $file_path     File path that will be compared.
+ * @param  object  $cache         An instance of the cache library, passed to increase performance.
+ * @param  array   $ignored_files List of files marked as fixed, or false/positive.
+ * @return boolean                TRUE if the file should be ignored, FALSE otherwise.
  */
-function sucuriscan_ignore_integrity_filepath( $filepath='' ){
+function sucuriscan_ignore_integrity_filepath( $file_path='', $cache=FALSE, $ignored_files=array() ){
     // List of files that will be ignored from the integrity checking.
     $ignore_files = array(
         '^sucuri-[0-9a-z]+\.php$',
@@ -6391,14 +6598,31 @@ function sucuriscan_ignore_integrity_filepath( $filepath='' ){
         '^(503|404)\.php$',
         '^500\.(shtml|php)$',
         '^40[0-9]\.shtml$',
-        '^([^\/]*)\.(pdf|css)$',
+        '^([^\/]*)\.(pdf|css|txt)$',
         '^google[0-9a-z]{16}\.html$',
         '^pinterest-[0-9a-z]{5}\.html$',
         '(^|\/)error_log$',
     );
 
     foreach( $ignore_files as $ignore_pattern ){
-        if( preg_match('/'.$ignore_pattern.'/', $filepath) ){
+        if( preg_match('/'.$ignore_pattern.'/', $file_path) ){
+            /**
+             * Mark this file as fixed, the administrator is the one with the privileges to
+             * determine if it is in fact a good idea to keep ignoring the file or take
+             * actions over it. Completely hiding these files will offer an attacker the
+             * ability to spam the site in other ways.
+             */
+            $cache_key = md5($file_path);
+
+            if( !array_key_exists($cache_key, $ignored_files) ){
+                $cache_value = array(
+                    'file_path' => $file_path,
+                    'file_status' => 'false_positive',
+                    'ignored_at' => time(),
+                );
+                $cache->add( $cache_key, $cache_value );
+            }
+
             return TRUE;
         }
     }
@@ -6474,6 +6698,42 @@ function sucuriscan_modified_files(){
     }
 
     return SucuriScanTemplate::get_section('integrity-modifiedfiles', $template_variables);
+}
+
+/**
+ * List all files that were marked as fixed during the core integrity checks,
+ * some of these files were added automatically by the plugin considering them
+ * as false/positive, to offer transparency to the code they will be all
+ * displayed in the dashboard.
+ *
+ * @return void
+ */
+function sucuriscan_ignored_files( $ignored_files=array() ){
+    $template_variables = array(
+        'IgnoredFiles.List' => '',
+        'IgnoredFiles.Total' => 0,
+    );
+
+    if( $ignored_files ){
+        $counter = 0;
+
+        foreach( $ignored_files as $cache_key => $ignored_file ){
+            $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
+            $template_variables['IgnoredFiles.List'] .= SucuriScanTemplate::get_snippet('integrity-ignoredfiles', array(
+                'IgnoredFiles.CssClass' => $css_class,
+                'IgnoredFiles.CacheKey' => $cache_key,
+                'IgnoredFiles.FilePath' => $ignored_file->file_path,
+                'IgnoredFiles.StatusType' => $ignored_file->file_status,
+                'IgnoredFiles.StatusAbbr' => substr($ignored_file->file_status, 0, 1),
+                'IgnoredFiles.IgnoredAt' => date('d/M/Y H:i', $ignored_file->ignored_at),
+            ));
+            $counter += 1;
+        }
+
+        $template_variables['IgnoredFiles.Total'] = $counter;
+    }
+
+    return SucuriScanTemplate::get_section('integrity-ignoredfiles', $template_variables);
 }
 
 /**
@@ -7778,7 +8038,9 @@ function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
             $options_updated_counter = 0;
 
             foreach( $sucuriscan_notify_options as $alert_type => $alert_label ){
-                if( $option_value = SucuriScanRequest::post($alert_type, '(1|0)') ){
+                $option_value = SucuriScanRequest::post($alert_type, '(1|0)');
+
+                if( $option_value !== FALSE ){
                     $option_value = ( $option_value == '1' ) ? 'enabled' : 'disabled';
                     SucuriScanOption::update_option( $alert_type, $option_value );
                     $options_updated_counter += 1;

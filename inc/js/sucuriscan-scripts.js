@@ -50,10 +50,10 @@ jQuery(document).ready(function($){
         var action = this_button.data('action');
 
         if( action == 'show' ){
-            $('.sucuriscan-corefiles tbody > tr').removeClass('sucuriscan-hidden');
+            $('.sucuriscan-corefiles thead tr:last-child, .sucuriscan-corefiles tbody > tr').removeClass('sucuriscan-hidden');
             this_button.html('Hide files').data('action', 'hide');
         } else {
-            $('.sucuriscan-corefiles tbody > tr').addClass('sucuriscan-hidden');
+            $('.sucuriscan-corefiles thead tr:last-child, .sucuriscan-corefiles tbody > tr').addClass('sucuriscan-hidden');
             this_button.html('Show files').data('action', 'show');
         }
     });

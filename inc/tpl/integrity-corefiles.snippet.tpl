@@ -1,9 +1,9 @@
 
 <tr class="%%SUCURI.CoreFiles.CssClass%% sucuriscan-hidden">
-    <td>
-    	<div class="sucuriscan-clearfix">
-    		<div class="sucuriscan-pull-left sucuriscan-status-type sucuriscan-status-%%SUCURI.CoreFiles.StatusType%%">%%SUCURI.CoreFiles.StatusAbbr%%</div>
-    		<div class="sucuriscan-pull-left sucuriscan-monospace">%%SUCURI.CoreFiles.FilePath%%</div>
-    	</div>
+    <td class="check-column">
+        <input type="checkbox" name="sucuriscan_integrity_files[]" value="%%SUCURI.CoreFiles.FilePath%%" />
+        <input type="hidden" name="sucuriscan_integrity_types[]" value="%%SUCURI.CoreFiles.StatusType%%" />
     </td>
+    <td><span class="sucuriscan-status-type sucuriscan-status-%%SUCURI.CoreFiles.StatusType%%">%%SUCURI.CoreFiles.StatusAbbr%%</span></td>
+    <td><span class="sucuriscan-monospace sucuriscan-wraptext">%%SUCURI.CoreFiles.FilePath%%</span></td>
 </tr>

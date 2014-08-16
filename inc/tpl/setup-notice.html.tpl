@@ -6,8 +6,8 @@
 
     <div class="sucuriscan-pull-left">
         <p>
-            Plugin not fully activated yet. Please generate the free API<br>
-            to enable audit logging, integrity checking and email alerts.
+            Plugin not fully activated yet. Please generate the free API key to<br>
+            enable audit logging, integrity checking, email alerts and other tools.
         </p>
     </div>
 

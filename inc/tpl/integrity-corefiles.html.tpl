@@ -1,42 +1,82 @@
 
 <div class="postbox sucuriscan-border sucuriscan-border-good sucuriscan-integrity-message sucuriscan-%%SUCURI.CoreFiles.GoodVisibility%%">
     <span class="sucuriscan-integrity-mark">OK</span>
-    <h3>WordPress core integrity</h3>
+    <h3>Core integrity</h3>
 
     <div class="inside">
         <p>Your WordPress core files are clean and were not modified.</p>
     </div>
 </div>
 
-<table class="wp-list-table widefat sucuriscan-table sucuriscan-corefiles sucuriscan-%%SUCURI.CoreFiles.BadVisibility%%">
-    <thead>
-        <tr>
-            <th class="sucuriscan-clearfix thead-with-button">
-                <span>WordPress core integrity (%%SUCURI.CoreFiles.ListCount%% files)</span>
-                <div class="sucuriscan-pull-right sucuriscan-corefiles-abbrs">
-                    <span class="sucuriscan-status-type sucuriscan-status-added">Added</span>
-                    <span class="sucuriscan-status-type sucuriscan-status-modified">Modified</span>
-                    <span class="sucuriscan-status-type sucuriscan-status-removed">Removed</span>
-                    <button id="sucuriscan-corefiles-show" class="button button-primary thead-topright-action" data-action="show">Show files</button>
-                </div>
-            </th>
-        </tr>
+<form action="%%SUCURI.URL.Home%%" method="post">
+    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
 
-        <tr>
-            <td class="sucuriscan-corefiles-warning">
-                <div>
+    <table class="wp-list-table widefat sucuriscan-table sucuriscan-corefiles sucuriscan-%%SUCURI.CoreFiles.BadVisibility%%">
+        <thead>
+            <tr>
+                <th colspan="3" class="sucuriscan-clearfix thead-with-button">
+                    <span>Core integrity (%%SUCURI.CoreFiles.ListCount%% files)</span>
+                    <div class="sucuriscan-pull-right sucuriscan-corefiles-abbrs">
+                        <span class="sucuriscan-status-type sucuriscan-status-added">Added</span>
+                        <span class="sucuriscan-status-type sucuriscan-status-modified">Modified</span>
+                        <span class="sucuriscan-status-type sucuriscan-status-removed">Removed</span>
+                        <button id="sucuriscan-corefiles-show" class="button button-primary thead-topright-action" data-action="show">Show files</button>
+                    </div>
+                </th>
+            </tr>
+
+            <tr>
+                <td colspan="3" class="sucuriscan-corefiles-warning">
+                    <div>
+                        <p>
+                            Changes in the integrity of your core files were detected. There are files that
+                            were added, modified, and/or removed in the core directories
+                            <code>/&lt;root&gt;</code>, <code>/wp-admin</code> and/or <code>/wp-
+                            includes</code>. You may want to check each file to determine if they were
+                            infected with malicious code.
+                        </p>
+                    </div>
+                </td>
+            </tr>
+
+            <tr class="sucuriscan-hidden">
+                <th class="manage-column column-cb check-column">
+                    <label class="screen-reader-text" for="cb-select-all-1">Select All</label>
+                    <input id="cb-select-all-1" type="checkbox">
+                </th>
+                <th width="70" class="manage-column">Status</th>
+                <th class="manage-column">Filepath</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            %%SUCURI.CoreFiles.List%%
+        </tbody>
+
+        <tfoot>
+            <tr>
+                <td colspan="3">
                     <p>
-                        We detected changes in the integrity of your WordPress core files. There are files that
-                        were added, modified, and/or removed in the core directories <code>/&lt;root&gt;</code>,
-                        <code>/wp-admin</code> and/or <code>/wp-includes</code>.
+                        The action to restore the content of a file will only work with files that were
+                        <b>modified</b> or <b>removed</b>, for files that were <b>added</b> you must
+                        either remove or mark as fixed. Files marked as <b>fixed</b> will always be
+                        ignored from the integrity checks, an attacker can use this option to hide a
+                        malicious file, so always check what files are being ignored.
                     </p>
-                </div>
-            </td>
-        </tr>
-    </thead>
 
-    <tbody>
+                    <label>
+                        <select name="sucuriscan_integrity_action">
+                            <option value="">Choose action</option>
+                            <option value="restore">Restore file(s) content</option>
+                            <option value="remove">Remove file(s)</option>
+                            <option value="fixed">Mark as fixed</option>
+                        </select>
+                    </label>
 
-        %%SUCURI.CoreFiles.List%%
-    </tbody>
-</table>
+                    <button type="submit" class="button button-primary">Send action</button>
+                </td>
+            </tr>
+        </tfoot>
+    </table>
+
+</form>
