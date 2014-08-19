@@ -574,9 +574,10 @@ class SucuriScan {
     /**
      * Check whether the site is behing the Sucuri CloudProxy network.
      *
-     * @return boolean Either TRUE or FALSE if the site is behind CloudProxy.
+     * @param  boolean $verbose Return an array with the hostname, address, and status, or not.
+     * @return boolean          Either TRUE or FALSE if the site is behind CloudProxy.
      */
-    public static function is_behind_cloudproxy(){
+    public static function is_behind_cloudproxy( $verbose=FALSE ){
         if( isset($_SERVER['HTTP_HOST']) ){
             $http_host = preg_replace('/^(.*):[0-9]+/', '$1', $_SERVER['HTTP_HOST']);
         } else {
@@ -585,8 +586,18 @@ class SucuriScan {
 
         $host_by_name = gethostbyname($http_host);
         $host_by_addr = gethostbyaddr($host_by_name);
+        $status = (bool) preg_match('/^cloudproxy[0-9]+\.sucuri\.net$/', $host_by_addr);
 
-        return (bool) preg_match('/^cloudproxy[0-9]+\.sucuri\.net$/', $host_by_addr);
+        if( $verbose ){
+            return array(
+                'http_host' => $http_host,
+                'host_name' => $host_by_name,
+                'host_addr' => $host_by_addr,
+                'status' => $status,
+            );
+        }
+
+        return $status;
     }
 
     /**
@@ -5806,15 +5817,20 @@ function sucuriscan_harden_wpcontent(){
         }
     }
 
+    $description = 'This option blocks direct PHP access to any file inside wp-content. If you experience '
+        . 'any issue after this with a theme or plugin in your site, like for example images not displaying, '
+        . 'remove the <code>.htaccess</code> file located at the <code>/wp-content/</code> directory.'
+        . '</p><p><b>Note:</b> Many <em>(insecure)</em> themes and plugins use a PHP file in this directory '
+        . 'to generate images like thumbnails and captcha codes, this is intentional so it is recommended '
+        . 'to check your site once this option is enabled.';
+
     sucuriscan_harden_status(
         'Restrict wp-content access',
         $cp,
         'sucuriscan_harden_wpcontent',
         'WP-content directory properly hardened',
         'WP-content directory not hardened',
-        'This option blocks direct PHP access to any file inside wp-content. If you experience any '
-        .'issue after this with a theme or plugin in your site, like for example images not displaying, '
-        .'remove the <code>.htaccess</code> file located at the <code>/wp-content/</code> directory.',
+        $description,
         $upmsg
     );
 }
@@ -5921,10 +5937,19 @@ function sucuriscan_harden_phpversion(){
  */
 function sucuriscan_cloudproxy_enabled(){
     $btn_string = '';
-    $enabled = SucuriScan::is_behind_cloudproxy();
+    $verbosity = TRUE;
+    $proxy_info = SucuriScan::is_behind_cloudproxy($verbosity);
     $status = 1;
 
-    if( $enabled !== TRUE ){
+    $description = 'A WAF is a protection layer for your web site, blocking all sort of attacks (brute force attempts, '
+        . 'DDoS, SQL injections, etc) and helping it remain malware and blacklist free. This test checks if your site is '
+        . 'using <a href="http://cloudproxy.sucuri.net/" target="_blank">Sucuri\'s CloudProxy WAF</a> to protect your site. '
+        . '</p><p>'
+        . '<b>HTTP Host:</b> <span class="sucuriscan-monospace">' . $proxy_info['http_host'] . '</span><br>'
+        . '<b>Host Name:</b> <span class="sucuriscan-monospace">' . $proxy_info['host_name'] . '</span><br>'
+        . '<b>Host Address:</b> <span class="sucuriscan-monospace">' . $proxy_info['host_addr'] . '</span>';
+
+    if( $proxy_info['status'] === FALSE ){
         $status = 0;
         $btn_string = '<a href="http://cloudproxy.sucuri.net/" target="_blank" class="button button-primary">Harden</a>';
     }
@@ -5935,9 +5960,7 @@ function sucuriscan_cloudproxy_enabled(){
         NULL,
         'Your website is protected by a Website Firewall (WAF)',
         $btn_string . 'Your website is not protected by a Website Firewall (WAF)',
-        'A WAF is a protection layer for your web site, blocking all sort of attacks (brute force attempts, DDoS, '
-        .'SQL injections, etc) and helping it remain malware and blacklist free. This test checks if your site is '
-        .'using <a href="http://cloudproxy.sucuri.net/" target="_blank">Sucuri\'s CloudProxy WAF</a> to protect your site. ',
+        $description,
         NULL
     );
 }
@@ -6167,28 +6190,13 @@ function sucuriscan_harden_dbtables(){
 function sucuriscan_page(){
     SucuriScanInterface::check_permissions();
 
-    /**
-     * To increase the performance of the code, the cache library will be passed to
-     * multiple functions starting from here. Considering that in the constructor of
-     * this class there is code that can affect the load time of the application if
-     * it is instanciated multiple times.
-     *
-     * Also, a list of all the keys found in the datastore file specified in the
-     * instantiation of this class will be passed through the same functions as the
-     * cache object, these keys will be used to determine which files are being
-     * ignored during the integrity checks, because they were marked as fixed..
-     */
-    $cache = new SucuriScanCache('integrity');
-    $ignored_files = $cache->get_all();
-
     // Process all form submissions.
-    sucuriscan_integrity_form_submissions( $cache, $ignored_files );
+    sucuriscan_integrity_form_submissions();
 
     $template_variables = array(
         'WordpressVersion' => sucuriscan_wordpress_outdated(),
         'AuditLogs' => sucuriscan_auditlogs(),
-        'CoreFiles' => sucuriscan_core_files( $cache, $ignored_files ),
-        'IgnoredFiles' => sucuriscan_ignored_files($ignored_files),
+        'CoreFiles' => sucuriscan_core_files(),
     );
 
     echo SucuriScanTemplate::get_template('integrity', $template_variables);
@@ -6199,11 +6207,9 @@ function sucuriscan_page(){
  * page, all forms must have a nonce field that will be checked against the one
  * generated in the template render function.
  *
- * @param  object $cache         An instance of the cache library, passed to increase performance.
- * @param  array  $ignored_files List of files marked as fixed, or false/positive.
  * @return void
  */
-function sucuriscan_integrity_form_submissions( $cache=FALSE, $ignored_files=array() ){
+function sucuriscan_integrity_form_submissions(){
     if( SucuriScanInterface::check_nonce() ){
 
         // Force the execution of the filesystem scanner.
@@ -6217,6 +6223,7 @@ function sucuriscan_integrity_form_submissions( $cache=FALSE, $ignored_files=arr
         $integrity_action = SucuriScanRequest::post(':integrity_action', $allowed_actions);
 
         if( $integrity_action !== FALSE ){
+            $cache = new SucuriScanCache('integrity');
             $integrity_files = SucuriScanRequest::post(':integrity_files', '_array');
             $integrity_types = SucuriScanRequest::post(':integrity_types', '_array');
             $files_selected = count($integrity_files);
@@ -6248,40 +6255,6 @@ function sucuriscan_integrity_form_submissions( $cache=FALSE, $ignored_files=arr
                         );
                         $cached = $cache->add( $cache_key, $cache_value );
                         $files_processed += ( $cached ? 1 : 0 );
-                        break;
-                }
-            }
-
-            SucuriScanInterface::info(sprintf(
-                '<code>%d</code> out of <code>%d</code> files were successfully processed.',
-                $files_selected,
-                $files_processed
-            ));
-        }
-
-        // Remove or extract files from the list of ignored files.
-        $allowed_actions = '(unignore|remove)';
-        $ignored_file_action = SucuriScanRequest::post(':ignored_file_action', $allowed_actions);
-
-        if( $ignored_file_action !== FALSE ){
-            $cache_keys = SucuriScanRequest::post(':cache_keys', '_array');
-            $files_selected = count($cache_keys);
-            $files_processed = 0;
-
-            foreach( $cache_keys as $cache_key ){
-                switch( $ignored_file_action ){
-                    case 'unignore':
-                        if( $cache->delete($cache_key) ){
-                            $files_processed += 1;
-                        }
-                        break;
-                    case 'remove':
-                        if( array_key_exists($cache_key, $ignored_files) ){
-                            $ignored_file = $ignored_files[$cache_key];
-                            if( @unlink($ignored_file->file_path) ){
-                                $files_processed += 1;
-                            }
-                        }
                         break;
                 }
             }
@@ -6451,11 +6424,9 @@ function sucuriscan_wordpress_outdated(){
  * remotely in Sucuri servers. These hashes are updated every time a new version
  * of WordPress is released.
  *
- * @param  object $cache         An instance of the cache library, passed to increase performance.
- * @param  array  $ignored_files List of files marked as fixed, or false/positive.
  * @return void
  */
-function sucuriscan_core_files( $cache=FALSE, $ignored_files=array() ){
+function sucuriscan_core_files(){
     $site_version = SucuriScan::site_version();
 
     $template_variables = array(
@@ -6467,9 +6438,11 @@ function sucuriscan_core_files( $cache=FALSE, $ignored_files=array() ){
 
     if( $site_version && SucuriScanOption::get_option(':scan_checksums') == 'enabled' ){
         // Check if there are added, removed, or modified files.
-        $latest_hashes = sucuriscan_check_core_integrity( $site_version, $cache, $ignored_files );
+        $latest_hashes = sucuriscan_check_core_integrity($site_version);
 
         if( $latest_hashes ){
+            $cache = new SucuriScanCache('integrity');
+            $ignored_files = $cache->get_all();
             $counter = 0;
 
             foreach( $latest_hashes as $list_type => $file_list ){
@@ -6521,12 +6494,10 @@ function sucuriscan_core_files( $cache=FALSE, $ignored_files=array() ){
  *   <li>added: Files present in the local project but not in the official WordPress packages.</li>
  * </ul>
  *
- * @param  integer $version       Valid version number of the WordPress project.
- * @param  object  $cache         An instance of the cache library, passed to increase performance.
- * @param  array   $ignored_files List of files marked as fixed, or false/positive.
- * @return array                  Associative array with these keys: modified, stable, removed, added.
+ * @param  integer $version Valid version number of the WordPress project.
+ * @return array            Associative array with these keys: modified, stable, removed, added.
  */
-function sucuriscan_check_core_integrity( $version=0, $cache=FALSE, $ignored_files=array() ){
+function sucuriscan_check_core_integrity( $version=0 ){
     $latest_hashes = SucuriScanAPI::get_official_checksums($version);
 
     if( !$latest_hashes ){ return FALSE; }
@@ -6546,7 +6517,7 @@ function sucuriscan_check_core_integrity( $version=0, $cache=FALSE, $ignored_fil
 
     // Compare remote and local checksums and search removed files.
     foreach( $latest_hashes as $file_path => $remote_checksum ){
-        if( sucuriscan_ignore_integrity_filepath( $file_path, $cache, $ignored_files ) ){ continue; }
+        if( sucuriscan_ignore_integrity_filepath($file_path) ){ continue; }
 
         $full_filepath = sprintf('%s/%s', ABSPATH, $file_path);
 
@@ -6567,7 +6538,7 @@ function sucuriscan_check_core_integrity( $version=0, $cache=FALSE, $ignored_fil
     foreach( $wp_core_hashes as $file_path => $extra_info ){
         $file_path = preg_replace('/^\.\/(.*)/', '$1', $file_path);
 
-        if( sucuriscan_ignore_integrity_filepath( $file_path, $cache, $ignored_files ) ){ continue; }
+        if( sucuriscan_ignore_integrity_filepath($file_path) ){ continue; }
 
         if( !isset($latest_hashes[$file_path]) ){
             $output['added'][] = $file_path;
@@ -6580,12 +6551,10 @@ function sucuriscan_check_core_integrity( $version=0, $cache=FALSE, $ignored_fil
 /**
  * Ignore irrelevant files and directories from the integrity checking.
  *
- * @param  string  $file_path     File path that will be compared.
- * @param  object  $cache         An instance of the cache library, passed to increase performance.
- * @param  array   $ignored_files List of files marked as fixed, or false/positive.
- * @return boolean                TRUE if the file should be ignored, FALSE otherwise.
+ * @param  string  $file_path File path that will be compared.
+ * @return boolean            TRUE if the file should be ignored, FALSE otherwise.
  */
-function sucuriscan_ignore_integrity_filepath( $file_path='', $cache=FALSE, $ignored_files=array() ){
+function sucuriscan_ignore_integrity_filepath( $file_path='' ){
     global $wp_local_package;
 
     // List of files that will be ignored from the integrity checking.
@@ -6609,6 +6578,13 @@ function sucuriscan_ignore_integrity_filepath( $file_path='', $cache=FALSE, $ign
         '(^|\/)error_log$',
     );
 
+    /**
+     * Ignore i18n files.
+     *
+     * Sites with i18n have differences compared with the official English version
+     * of the project, basically they have files with new variables specifying the
+     * language that will be used in the admin panel, site options, and emails.
+     */
     if(
         isset($wp_local_package)
         && $wp_local_package != 'en_US'
@@ -6617,25 +6593,9 @@ function sucuriscan_ignore_integrity_filepath( $file_path='', $cache=FALSE, $ign
         $ignore_files[] = 'wp-config-sample\.php';
     }
 
+    // Determine whether a file must be ignored from the integrity checks or not.
     foreach( $ignore_files as $ignore_pattern ){
         if( preg_match('/'.$ignore_pattern.'/', $file_path) ){
-            /**
-             * Mark this file as fixed, the administrator is the one with the privileges to
-             * determine if it is in fact a good idea to keep ignoring the file or take
-             * actions over it. Completely hiding these files will offer an attacker the
-             * ability to spam the site in other ways.
-             */
-            $cache_key = md5($file_path);
-
-            if( !array_key_exists($cache_key, $ignored_files) ){
-                $cache_value = array(
-                    'file_path' => $file_path,
-                    'file_status' => 'false_positive',
-                    'ignored_at' => time(),
-                );
-                $cache->add( $cache_key, $cache_value );
-            }
-
             return TRUE;
         }
     }
@@ -6711,42 +6671,6 @@ function sucuriscan_modified_files(){
     }
 
     return SucuriScanTemplate::get_section('integrity-modifiedfiles', $template_variables);
-}
-
-/**
- * List all files that were marked as fixed during the core integrity checks,
- * some of these files were added automatically by the plugin considering them
- * as false/positive, to offer transparency to the code they will be all
- * displayed in the dashboard.
- *
- * @return void
- */
-function sucuriscan_ignored_files( $ignored_files=array() ){
-    $template_variables = array(
-        'IgnoredFiles.List' => '',
-        'IgnoredFiles.Total' => 0,
-    );
-
-    if( $ignored_files ){
-        $counter = 0;
-
-        foreach( $ignored_files as $cache_key => $ignored_file ){
-            $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
-            $template_variables['IgnoredFiles.List'] .= SucuriScanTemplate::get_snippet('integrity-ignoredfiles', array(
-                'IgnoredFiles.CssClass' => $css_class,
-                'IgnoredFiles.CacheKey' => $cache_key,
-                'IgnoredFiles.FilePath' => $ignored_file->file_path,
-                'IgnoredFiles.StatusType' => $ignored_file->file_status,
-                'IgnoredFiles.StatusAbbr' => substr($ignored_file->file_status, 0, 1),
-                'IgnoredFiles.IgnoredAt' => date('d/M/Y H:i', $ignored_file->ignored_at),
-            ));
-            $counter += 1;
-        }
-
-        $template_variables['IgnoredFiles.Total'] = $counter;
-    }
-
-    return SucuriScanTemplate::get_section('integrity-ignoredfiles', $template_variables);
 }
 
 /**
