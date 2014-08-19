@@ -3821,6 +3821,7 @@ class SucuriScanAPI extends SucuriScanOption {
      * version specified. Only official core files are allowed to fetch.
      *
      * @see http://core.svn.wordpress.org/
+     * @see http://i18n.svn.wordpress.org/
      * @see http://core.svn.wordpress.org/tags/VERSION_NUMBER/
      *
      * @param  string $filepath Relative file path of a project core file.
@@ -4889,18 +4890,20 @@ function sucuriscan_sitecheck_info( $res=array() ){
                             <tr>
                                 <th colspan="2">Web application details</th>
                             </tr>
-                            <?php foreach( $res['WEBAPP'] as $webapp_key=>$webapp_details ): ?>
-                                <?php if( is_array($webapp_details) ): ?>
-                                    <?php foreach( $webapp_details as $i=>$details ): ?>
-                                        <?php if( is_array($details) ){ $details = isset($details[0]) ? $details[0] : ''; } ?>
-                                        <tr>
-                                            <td colspan="2">
-                                                <span class="sucuriscan-monospace"><?php _e($details) ?></span>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
+                            <?php if( isset($res['WEBAPP']) ): ?>
+                                <?php foreach( $res['WEBAPP'] as $webapp_key=>$webapp_details ): ?>
+                                    <?php if( is_array($webapp_details) ): ?>
+                                        <?php foreach( $webapp_details as $i=>$details ): ?>
+                                            <?php if( is_array($details) ){ $details = isset($details[0]) ? $details[0] : ''; } ?>
+                                            <tr>
+                                                <td colspan="2">
+                                                    <span class="sucuriscan-monospace"><?php _e($details) ?></span>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
 
                             <?php foreach( $res['SYSTEM']['NOTICE'] as $j=>$notice ): ?>
                                 <?php if( is_array($notice) ){ $notice = implode(', ', $notice); } ?>
@@ -6583,6 +6586,8 @@ function sucuriscan_check_core_integrity( $version=0, $cache=FALSE, $ignored_fil
  * @return boolean                TRUE if the file should be ignored, FALSE otherwise.
  */
 function sucuriscan_ignore_integrity_filepath( $file_path='', $cache=FALSE, $ignored_files=array() ){
+    global $wp_local_package;
+
     // List of files that will be ignored from the integrity checking.
     $ignore_files = array(
         '^sucuri-[0-9a-z]+\.php$',
@@ -6603,6 +6608,14 @@ function sucuriscan_ignore_integrity_filepath( $file_path='', $cache=FALSE, $ign
         '^pinterest-[0-9a-z]{5}\.html$',
         '(^|\/)error_log$',
     );
+
+    if(
+        isset($wp_local_package)
+        && $wp_local_package != 'en_US'
+    ){
+        $ignore_files[] = 'wp-includes\/version\.php';
+        $ignore_files[] = 'wp-config-sample\.php';
+    }
 
     foreach( $ignore_files as $ignore_pattern ){
         if( preg_match('/'.$ignore_pattern.'/', $file_path) ){
