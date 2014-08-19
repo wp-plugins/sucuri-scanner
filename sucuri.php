@@ -578,8 +578,8 @@ class SucuriScan {
      * @return boolean          Either TRUE or FALSE if the site is behind CloudProxy.
      */
     public static function is_behind_cloudproxy( $verbose=FALSE ){
-        if( isset($_SERVER['HTTP_HOST']) ){
-            $http_host = preg_replace('/^(.*):[0-9]+/', '$1', $_SERVER['HTTP_HOST']);
+        if( isset($_SERVER['SERVER_NAME']) ){
+            $http_host = preg_replace('/^(.*):[0-9]+/', '$1', $_SERVER['SERVER_NAME']);
         } else {
             $http_host = 'localhost';
         }
