@@ -584,8 +584,8 @@ class SucuriScan {
             $http_host = 'localhost';
         }
 
-        $host_by_name = gethostbyname($http_host);
-        $host_by_addr = gethostbyaddr($host_by_name);
+        $host_by_name = @gethostbyname($http_host);
+        $host_by_addr = @gethostbyaddr($host_by_name);
         $status = (bool) preg_match('/^cloudproxy[0-9]+\.sucuri\.net$/', $host_by_addr);
 
         if( $verbose ){
