@@ -181,12 +181,13 @@ div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:1
 .sucuriscan-monitoring-logs .sucuriscan-monitoring-date-form select + select{width:112px}
 .sucuriscan-monitoring-logs .sucuriscan-monitoring-date-form select + select + select{width:60px}
 .sucuriscan-monitoring-logs .sucuriscan-target-date{font-size:12px;color:#999;margin-right:5px}
+.sucuriscan-monitoring-logs .sucuriscan-denial-type{font-size:14px}
+.sucuriscan-monitoring-logs .sucuriscan-denial-type-date{font-style:italic;color:#999}
 /* Monitoring AccessLog Styles */
 .sucuriscan-request-summary{margin:-15px;margin-top:-3px}
-.sucuriscan-request-summary ul{margin:0}
-.sucuriscan-request-summary label, .sucuriscan-request-summary span{display:inline-block;font-size:14px}
-.sucuriscan-request-summary label{width:200px;font-weight:bold}
-.sucuriscan-request-summary span{max-width:395px;font-family:monospace;vertical-align:top;word-break:break-all}
+.sucuriscan-request-summary td{font-size:14px}
+.sucuriscan-request-summary tr td:first-child{font-weight:bold}
+.sucuriscan-request-summary td+td{font-family:monospace;word-break:break-all}
 /* Hardening Status */
 .sucuriscan-hstatus{position:relative;margin:0 -12px;padding:10px 12px;border:1px solid transparent}
 .sucuriscan-hstatus-1{background-color:#dff0d8;color:#3c763d;border-color:#d6e9c6}
@@ -219,8 +220,9 @@ div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:1
 .sucuriscan-maincontent .sucuriscan-full-textarea{width:100%;height:400px;line-height:normal;resize:vertical;padding:10px}
 .sucuriscan-maincontent .sucuriscan-settings{margin-top:0}
 .sucuriscan-maincontent .sucuriscan-settings form{display:inline-block}
-.sucuriscan-maincontent .sucuriscan-settings select, .sucuriscan-maincontent .sucuriscan-settings .input-text{min-width:220px}
+.sucuriscan-maincontent .sucuriscan-settings select, .sucuriscan-maincontent .sucuriscan-settings .input-text{width:220px}
 .sucuriscan-maincontent .sucuriscan-settings-notifications{margin-top:0}
+.sucuriscan-maincontent .sucuriscan-settings-heartbeat{}
 .sucuriscan-maincontent .sucuriscan-wpcron-list{margin-top:0}
 /* Responsive Styles */
 @media (max-width: 620px) {

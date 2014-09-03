@@ -1,10 +1,8 @@
 
 <tr class="%%SUCURI.AuditLog.CssClass%%">
-    <td>%%SUCURI.AuditLog.SucuriBlockReason%%</td>
     <td>
-        <span class="sucuriscan-monospace" title="%%SUCURI.AuditLog.RequestDate%% %%SUCURI.AuditLog.RequestTime%% %%SUCURI.AuditLog.RequestTimezone%%">
-            %%SUCURI.AuditLog.RequestTime%% %%SUCURI.AuditLog.RequestTimezone%%
-        </span>
+        <span class="sucuriscan-denial-type">%%SUCURI.AuditLog.SucuriBlockReason%%</span><br>
+        <span class="sucuriscan-denial-type-date">Date/Time: %%SUCURI.AuditLog.LocalRequestTime%%</span>
     </td>
     <td><span class="sucuriscan-monospace">%%SUCURI.AuditLog.RemoteAddr%%</span></td>
     <td>
@@ -16,48 +14,57 @@
 
         <div id="sucuriscan-reqsummary-%%SUCURI.AuditLog.Id%%" style="display:none">
             <div class="sucuriscan-request-summary">
-                <ul class="sucuriscan-list-as-table">
-                    <li>
-                        <label>Blocked Reason:</label>
-                        <span>%%SUCURI.AuditLog.SucuriBlockReason%%</span>
-                    </li>
-                    <li>
-                        <label>Remote Address:</label>
-                        <span>%%SUCURI.AuditLog.RemoteAddr%%</span>
-                    </li>
-                    <li>
-                        <label>Date/Time (Timezone)</label>
-                        <span>%%SUCURI.AuditLog.RequestDate%% %%SUCURI.AuditLog.RequestTime%% (%%SUCURI.AuditLog.RequestTimezone%%)</span>
-                    </li>
-                    <li>
-                        <label>Resource Path:</label>
-                        <span>%%SUCURI.AuditLog.ResourcePath%%</span>
-                    </li>
-                    <li>
-                        <label>Request Method:</label>
-                        <span>%%SUCURI.AuditLog.RequestMethod%%</span>
-                    </li>
-                    <li>
-                        <label>HTTP Protocol:</label>
-                        <span>%%SUCURI.AuditLog.HttpProtocol%%</span>
-                    </li>
-                    <li>
-                        <label>HTTP Status:</label>
-                        <span>%%SUCURI.AuditLog.HttpStatus%% %%SUCURI.AuditLog.HttpStatusTitle%%</span>
-                    </li>
-                    <li>
-                        <label>HTTP Bytes Sent:</label>
-                        <span>%%SUCURI.AuditLog.HttpBytesSent%%</span>
-                    </li>
-                    <li>
-                        <label>HTTP Referer:</label>
-                        <span>%%SUCURI.AuditLog.HttpReferer%%</span>
-                    </li>
-                    <li>
-                        <label>HTTP User Agent:</label>
-                        <span>%%SUCURI.AuditLog.HttpUserAgent%%</span>
-                    </li>
-                </ul>
+                <table class="wp-list-table widefat">
+                    <thead>
+                        <tr>
+                            <th width="200">Information</th>
+                            <th>&nbsp;</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        <tr class="alternate">
+                            <td>Blocked Reason</td>
+                            <td>%%SUCURI.AuditLog.SucuriBlockReason%%</td>
+                        </tr>
+                        <tr>
+                            <td>Remote Address</td>
+                            <td>%%SUCURI.AuditLog.RemoteAddr%%</td>
+                        </tr>
+                        <tr class="alternate">
+                            <td>Date &amp; Time (Local Time)</td>
+                            <td>%%SUCURI.AuditLog.LocalRequestTime%%</td>
+                        </tr>
+                        <tr>
+                            <td>Resource Path</td>
+                            <td>%%SUCURI.AuditLog.ResourcePath%%</td>
+                        </tr>
+                        <tr class="alternate">
+                            <td>Request Method</td>
+                            <td>%%SUCURI.AuditLog.RequestMethod%%</td>
+                        </tr>
+                        <tr>
+                            <td>HTTP Protocol</td>
+                            <td>%%SUCURI.AuditLog.HttpProtocol%%</td>
+                        </tr>
+                        <tr class="alternate">
+                            <td>HTTP Status</td>
+                            <td>%%SUCURI.AuditLog.HttpStatus%% %%SUCURI.AuditLog.HttpStatusTitle%%</td>
+                        </tr>
+                        <tr>
+                            <td>HTTP Bytes Sent</td>
+                            <td>%%SUCURI.AuditLog.HttpBytesSent%%</td>
+                        </tr>
+                        <tr class="alternate">
+                            <td>HTTP Referer</td>
+                            <td>%%SUCURI.AuditLog.HttpReferer%%</td>
+                        </tr>
+                        <tr>
+                            <td>HTTP User Agent</td>
+                            <td>%%SUCURI.AuditLog.HttpUserAgent%%</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </td>

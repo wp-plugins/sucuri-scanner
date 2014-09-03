@@ -45,9 +45,8 @@
         </tr>
 
         <tr>
-            <th>Denial Type</th>
-            <th>Time</th>
-            <th>Remote Address</th>
+            <th width="250">Denial Type</th>
+            <th width="120">Remote Address</th>
             <th>Request Path</th>
         </tr>
     </thead>

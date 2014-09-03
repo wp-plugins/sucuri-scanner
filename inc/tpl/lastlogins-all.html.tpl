@@ -3,9 +3,12 @@
     <thead>
         <tr>
             <th colspan="6" class="thead-with-button">
-                <span>User last logins</span>
-                <span class="thead-topright-action sucuriscan-lastlogin-outof">
-                    %%SUCURI.UserList.Limit%% per page out of %%SUCURI.UserList.Total%%
+                <span>User last logins (%%SUCURI.UserList.Total%%)</span>
+                <span class="thead-topright-action">
+                    <form action="%%SUCURI.URL.Lastlogins%%" method="post">
+                        <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                        <button type="submit" name="sucuriscan_reset_lastlogins" class="button button-primary">Reset logs</button>
+                    </form>
                 </span>
             </th>
         </tr>

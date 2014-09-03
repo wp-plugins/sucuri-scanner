@@ -7,8 +7,8 @@
         <tr>
             <th>ID</th>
             <th>Username</th>
-            <th>Last Activity (GMT/UTC)</th>
-            <th>Registered (GMT/UTC)</th>
+            <th>Last Activity</th>
+            <th>Registered</th>
             <th>IP Address</th>
             <th>&nbsp;</th>
         </tr>

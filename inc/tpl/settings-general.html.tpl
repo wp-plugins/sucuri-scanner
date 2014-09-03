@@ -5,7 +5,7 @@
     <thead>
         <tr>
             <th colspan="3" class="thead-with-button">
-                <span>Plugin Settings</span>
+                <span>General Settings</span>
                 <form action="%%SUCURI.URL.Settings%%" method="post" class="thead-topright-action">
                     <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
                     <button type="submit" name="sucuriscan_reset_options" class="button-primary">Reset plugin options</button>
@@ -25,6 +25,15 @@
                     the domain of this site, this will allow you to have access to our free
                     monitoring tool forever even if you remove the API key and generate it again.
                 </p>
+
+                <div class="sucuriscan-inline-alert-warning sucuriscan-%%SUCURI.InvalidDomainVisibility%%">
+                    <p>
+                        Your domain <code>%%SUCURI.CleanDomain%%</code> does not seems to have a DNS
+                        <code>A</code> record so it will be considered as <em>invalid</em> by the API
+                        interface when you request the generation of a new key. Adding <code>www</code>
+                        at the beginning of the domain name may fix this issue.
+                    </p>
+                </div>
             </td>
         </tr>
 
@@ -107,6 +116,18 @@
         </tr>
 
         <tr>
+            <td>API request timeout</td>
+            <td>%%SUCURI.RequestTimeout%%</td>
+            <td class="td-with-button">
+                <form action="%%SUCURI.URL.Settings%%" method="post">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <input type="text" name="sucuriscan_request_timeout" class="input-text" placeholder="Timeout in seconds..." />
+                    <button type="submit" class="button-primary">Change</button>
+                </form>
+            </td>
+        </tr>
+
+        <tr class="alternate">
             <td>Filesystem scanner</td>
             <td>%%SUCURI.FsScannerStatus%%</td>
             <td class="td-with-button">
@@ -118,7 +139,7 @@
             </td>
         </tr>
 
-        <tr class="alternate">
+        <tr>
             <td>Scan modified files</td>
             <td>%%SUCURI.ScanModfilesStatus%%</td>
             <td class="td-with-button">
@@ -130,7 +151,7 @@
             </td>
         </tr>
 
-        <tr>
+        <tr class="alternate">
             <td>Integrity checking</td>
             <td>%%SUCURI.ScanChecksumsStatus%%</td>
             <td class="td-with-button">
@@ -142,7 +163,7 @@
             </td>
         </tr>
 
-        <tr class="alternate">
+        <tr>
             <td>Last Scanning</td>
             <td><span class="sucuriscan-monospace">%%SUCURI.ScanningRuntimeHuman%%</span></td>
             <td class="td-with-button">
@@ -153,7 +174,7 @@
             </td>
         </tr>
 
-        <tr>
+        <tr class="alternate">
             <td>Scanning frequency</td>
             <td>%%SUCURI.ScanningFrequency%%</td>
             <td class="td-with-button">
@@ -167,7 +188,7 @@
             </td>
         </tr>
 
-        <tr class="alternate sucuriscan-%%SUCURI.ScanningInterfaceVisibility%%">
+        <tr class="sucuriscan-%%SUCURI.ScanningInterfaceVisibility%%">
             <td>Scanning interface</td>
             <td>%%SUCURI.ScanningInterface%%</td>
             <td class="td-with-button">

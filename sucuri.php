@@ -319,6 +319,22 @@ if( defined('SUCURISCAN') ){
     $sucuriscan_admin_notice_name = SucuriScan::is_multisite() ? 'network_admin_notices' : 'admin_notices';
     add_action( $sucuriscan_admin_notice_name, 'SucuriScanInterface::setup_notice' );
 
+    /**
+     * Heartbeat API
+     *
+     * Update the settings of the Heartbeat API according to the values set by an
+     * administrator. This tool may cause an increase in the CPU usage, a bad
+     * configuration may cause low account to run out of resources, but in better
+     * cases it may improve the performance of the site by reducing the quantity of
+     * requests sent to the server per session.
+     */
+    add_filter( 'init', 'SucuriScanHeartbeat::register_script', 1 );
+    add_filter( 'heartbeat_settings', 'SucuriScanHeartbeat::update_settings' );
+    add_filter( 'heartbeat_send', 'SucuriScanHeartbeat::respond_to_send', 10, 3 );
+    add_filter( 'heartbeat_received', 'SucuriScanHeartbeat::respond_to_received', 10, 3 );
+    add_filter( 'heartbeat_nopriv_send', 'SucuriScanHeartbeat::respond_to_send', 10, 3 );
+    add_filter( 'heartbeat_nopriv_received', 'SucuriScanHeartbeat::respond_to_received', 10, 3 );
+
 }
 
 /**
@@ -572,18 +588,35 @@ class SucuriScan {
     }
 
     /**
+     * Get the clean version of the current domain.
+     *
+     * @return string The domain of the current site.
+     */
+    public static function get_domain(){
+        if( function_exists('get_site_url') ){
+            $site_url = get_site_url();
+        } else {
+            if( !isset($_SERVER['HTTP_HOST']) ){
+                $_SERVER['HTTP_HOST'] = 'localhost';
+            }
+
+            $site_url = $_SERVER['HTTP_HOST'];
+        }
+
+        $pattern = '/([fhtps]+:\/\/)?([^:]+)(:[0-9:]+)?/';
+        $domain_name =  preg_replace( $pattern, '$2', $site_url );
+
+        return $domain_name;
+    }
+
+    /**
      * Check whether the site is behing the Sucuri CloudProxy network.
      *
      * @param  boolean $verbose Return an array with the hostname, address, and status, or not.
      * @return boolean          Either TRUE or FALSE if the site is behind CloudProxy.
      */
     public static function is_behind_cloudproxy( $verbose=FALSE ){
-        if( isset($_SERVER['SERVER_NAME']) ){
-            $http_host = preg_replace('/^(.*):[0-9]+/', '$1', $_SERVER['SERVER_NAME']);
-        } else {
-            $http_host = 'localhost';
-        }
-
+        $http_host = self::get_domain();
         $host_by_name = @gethostbyname($http_host);
         $host_by_addr = @gethostbyaddr($host_by_name);
         $status = (bool) preg_match('/^cloudproxy[0-9]+\.sucuri\.net$/', $host_by_addr);
@@ -598,6 +631,45 @@ class SucuriScan {
         }
 
         return $status;
+    }
+
+    /**
+     * Get the email address set by the administrator to receive the notifications
+     * sent by the plugin, if the email is missing the WordPress email address is
+     * chosen by default.
+     *
+     * @return string The administrator email address.
+     */
+    public static function get_site_email(){
+        $email = get_option('admin_email');
+
+        if( self::is_valid_email($email) ){
+            return $email;
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Retrieve the date in localized format, based on timestamp.
+     *
+     * If the locale specifies the locale month and weekday, then the locale will
+     * take over the format for the date. If it isn't, then the date format string
+     * will be used instead.
+     *
+     * @param  integer $timestamp Unix timestamp.
+     * @return string             The date, translated if locale specifies it.
+     */
+    public static function datetime( $timestamp=0 ){
+        if( is_numeric($timestamp) && $timestamp > 0 ){
+            $date_format = get_option('date_format');
+            $time_format = get_option('time_format');
+            $timezone_format = sprintf( '%s %s', $date_format, $time_format );
+
+            return date_i18n( $timezone_format, $timestamp );
+        }
+
+        return NULL;
     }
 
     /**
@@ -716,6 +788,47 @@ class SucuriScan {
         }
 
         return $text;
+    }
+
+    /**
+     * Check whether an list is a multidimensional array or not.
+     *
+     * @param  array   $list An array or multidimensional array of different values.
+     * @return boolean       TRUE if the list is multidimensional, FALSE otherwise.
+     */
+    public static function is_multi_list( $list=array() ){
+        if( !empty($list) ){
+            foreach( $list as $item ){
+                if( is_array($item) ){
+                    return TRUE;
+                }
+            }
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Join array elements with a string no matter if it is multidimensional.
+     *
+     * @param  string $separator Character that will act as a separator, default to an empty string.
+     * @param  array  $list      The array of strings to implode.
+     * @return string            String of all the items in the list, with the separator between them.
+     */
+    public static function implode( $separator='', $list=array() ){
+        if( self::is_multi_list($list) ){
+            $pieces = array();
+
+            foreach( $list as $items ){
+                $pieces[] = @implode( $separator, $items );
+            }
+
+            $joined_pieces = '(' . implode( '), (', $pieces ) . ')';
+
+            return $joined_pieces;
+        } else {
+            return implode( $separator, $list );
+        }
     }
 
 }
@@ -1677,6 +1790,79 @@ class SucuriScanCache extends SucuriScan {
 class SucuriScanOption extends SucuriScanRequest {
 
     /**
+     * Default values for the plugin options.
+     *
+     * @return array Default plugin option values.
+     */
+    private static function get_default_option_values(){
+        $defaults = array(
+            'sucuriscan_api_key' => FALSE,
+            'sucuriscan_account' => '',
+            'sucuriscan_fs_scanner' => 'enabled',
+            'sucuriscan_scan_frequency' => 'hourly',
+            'sucuriscan_scan_interface' => 'spl',
+            'sucuriscan_scan_modfiles' => 'enabled',
+            'sucuriscan_scan_checksums' => 'enabled',
+            'sucuriscan_runtime' => 0,
+            'sucuriscan_lastlogin_redirection' => 'enabled',
+            'sucuriscan_notify_to' => '',
+            'sucuriscan_emails_sent' => 0,
+            'sucuriscan_emails_per_hour' => 5,
+            'sucuriscan_last_email_at' => time(),
+            'sucuriscan_prettify_mails' => 'enabled',
+            'sucuriscan_notify_success_login' => 'enabled',
+            'sucuriscan_notify_failed_login' => 'enabled',
+            'sucuriscan_notify_post_publication' => 'enabled',
+            'sucuriscan_notify_theme_editor' => 'enabled',
+            'sucuriscan_maximum_failed_logins' => 30,
+            'sucuriscan_ignored_events' => '',
+            'sucuriscan_verify_ssl_cert' => 'true',
+            'sucuriscan_request_timeout' => 90,
+            'sucuriscan_heartbeat' => 'enabled',
+            'sucuriscan_heartbeat_pulse' => 15,
+            'sucuriscan_heartbeat_interval' => 'standard',
+            'sucuriscan_heartbeat_autostart' => 'enabled',
+        );
+
+        return $defaults;
+    }
+
+    /**
+     * Retrieve the default values for some specific options.
+     *
+     * @param  string|array $settings Either an array that will be complemented or a string with the name of the option.
+     * @return string|array           The default values for the specified options.
+     */
+    private static function get_default_options( $settings='' ){
+        $default_options = self::get_default_option_values();
+
+        // Use framework built-in function.
+        if( function_exists('get_option') ){
+            $admin_email = get_option('admin_email');
+            $default_options['sucuriscan_account'] = $admin_email;
+            $default_options['sucuriscan_notify_to'] = $admin_email;
+        }
+
+        if( is_array($settings) ){
+            foreach( $default_options as $option_name => $option_value ){
+                if( !isset($settings[$option_name]) ){
+                    $settings[$option_name] = $option_value;
+                }
+            }
+
+            return $settings;
+        }
+
+        if( is_string($settings) ){
+            if( isset($default_options[$settings]) ){
+                return $default_options[$settings];
+            }
+        }
+
+        return FALSE;
+    }
+
+    /**
      * Retrieve specific options from the database.
      *
      * Considering the case in which this plugin is installed in a multisite instance
@@ -1832,63 +2018,6 @@ class SucuriScanOption extends SucuriScanRequest {
     }
 
     /**
-     * Retrieve the default values for some specific options.
-     *
-     * @param  string|array $settings Either an array that will be complemented or a string with the name of the option.
-     * @return string|array           The default values for the specified options.
-     */
-    private static function get_default_options( $settings='' ){
-        $admin_email = '';
-
-        // Use framework built-in function.
-        if( function_exists('get_option') ){
-            $admin_email = get_option('admin_email');
-        }
-
-        $default_options = array(
-            'sucuriscan_api_key' => FALSE,
-            'sucuriscan_account' => $admin_email,
-            'sucuriscan_fs_scanner' => 'enabled',
-            'sucuriscan_scan_frequency' => 'hourly',
-            'sucuriscan_scan_interface' => 'spl',
-            'sucuriscan_scan_modfiles' => 'enabled',
-            'sucuriscan_scan_checksums' => 'enabled',
-            'sucuriscan_runtime' => 0,
-            'sucuriscan_lastlogin_redirection' => 'enabled',
-            'sucuriscan_notify_to' => $admin_email,
-            'sucuriscan_emails_sent' => 0,
-            'sucuriscan_emails_per_hour' => 5,
-            'sucuriscan_last_email_at' => time(),
-            'sucuriscan_prettify_mails' => 'enabled',
-            'sucuriscan_notify_success_login' => 'enabled',
-            'sucuriscan_notify_failed_login' => 'enabled',
-            'sucuriscan_notify_post_publication' => 'enabled',
-            'sucuriscan_notify_theme_editor' => 'enabled',
-            'sucuriscan_maximum_failed_logins' => 30,
-            'sucuriscan_ignored_events' => '',
-            'sucuriscan_verify_ssl_cert' => 'true',
-        );
-
-        if( is_array($settings) ){
-            foreach( $default_options as $option_name => $option_value ){
-                if( !isset($settings[$option_name]) ){
-                    $settings[$option_name] = $option_value;
-                }
-            }
-
-            return $settings;
-        }
-
-        if( is_string($settings) ){
-            if( isset($default_options[$settings]) ){
-                return $default_options[$settings];
-            }
-        }
-
-        return FALSE;
-    }
-
-    /**
      * Retrieve all the options stored by Wordpress in the database. The options
      * containing the word "transient" are excluded from the results, this function
      * is compatible with multisite instances.
@@ -1978,35 +2107,6 @@ class SucuriScanOption extends SucuriScanRequest {
         }
 
         return FALSE;
-    }
-
-    /**
-     * Get the email address set by the administrator to receive the notifications
-     * sent by the plugin, if the email is missing the WordPress email address is
-     * chosen by default.
-     *
-     * @return string The administrator email address.
-     */
-    public static function get_site_email(){
-        $email = self::get_option('admin_email');
-
-        if( self::is_valid_email($email) ){
-            return $email;
-        }
-
-        return FALSE;
-    }
-
-    /**
-     * Get the clean version of the current domain.
-     *
-     * @return string The domain of the current site.
-     */
-    public static function get_domain(){
-        $http_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
-        $domain_name =  preg_replace( '/^www\./', '', $http_host );
-
-        return $domain_name;
     }
 
     /**
@@ -2140,7 +2240,7 @@ class SucuriScanOption extends SucuriScanRequest {
 
         if( $runtime > 0 ){
             if( $format ){
-                return date( 'd/M/Y H:i:s', $runtime );
+                return SucuriScan::datetime($runtime);
             }
 
             return $runtime;
@@ -2369,7 +2469,7 @@ class SucuriScanEvent extends SucuriScan {
                 $email_params['Force'] = TRUE;
             }
 
-            $title = sprintf( 'Sucuri notification (%s)', str_replace('_', chr(32), $event) );
+            $title = str_replace('_', chr(32), $event);
             $mail_sent = SucuriScanMail::send_mail( $email, $title, $content, $email_params );
 
             return $mail_sent;
@@ -3113,6 +3213,15 @@ class SucuriScanAPI extends SucuriScanOption {
     }
 
     /**
+     * Seconds before consider a HTTP request as timeout.
+     *
+     * @return integer Seconds to consider a HTTP request timeout.
+     */
+    public static function request_timeout(){
+        return intval( self::get_option(':request_timeout') );
+    }
+
+    /**
      * Generate an user-agent for the HTTP requests.
      *
      * @return string An user-agent for the HTTP requests.
@@ -3145,7 +3254,7 @@ class SucuriScanAPI extends SucuriScanOption {
 
         $req_args = array(
             'method' => $method,
-            'timeout' => 90,
+            'timeout' => self::request_timeout(),
             'redirection' => 2,
             'httpversion' => '1.0',
             'user-agent' => self::user_agent(),
@@ -3218,7 +3327,7 @@ class SucuriScanAPI extends SucuriScanOption {
      */
     public static function set_plugin_key( $api_key='', $validate=FALSE ){
         if( $validate ){
-            if( !preg_match('/^([a-z0-9]{32})$/', $api_key) ){
+            if( !preg_match('/^[a-z0-9]{32}$/', $api_key) ){
                 SucuriScanInterface::error( 'Invalid API key format' );
                 return FALSE;
             }
@@ -3601,7 +3710,7 @@ class SucuriScanAPI extends SucuriScanOption {
             'date' => date('Y-m-d'),
         );
 
-        if( preg_match('/^([0-9]{4})\-([0-9]{2})\-([0-9]{2})$/', $date) ){
+        if( preg_match('/^[0-9]{4}(\-[0-9]{2}){2}$/', $date) ){
             $params['date'] = $date;
         }
 
@@ -3895,7 +4004,7 @@ class SucuriScanMail extends SucuriScanOption {
     public static function send_mail( $email='', $subject='', $message='', $data_set=array() ){
         $headers = array();
         $subject = ucwords(strtolower($subject));
-        $wp_domain = SucuriScanOption::get_domain();
+        $wp_domain = self::get_domain();
         $force = FALSE;
         $debug = FALSE;
 
@@ -3930,9 +4039,11 @@ class SucuriScanMail extends SucuriScanOption {
 
             if( $debug ){ die($message); }
 
+            $subject = sprintf( 'Sucuri Alert, %s, %s', $wp_domain, $subject );
+
             $email_sent = wp_mail(
                 $email,
-                "Sucuri WP Notification: {$wp_domain} - {$subject}",
+                $subject,
                 $message,
                 $headers
             );
@@ -4073,8 +4184,8 @@ class SucuriScanTemplate extends SucuriScanRequest {
         $params['PageTitle'] = isset($params['PageTitle']) ? '('.$params['PageTitle'].')' : '';
         $params['PageNonce'] = wp_create_nonce('sucuriscan_page_nonce');
         $params['PageStyleClass'] = isset($params['PageStyleClass']) ? $params['PageStyleClass'] : 'base';
-        $params['CleanDomain'] = SucuriScanOption::get_domain();
-        $params['AdminEmail'] = SucuriScanOption::get_site_email();
+        $params['CleanDomain'] = self::get_domain();
+        $params['AdminEmail'] = self::get_site_email();
 
         return $params;
     }
@@ -4361,6 +4472,160 @@ class SucuriScanTemplate extends SucuriScanRequest {
         }
 
         return $html_links;
+    }
+
+}
+
+/**
+ * Heartbeat library.
+ *
+ * The purpose of the Heartbeat API is to simulate bidirectional connection
+ * between the browser and the server. Initially it was used for autosave, post
+ * locking and log-in expiration warning while a user is writing or editing. The
+ * idea was to have an API that sends XHR (XML HTTP Request) requests to the
+ * server every fifteen seconds and triggers events (or callbacks) on receiving
+ * data.
+ *
+ * @see https://core.trac.wordpress.org/ticket/23216
+ */
+class SucuriScanHeartbeat extends SucuriScanOption {
+
+    /**
+     * Stop execution of the heartbeat API in certain parts of the site.
+     *
+     * @return void
+     */
+    public static function register_script(){
+        global $pagenow;
+
+        $status = SucuriScanOption::get_option(':heartbeat');
+
+        // Enable heartbeat everywhere.
+        if( $status == 'enabled' ){ /* do_nothing */ }
+
+        // Disable heartbeat everywhere.
+        elseif( $status == 'disabled' ){
+            wp_deregister_script('heartbeat');
+        }
+
+        // Disable heartbeat only on the dashboard and home pages.
+        elseif(
+            $status == 'dashboard'
+            && $pagenow == 'index.php'
+        ){
+            wp_deregister_script('heartbeat');
+        }
+
+        // Disable heartbeat everywhere except in post edition.
+        elseif(
+            $status == 'addpost'
+            && $pagenow != 'post.php'
+            && $pagenow != 'post-new.php'
+        ){
+            wp_deregister_script('heartbeat');
+        }
+    }
+
+    /**
+     * Update the settings of the Heartbeat API according to the values set by an
+     * administrator. This tool may cause an increase in the CPU usage, a bad
+     * configuration may cause low account to run out of resources, but in better
+     * cases it may improve the performance of the site by reducing the quantity of
+     * requests sent to the server per session.
+     *
+     * @param  array $settings Heartbeat settings.
+     * @return array           Updated version of the heartbeat settings.
+     */
+    public static function update_settings( $settings=array() ){
+        $pulse = SucuriScanOption::get_option(':heartbeat_pulse');
+        $autostart = SucuriScanOption::get_option(':heartbeat_autostart');
+
+        if( $pulse < 15 || $pulse > 60 ){
+            SucuriScanOption::delete_option(':heartbeat_pulse');
+            $pulse = 15;
+        }
+
+        $settings['interval'] = $pulse;
+        $settings['autostart'] = ( $autostart == 'disabled' ? FALSE : TRUE );
+
+        return $settings;
+    }
+
+    /**
+     * Respond to the browser according to the data received.
+     *
+     * @param  array  $response  Response received.
+     * @param  array  $data      Data received from the beat.
+     * @param  string $screen_id Identifier of the screen the heartbeat occurred on.
+     * @return array             Response with new data.
+     */
+    public static function respond_to_received( $response=array(), $data=array(), $screen_id='' ) {
+        $interval = SucuriScanOption::get_option(':heartbeat_interval');
+
+        if(
+            $interval == 'slow'
+            || $interval == 'fast'
+            || $interval == 'standard'
+        ){
+            $response['heartbeat_interval'] = $interval;
+        } else {
+            SucuriScanOption::delete_option(':heartbeat_interval');
+        }
+
+        return $response;
+    }
+
+    /**
+     * Respond to the browser according to the data sent.
+     *
+     * @param  array  $response  Response sent.
+     * @param  string $screen_id Identifier of the screen the heartbeat occurred on.
+     * @return array             Response with new data.
+     */
+    public static function respond_to_send( $response=array(), $screen_id='' ) {
+        return $response;
+    }
+
+    /**
+     * Allowed values for the heartbeat status.
+     *
+     * @return array Allowed values for the heartbeat status.
+     */
+    public static function statuses_allowed(){
+        return array(
+            'enabled' => 'Enable everywhere',
+            'disabled' => 'Disable everywhere',
+            'dashboard' => 'Disable on dashboard page',
+            'addpost' => 'Everywhere except post addition',
+        );
+    }
+
+    /**
+     * Allowed values for the heartbeat intervals.
+     *
+     * @return array Allowed values for the heartbeat intervals.
+     */
+    public static function intervals_allowed(){
+        return array(
+            'slow' => 'Slow interval',
+            'fast' => 'Fast interval',
+            'standard' => 'Standard interval',
+        );
+    }
+
+    /**
+     * Allowed values for the heartbeat pulses.
+     *
+     * @return array Allowed values for the heartbeat pulses.
+     */
+    public static function pulses_allowed(){
+        $pulses = array();
+
+        for( $i=15; $i<=60; $i++ ){
+            $pulses[$i] = sprintf( 'Run every %d seconds', $i );
+        }
+
+        return $pulses;
     }
 
 }
@@ -4664,7 +4929,7 @@ function sucuriscan_scanner_page(){
 function sucuriscan_sitecheck_info( $res=array() ){
     // Will be TRUE only if the scanning results were retrieved from the cache.
     $display_results = (bool) $res;
-    $clean_domain = SucuriScanOption::get_domain();
+    $clean_domain = SucuriScan::get_domain();
 
     // If the results are not cached, then request a new scanning.
     if( $res === FALSE ){
@@ -5140,6 +5405,9 @@ function sucuriscan_monitoring_form_submissions(){
 
             if( $clear_cache_resp ){
                 if( isset($clear_cache_resp->messages[0]) ){
+                    // Clear W3 Total Cache if it is installed.
+                    if( function_exists('w3tc_flush_all') ){ w3tc_flush_all(); }
+
                     SucuriScanInterface::info($clear_cache_resp->messages[0]);
                 } else {
                     SucuriScanInterface::error('Could not clear the cache of your site, try later again.');
@@ -5314,7 +5582,7 @@ function sucuriscan_monitoring_logs( $api_key='' ){
         }
     }
 
-    $template_variables['AuditLogs.TargetDate'] = htmlentities($date);
+    $template_variables['AuditLogs.TargetDate'] = SucuriScan::escape($date);
     $template_variables['AuditLogs.DateYears'] = sucuriscan_monitoring_dates('years', $date);
     $template_variables['AuditLogs.DateMonths'] = sucuriscan_monitoring_dates('months', $date);
     $template_variables['AuditLogs.DateDays'] = sucuriscan_monitoring_dates('days', $date);
@@ -5337,6 +5605,8 @@ function sucuriscan_monitoring_access_logs( $access_logs=array() ){
             'request_date',
             'request_time',
             'request_timezone',
+            'request_timestamp',
+            'local_request_time',
             'remote_addr',
             'sucuri_block_reason',
             'resource_path',
@@ -5398,9 +5668,20 @@ function sucuriscan_monitoring_access_logs( $access_logs=array() ){
 
                 if( isset($access_log->{$attr_name}) ){
                     $attr_value = $access_log->{$attr_name};
+
+                    if(
+                        empty($attr_value)
+                        && $attr_name == 'sucuri_block_reason'
+                    ){
+                        $attr_value = 'Unknown';
+                    }
                 }
 
-                $audit_log_snippet[$attr_title] = $attr_value;
+                elseif( $attr_name == 'local_request_time' ){
+                    $attr_value = SucuriScan::datetime($access_log->request_timestamp);
+                }
+
+                $audit_log_snippet[$attr_title] = SucuriScan::escape($attr_value);
             }
 
             $logs_html .= SucuriScanTemplate::get_snippet('monitoring-logs', $audit_log_snippet);
@@ -5427,7 +5708,9 @@ function sucuriscan_monitoring_denial_types( $access_logs=array(), $in_html=TRUE
         foreach( $access_logs as $access_log ){
             if( !array_key_exists($access_log->sucuri_block_reason, $types) ){
                 $denial_type_k = SucuriScan::human2var($access_log->sucuri_block_reason);
-                $types[$denial_type_k] = $access_log->sucuri_block_reason;
+                $denial_type_v = $access_log->sucuri_block_reason;
+                if( empty($denial_type_v) ){ $denial_type_v = 'Unknown'; }
+                $types[$denial_type_k] = $denial_type_v;
             }
         }
     }
@@ -5734,7 +6017,7 @@ function sucuriscan_harden_upload(){
                     @file_put_contents($htaccess_upload, $htaccess_content, LOCK_EX);
                 }
 
-                SucuriScanInterface::info('Hardening reverted for upload directory <code>/wp-content/uploads/</code>');
+                SucuriScanInterface::info('Hardening reverted for upload directory.');
             } else {
                 SucuriScanInterface::error(
                     'File <code>/wp-content/uploads/.htaccess</code> does not exists or
@@ -5768,7 +6051,7 @@ function sucuriscan_harden_upload(){
 function sucuriscan_harden_wpcontent(){
     $cp = 1;
     $upmsg = NULL;
-    $htaccess_upload = ABSPATH . '/wp-content/.htaccess';
+    $htaccess_upload = WP_CONTENT_DIR . '/.htaccess';
 
     if( !is_readable($htaccess_upload) ){
         $cp = 0;
@@ -5789,7 +6072,7 @@ function sucuriscan_harden_wpcontent(){
             if( @file_put_contents($htaccess_upload, "\n<Files *.php>\ndeny from all\n</Files>") === FALSE ){
                 $upmsg = SucuriScanInterface::error('Unable to create <code>.htaccess</code> file, folder destination is not writable.');
             } else {
-                $upmsg = SucuriScanInterface::info('Hardening applied successfully to content directory <code>/wp-content/</code>');
+                $upmsg = SucuriScanInterface::info('Hardening applied successfully to content directory.');
                 $cp = 1;
             }
         }
@@ -5806,11 +6089,11 @@ function sucuriscan_harden_wpcontent(){
                     @file_put_contents($htaccess_upload, $htaccess_content, LOCK_EX);
                 }
 
-                SucuriScanInterface::info('Hardening reverted for content directory <code>/wp-content/</code>');
+                SucuriScanInterface::info('Hardening reverted for content directory.');
             } else {
                 SucuriScanInterface::info(
-                    'File <code>/wp-content/.htaccess</code> does not exists or is not writable,
-                    you will need to remove the following code manually from there:
+                    'File <code>' . WP_CONTENT_DIR . '/.htaccess</code> does not exists or is not
+                    writable, you will need to remove the following code manually from there:
                     <code>&lt;Files *.php&gt;deny from all&lt;/Files&gt;</code>'
                 );
             }
@@ -5819,7 +6102,7 @@ function sucuriscan_harden_wpcontent(){
 
     $description = 'This option blocks direct PHP access to any file inside wp-content. If you experience '
         . 'any issue after this with a theme or plugin in your site, like for example images not displaying, '
-        . 'remove the <code>.htaccess</code> file located at the <code>/wp-content/</code> directory.'
+        . 'remove the <code>.htaccess</code> file located in the content directory.'
         . '</p><p><b>Note:</b> Many <em>(insecure)</em> themes and plugins use a PHP file in this directory '
         . 'to generate images like thumbnails and captcha codes, this is intentional so it is recommended '
         . 'to check your site once this option is enabled.';
@@ -5869,7 +6152,7 @@ function sucuriscan_harden_wpincludes(){
             if( @file_put_contents($htaccess_upload, "\n<Files *.php>\ndeny from all\n</Files>\n<Files wp-tinymce.php>\nallow from all\n</Files>\n")===FALSE ){
                 $upmsg = SucuriScanInterface::error('Unable to create <code>.htaccess</code> file, folder destination is not writable.');
             } else {
-                $upmsg = SucuriScanInterface::info('Hardening applied successfully to library\'s directory <code>/wp-includes/</code>');
+                $upmsg = SucuriScanInterface::info('Hardening applied successfully to library\'s directory.');
                 $cp = 1;
             }
         }
@@ -5887,7 +6170,7 @@ function sucuriscan_harden_wpincludes(){
 
                     @file_put_contents($htaccess_upload, $htaccess_content, LOCK_EX);
                 }
-                SucuriScanInterface::info('Hardening reverted for library\'s directory <code>/wp-includes/</code>');
+                SucuriScanInterface::info('Hardening reverted for library\'s directory.');
             } else {
                 SucuriScanInterface::error(
                     'File <code>wp-includes/.htaccess</code> does not exists or is not
@@ -6337,9 +6620,9 @@ function sucuriscan_auditlogs(){
                 $css_class = ( $counter_i % 2 == 0 ) ? '' : 'alternate';
                 $snippet_data = array(
                     'AuditLog.CssClass' => $css_class,
-                    'AuditLog.DateTime' => date( 'd/M/Y H:i:s', $audit_log['timestamp'] ),
-                    'AuditLog.Account' => $audit_log['account'],
-                    'AuditLog.Message' => $audit_log['message'],
+                    'AuditLog.DateTime' => SucuriScan::datetime($audit_log['timestamp']),
+                    'AuditLog.Account' => SucuriScan::escape($audit_log['account']),
+                    'AuditLog.Message' => SucuriScan::escape($audit_log['message']),
                     'AuditLog.Extra' => '',
                 );
 
@@ -6348,7 +6631,7 @@ function sucuriscan_auditlogs(){
                     $css_scrollable = $audit_log['extra_total'] > 10 ? 'sucuriscan-list-as-table-scrollable' : '';
                     $snippet_data['AuditLog.Extra'] .= '<ul class="sucuriscan-list-as-table ' . $css_scrollable . '">';
                     foreach( $audit_log['extra'] as $log_extra ){
-                        $snippet_data['AuditLog.Extra'] .= '<li>' . $log_extra . '</li>';
+                        $snippet_data['AuditLog.Extra'] .= '<li>' . SucuriScan::escape($log_extra) . '</li>';
                     }
                     $snippet_data['AuditLog.Extra'] .= '</ul>';
                     $snippet_data['AuditLog.Extra'] .= '<small>For Mac users, this is a scrollable container</small>';
@@ -6658,7 +6941,7 @@ function sucuriscan_modified_files(){
                         'ModifiedFiles.CssClass' => $css_class,
                         'ModifiedFiles.CheckSum' => $file_info['checksum'],
                         'ModifiedFiles.FilePath' => $file_path,
-                        'ModifiedFiles.DateTime' => $mod_date
+                        'ModifiedFiles.DateTime' => SucuriScan::datetime($mod_date),
                     ));
                     $counter += 1;
                 }
@@ -6819,7 +7102,7 @@ function sucuriscan_posthack_users( $process_form=FALSE ){
 
         foreach( $user_list as $user ){
             $user->user_registered_timestamp = strtotime($user->user_registered);
-            $user->user_registered_formatted = date('D, M/Y H:i', $user->user_registered_timestamp);
+            $user->user_registered_formatted = SucuriScan::datetime($user->user_registered_timestamp);
             $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
 
             $template_variables['ResetPassword.UserList'] .= SucuriScanTemplate::get_snippet('posthack-resetpassword', array(
@@ -6978,6 +7261,21 @@ function sucuriscan_posthack_reinstall_plugins( $process_form=FALSE ){
 function sucuriscan_lastlogins_page(){
     SucuriScanInterface::check_permissions();
 
+    // Reset the file with the last-logins logs.
+    if(
+        SucuriScanInterface::check_nonce()
+        && SucuriScanRequest::post(':reset_lastlogins') !== FALSE
+    ){
+        $file_path = sucuriscan_lastlogins_datastore_filepath();
+
+        if( unlink($file_path) ){
+            sucuriscan_lastlogins_datastore_exists();
+            SucuriScanInterface::info( 'Last-Logins logs were reset successfully.' );
+        } else {
+            SucuriScanInterface::error( 'Could not reset the last-logins logs.' );
+        }
+    }
+
     // Page pseudo-variables initialization.
     $template_variables = array(
         'PageTitle' => 'Last Logins',
@@ -7023,14 +7321,18 @@ function sucuriscan_lastlogins_admins(){
         if( !empty($admin->lastlogins) ){
             $user_snippet['AdminUsers.NoLastLogins'] = 'hidden';
             $user_snippet['AdminUsers.NoLastLoginsTable'] = 'visible';
-            $user_snippet['AdminUsers.RegisteredAt'] = $admin->user_registered;
+            $user_snippet['AdminUsers.RegisteredAt'] = 'Unknown';
             $counter = 0;
 
-            foreach( $admin->lastlogins as $lastlogin ){
+            foreach( $admin->lastlogins as $i => $lastlogin ){
+                if( $i == 0 ){
+                    $user_snippet['AdminUsers.RegisteredAt'] = SucuriScan::datetime($lastlogin->user_registered_timestamp);
+                }
+
                 $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
                 $user_snippet['AdminUsers.LastLogins'] .= SucuriScanTemplate::get_snippet('lastlogins-admins-lastlogin', array(
                     'AdminUsers.RemoteAddr' => SucuriScan::escape($lastlogin->user_remoteaddr),
-                    'AdminUsers.Datetime' => SucuriScan::escape($lastlogin->user_lastlogin),
+                    'AdminUsers.Datetime' => SucuriScan::datetime($lastlogin->user_lastlogin_timestamp),
                     'AdminUsers.CssClass' => $css_class,
                 ));
                 $counter += 1;
@@ -7263,6 +7565,8 @@ function sucuriscan_get_logins( $limit=10, $offset=0, $user_id=0 ){
 
                 if( preg_match('/^a:[0-9]+:.+/', $line) ){
                     $last_login = @unserialize($line);
+                    $last_login['user_lastlogin_timestamp'] = strtotime($last_login['user_lastlogin']);
+                    $last_login['user_registered_timestamp'] = 0;
 
                     // Only administrators can see all login stats.
                     if( !$is_admin_user && $current_user->user_login != $last_login['user_login'] ){
@@ -7283,12 +7587,20 @@ function sucuriscan_get_logins( $limit=10, $offset=0, $user_id=0 ){
 
                         foreach( $user_account->data as $var_name=>$var_value ){
                             $last_login[$var_name] = $var_value;
+
+                            if( $var_name == 'user_registered' ){
+                                $last_login['user_registered_timestamp'] = strtotime($var_value);
+                            }
                         }
                     }
 
                     $last_login['line_num'] = $i + 1;
                     $last_logins['entries'][] = (object) $last_login;
                     $parsed_lines += 1;
+                }
+
+                else {
+                    $last_logins['total'] -= 1;
                 }
 
                 if( preg_match('/^[0-9]+$/', $limit) && $limit>0 ){
@@ -7345,8 +7657,10 @@ if( !function_exists('sucuri_get_user_lastlogin') ){
             if( isset($last_logins['entries'][1]) ){
                 $row = $last_logins['entries'][1];
 
-                $message_tpl = 'Last time you logged in was at <code>%s</code> from <code>%s</code> - <code>%s</code>';
-                $lastlogin_message = sprintf( $message_tpl, date('d/M/Y H:i'), $row->user_remoteaddr, $row->user_hostname );
+                $lastlogin_message = sprintf(
+                    'Last time you logged in was at <code>%s</code> from <code>%s</code> - <code>%s</code>',
+                    date('d/M/Y H:i'), $row->user_remoteaddr, $row->user_hostname
+                );
                 $lastlogin_message .= chr(32).'(<a href="'.SucuriScanTemplate::get_url('lastlogins').'">view all logs</a>)';
                 SucuriScanInterface::info( $lastlogin_message );
             }
@@ -7376,8 +7690,8 @@ function sucuriscan_loggedin_users_panel(){
 
         foreach( (array) $logged_in_users as $logged_in_user ){
             $counter += 1;
-            $logged_in_user['last_activity_datetime'] = date('d/M/Y H:i', $logged_in_user['last_activity']);
-            $logged_in_user['user_registered_datetime'] = date('d/M/Y H:i', strtotime($logged_in_user['user_registered']));
+            $logged_in_user['last_activity_datetime'] = SucuriScan::datetime($logged_in_user['last_activity']);
+            $logged_in_user['user_registered_datetime'] = SucuriScan::datetime( strtotime($logged_in_user['user_registered']) );
 
             $template_variables['LoggedInUsers.List'] .= SucuriScanTemplate::get_snippet('lastlogins-loggedin', array(
                 'LoggedInUsers.Id' => SucuriScan::escape($logged_in_user['user_id']),
@@ -7584,7 +7898,7 @@ function sucuriscan_failed_logins_panel(){
                 'FailedLogins.Num' => ($counter + 1),
                 'FailedLogins.Username' => SucuriScan::escape($login_data['user_login']),
                 'FailedLogins.RemoteAddr' => SucuriScan::escape($login_data['remote_addr']),
-                'FailedLogins.Datetime' => date('d/M/Y H:i', $login_data['attempt_time']),
+                'FailedLogins.Datetime' => SucuriScan::datetime($login_data['attempt_time']),
                 'FailedLogins.UserAgent' => SucuriScan::escape($login_data['user_agent']),
             ));
 
@@ -7820,6 +8134,7 @@ function sucuriscan_settings_page(){
         'Settings.General' => sucuriscan_settings_general(),
         'Settings.Notifications' => sucuriscan_settings_notifications(),
         'Settings.IgnoreRules' => sucuriscan_settings_ignore_rules(),
+        'Settings.Heartbeat' => sucuriscan_settings_heartbeat(),
     );
 
     echo SucuriScanTemplate::get_template('settings', $template_variables);
@@ -7970,6 +8285,12 @@ function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
             }
         }
 
+        // Update the API request timeout.
+        if( $request_timeout = SucuriScanRequest::post(':request_timeout', '[0-9]+') ){
+            SucuriScanOption::update_option(':request_timeout', $request_timeout);
+            SucuriScanInterface::info( 'API request timeout set to <code>' . $request_timeout . '</code> seconds.' );
+        }
+
         // Update the notification settings.
         if( SucuriScanRequest::post(':save_notification_settings') !== FALSE ){
             $options_updated_counter = 0;
@@ -8028,6 +8349,48 @@ function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
             }
         }
 
+        // Update the settings for the heartbeat API.
+        if( $heartbeat_status = SucuriScanRequest::post(':heartbeat_status') ){
+            $statuses_allowed = SucuriScanHeartbeat::statuses_allowed();
+
+            if( array_key_exists($heartbeat_status, $statuses_allowed) ){
+                SucuriScanOption::update_option(':heartbeat', $heartbeat_status);
+                SucuriScanInterface::info( 'Heartbeat status set to <code>' . $heartbeat_status . '</code>' );
+            } else {
+                SucuriScanInterface::error( 'Heartbeat status not allowed.' );
+            }
+        }
+
+        // Update the value of the heartbeat pulse.
+        if( $heartbeat_pulse = SucuriScanRequest::post(':heartbeat_pulse') ){
+            $pulses_allowed = SucuriScanHeartbeat::pulses_allowed();
+
+            if( array_key_exists($heartbeat_pulse, $pulses_allowed) ){
+                SucuriScanOption::update_option(':heartbeat_pulse', $heartbeat_pulse);
+                SucuriScanInterface::info( 'Heartbeat pulse set to <code>' . $heartbeat_pulse . '</code> seconds.' );
+            } else {
+                SucuriScanInterface::error( 'Heartbeat pulse not allowed.' );
+            }
+        }
+
+        // Update the value of the heartbeat interval.
+        if( $heartbeat_interval = SucuriScanRequest::post(':heartbeat_interval') ){
+            $intervals_allowed = SucuriScanHeartbeat::intervals_allowed();
+
+            if( array_key_exists($heartbeat_interval, $intervals_allowed) ){
+                SucuriScanOption::update_option(':heartbeat_interval', $heartbeat_interval);
+                SucuriScanInterface::info( 'Heartbeat interval set to <code>' . $heartbeat_interval . '</code>' );
+            } else {
+                SucuriScanInterface::error( 'Heartbeat interval not allowed.' );
+            }
+        }
+
+        // Enable or disable the auto-start execution of heartbeat.
+        if( $heartbeat_autostart = SucuriScanRequest::post(':heartbeat_autostart', '(en|dis)able') ){
+            $action_d = $heartbeat_autostart . 'd';
+            SucuriScanOption::update_option(':heartbeat_autostart', $action_d);
+            SucuriScanInterface::info( 'Heartbeat auto-start was <code>' . $action_d . '</code>' );
+        }
     }
 }
 
@@ -8081,6 +8444,13 @@ function sucuriscan_settings_general(){
     $verify_ssl_cert = SucuriScanOption::get_option(':verify_ssl_cert');
     $runtime_scan_human = SucuriScanOption::get_filesystem_runtime(TRUE);
 
+    // Check whether the domain name is valid or not.
+    if( !$api_key ){
+        $clean_domain = SucuriScan::get_domain();
+        $domain_address = @gethostbyname($clean_domain);
+        $invalid_domain = ( $domain_address == $clean_domain ) ? TRUE : FALSE;
+    }
+
     // Generate the HTML code for the option list in the form select fields.
     $scan_freq_options = SucuriScanTemplate::get_select_options( $sucuriscan_schedule_allowed, $scan_freq );
     $scan_interface_options = SucuriScanTemplate::get_select_options( $sucuriscan_interface_allowed, $scan_interface );
@@ -8093,6 +8463,7 @@ function sucuriscan_settings_general(){
         'APIKey.RecoverVisibility' => SucuriScanTemplate::visibility( !$api_key && !$display_manual_key_form ),
         'APIKey.ManualKeyFormVisibility' => SucuriScanTemplate::visibility($display_manual_key_form),
         'APIKey.RemoveVisibility' => SucuriScanTemplate::visibility($api_key),
+        'InvalidDomainVisibility' => SucuriScanTemplate::visibility($invalid_domain),
         /* Filesystem scanner */
         'FsScannerStatus' => 'Enabled',
         'FsScannerSwitchText' => 'Disable',
@@ -8124,6 +8495,7 @@ function sucuriscan_settings_general(){
         'MaximumFailedLoginsOptions' => $maximum_failed_logins_options,
         'VerifySSLCert' => 'Undefined',
         'VerifySSLCertOptions' => $verify_ssl_cert_options,
+        'RequestTimeout' => SucuriScanOption::get_option(':request_timeout') . ' seconds',
         'ModalWhenAPIRegistered' => $api_registered_modal,
     );
 
@@ -8227,7 +8599,7 @@ function sucuriscan_settings_ignore_rules(){
 
             if( array_key_exists($post_type, $ignored_events) ){
                 $is_ignored_text = 'YES';
-                $was_ignored_at = @date('d/M/Y - H:i:s', $ignored_events[$post_type]);
+                $was_ignored_at = SucuriScan::datetime($ignored_events[$post_type]);
                 $is_ignored_class = 'danger';
                 $button_action = 'remove';
                 $button_class = 'button-primary';
@@ -8257,6 +8629,65 @@ function sucuriscan_settings_ignore_rules(){
     }
 
     return SucuriScanTemplate::get_section('settings-ignorerules', $template_variables);
+}
+
+/**
+ * Read and parse the content of the heartbeat settings template.
+ *
+ * @return string Parsed HTML code for the ignored-rules settings panel.
+ */
+function sucuriscan_settings_heartbeat(){
+    // Current values set in the options table.
+    $heartbeat_status = SucuriScanOption::get_option(':heartbeat');
+    $heartbeat_pulse = SucuriScanOption::get_option(':heartbeat_pulse');
+    $heartbeat_interval = SucuriScanOption::get_option(':heartbeat_interval');
+    $heartbeat_autostart = SucuriScanOption::get_option(':heartbeat_autostart');
+
+    // Allowed values for each setting.
+    $statuses_allowed = SucuriScanHeartbeat::statuses_allowed();
+    $pulses_allowed = SucuriScanHeartbeat::pulses_allowed();
+    $intervals_allowed = SucuriScanHeartbeat::intervals_allowed();
+
+    // HTML select form fields.
+    $heartbeat_options = SucuriScanTemplate::get_select_options( $statuses_allowed, $heartbeat_status );
+    $heartbeat_pulse_options = SucuriScanTemplate::get_select_options( $pulses_allowed, $heartbeat_pulse );
+    $heartbeat_interval_options = SucuriScanTemplate::get_select_options( $intervals_allowed, $heartbeat_interval );
+
+    $template_variables = array(
+        'HeartbeatStatus' => 'Undefined',
+        'HeartbeatPulse' => 'Undefined',
+        'HeartbeatInterval' => 'Undefined',
+        /* Heartbeat Options. */
+        'HeartbeatStatusOptions' => $heartbeat_options,
+        'HeartbeatPulseOptions' => $heartbeat_pulse_options,
+        'HeartbeatIntervalOptions' => $heartbeat_interval_options,
+        /* Heartbeat Auto-Start. */
+        'HeartbeatAutostart' => 'Enabled',
+        'HeartbeatAutostartSwitchText' => 'Disable',
+        'HeartbeatAutostartSwitchValue' => 'disable',
+        'HeartbeatAutostartSwitchCssClass' => 'button-danger',
+    );
+
+    if( array_key_exists($heartbeat_status, $statuses_allowed) ){
+        $template_variables['HeartbeatStatus'] = $statuses_allowed[$heartbeat_status];
+    }
+
+    if( array_key_exists($heartbeat_pulse, $pulses_allowed) ){
+        $template_variables['HeartbeatPulse'] = $pulses_allowed[$heartbeat_pulse];
+    }
+
+    if( array_key_exists($heartbeat_interval, $intervals_allowed) ){
+        $template_variables['HeartbeatInterval'] = $intervals_allowed[$heartbeat_interval];
+    }
+
+    if( $heartbeat_autostart == 'disabled' ){
+        $template_variables['HeartbeatAutostart'] = 'Disabled';
+        $template_variables['HeartbeatAutostartSwitchText'] = 'Enable';
+        $template_variables['HeartbeatAutostartSwitchValue'] = 'enable';
+        $template_variables['HeartbeatAutostartSwitchCssClass'] = 'button-success';
+    }
+
+    return SucuriScanTemplate::get_section('settings-heartbeat', $template_variables);
 }
 
 /**
@@ -8496,18 +8927,21 @@ function sucuriscan_show_cronjobs(){
 
     $cronjobs = _get_cron_array();
     $schedules = wp_get_schedules();
-    $date_format = _x('M j, Y - H:i', 'Publish box date format', 'cron-view' );
     $counter = 0;
 
     foreach( $cronjobs as $timestamp => $cronhooks ){
         foreach( (array) $cronhooks as $hook => $events ){
             foreach( (array) $events as $key => $event ){
+                if( empty($event['args']) ){
+                    $event['args'] = array( '<em>empty</em>' );
+                }
+
                 $template_variables['Cronjobs.Total'] += 1;
                 $template_variables['Cronjobs.List'] .= SucuriScanTemplate::get_snippet('infosys-cronjobs', array(
                     'Cronjob.Hook' => $hook,
                     'Cronjob.Schedule' => $event['schedule'],
-                    'Cronjob.NextTime' => date_i18n($date_format, $timestamp),
-                    'Cronjob.Arguments' => !empty($event['args']) ? implode(', ', $event['args']) : '<em>empty</em>',
+                    'Cronjob.NextTime' => SucuriScan::datetime($timestamp),
+                    'Cronjob.Arguments' => SucuriScan::implode(', ', $event['args']),
                     'Cronjob.CssClass' => ( $counter % 2 == 0 ) ? '' : 'alternate',
                 ));
                 $counter += 1;
