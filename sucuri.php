@@ -2,9 +2,9 @@
 /*
 Plugin Name: Sucuri Security - Auditing, Malware Scanner and Hardening
 Plugin URI: http://wordpress.sucuri.net/
-Description: The <a href="http://sucuri.net/" target="_blank">Sucuri Security</a> <em>(Auditing, Malware Scanner and Hardening)</em> plugin enables you to scan your WordPress site using <a href="http://sitecheck.sucuri.net/" target="_blank">Sucuri SiteCheck</a> right in your dashboard. SiteCheck will check for malware, spam, blacklisting and other security issues like .htaccess redirects, hidden eval code, etc. The best thing about it is it's completely free.
+Description: The <a href="http://sucuri.net/" target="_blank">Sucuri</a> plugin provides the website owner the best Activity Auditing, SiteCheck Remote Malware Scanning, Effective Security Hardening and Post-Hack features. SiteCheck will check for malware, spam, blacklisting and other security issues like .htaccess redirects, hidden eval code, etc. The best thing about it is it's completely free.
 Author: Sucuri, INC
-Version: 1.6.8
+Version: 1.6.9
 Author URI: http://sucuri.net
 */
 
@@ -66,7 +66,7 @@ define('SUCURISCAN', 'sucuriscan');
 /**
  * Current version of the plugin's code.
  */
-define('SUCURISCAN_VERSION', '1.6.8');
+define('SUCURISCAN_VERSION', '1.6.9');
 
 /**
  * The name of the Sucuri plugin main file.
