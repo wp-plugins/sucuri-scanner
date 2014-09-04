@@ -22,9 +22,9 @@
         </tr>
 
         <tr>
-            <th width="540">Filepath</th>
-            <th>CheckSum</th>
-            <th width="160">Modification</th>
+            <th>Filepath</th>
+            <th width="130">CheckSum</th>
+            <th width="200">Modification</th>
         </tr>
     </thead>
 

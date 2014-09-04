@@ -603,7 +603,7 @@ class SucuriScan {
             $site_url = $_SERVER['HTTP_HOST'];
         }
 
-        $pattern = '/([fhtps]+:\/\/)?([^:]+)(:[0-9:]+)?/';
+        $pattern = '/([fhtps]+:\/\/)?([^:\/]+)(:[0-9:]+)?(\/.*)?/';
         $domain_name =  preg_replace( $pattern, '$2', $site_url );
 
         return $domain_name;
@@ -6935,13 +6935,13 @@ function sucuriscan_modified_files(){
                     && $file_info['modified_at'] >= $back_days
                 ){
                     $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
-                    $mod_date = date('d/M/Y H:i:s', $file_info['modified_at']);
+                    $mod_date = SucuriScan::datetime($file_info['modified_at']);
 
                     $template_variables['ModifiedFiles.List'] .= SucuriScanTemplate::get_snippet('integrity-modifiedfiles', array(
                         'ModifiedFiles.CssClass' => $css_class,
                         'ModifiedFiles.CheckSum' => $file_info['checksum'],
                         'ModifiedFiles.FilePath' => $file_path,
-                        'ModifiedFiles.DateTime' => SucuriScan::datetime($mod_date),
+                        'ModifiedFiles.DateTime' => $mod_date,
                     ));
                     $counter += 1;
                 }
