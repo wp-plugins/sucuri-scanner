@@ -12,7 +12,7 @@
                 each address with a comma.
             </p>
 
-            <div class="sucuriscan-inline-alert-warning">
+            <div class="sucuriscan-inline-alert-warning sucuriscan-%%SUCURI.PrettifyMailsWarningVisibility%%">
                 <p>
                     Some emails sent by this plugin will be rejected outright by some popular email
                     services. To fix this you will need to use a third-party email service, or use a

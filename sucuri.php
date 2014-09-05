@@ -182,7 +182,7 @@ if( defined('SUCURISCAN') ){
      */
 
     $sucuriscan_notify_options = array(
-        'sucuriscan_prettify_mails' => 'Enable email alerts in HTML (uncheck to get email in text/plain)',
+        // 'sucuriscan_prettify_mails' => 'Enable email alerts in HTML (uncheck to get email in text/plain)',
         'sucuriscan_lastlogin_redirection' => 'Allow redirection after login to report the last-login information',
         'sucuriscan_notify_user_registration' => 'Enable email alerts for new user registration',
         'sucuriscan_notify_success_login' => 'Enable email alerts for successful logins',
@@ -1871,7 +1871,7 @@ class SucuriScanOption extends SucuriScanRequest {
             'sucuriscan_emails_sent' => 0,
             'sucuriscan_emails_per_hour' => 5,
             'sucuriscan_last_email_at' => time(),
-            'sucuriscan_prettify_mails' => 'enabled',
+            'sucuriscan_prettify_mails' => 'disabled',
             'sucuriscan_notify_success_login' => 'enabled',
             'sucuriscan_notify_failed_login' => 'enabled',
             'sucuriscan_notify_post_publication' => 'enabled',
@@ -4053,7 +4053,8 @@ class SucuriScanMail extends SucuriScanOption {
      * @return boolean Whether the emails will be in HTML or Plain/Text.
      */
     public static function prettify_mails(){
-        return ( self::get_option(':prettify_mails') === 'enabled' );
+        // return ( self::get_option(':prettify_mails') === 'enabled' );
+        return FALSE;
     }
 
     /**
@@ -8604,6 +8605,7 @@ function sucuriscan_settings_notifications(){
 
     $template_variables = array(
         'NotificationOptions' => '',
+        'PrettifyMailsWarningVisibility' => SucuriScanTemplate::visibility( SucuriScanMail::prettify_mails() ),
     );
 
     $counter = 0;
