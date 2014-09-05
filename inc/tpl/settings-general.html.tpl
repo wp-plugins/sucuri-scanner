@@ -38,11 +38,11 @@
         </tr>
 
         <tr class="alternate">
-            <td>API Key</td>
+            <td width="200">API Key</td>
             <td>
                 <span class="sucuriscan-monospace">%%SUCURI.APIKey%%</span>
             </td>
-            <td class="td-with-button">
+            <td width="350" class="td-with-button">
                 <form action="%%SUCURI.URL.Settings%%" method="post" class="sucuriscan-%%SUCURI.APIKey.RecoverVisibility%%">
                     <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
                     <button type="submit" name="sucuriscan_recover_key" class="button-primary">Recover</button>
@@ -63,7 +63,7 @@
 
         <tr>
             <td>Notify events to</td>
-            <td><a href="mailto:%%SUCURI.NotifyTo%%">%%SUCURI.NotifyTo%%</a></td>
+            <td>%%SUCURI.NotifyTo%%</td>
             <td class="td-with-button">
                 <form action="%%SUCURI.URL.Settings%%" method="post">
                     <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />

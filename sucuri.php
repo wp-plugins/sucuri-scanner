@@ -182,6 +182,8 @@ if( defined('SUCURISCAN') ){
      */
 
     $sucuriscan_notify_options = array(
+        'sucuriscan_prettify_mails' => 'Enable email alerts in HTML (uncheck to get email in text/plain)',
+        'sucuriscan_lastlogin_redirection' => 'Allow redirection after login to report the last-login information',
         'sucuriscan_notify_user_registration' => 'Enable email alerts for new user registration',
         'sucuriscan_notify_success_login' => 'Enable email alerts for successful logins',
         'sucuriscan_notify_failed_login' => 'Enable email alerts for failed logins',
@@ -200,8 +202,6 @@ if( defined('SUCURISCAN') ){
         'sucuriscan_notify_plugin_updated' => 'Enable email alerts when a plugin is updated',
         'sucuriscan_notify_plugin_installed' => 'Enable email alerts when a plugin is installed',
         'sucuriscan_notify_plugin_deleted' => 'Enable email alerts when a plugin is deleted',
-        'sucuriscan_prettify_mails' => 'Enable email alerts in HTML (uncheck to get email in text/plain)',
-        'sucuriscan_lastlogin_redirection' => 'Allow redirection after login to report the last-login information',
     );
 
     $sucuriscan_schedule_allowed = array(
@@ -537,8 +537,9 @@ class SucuriScan {
      *
      * @return string The real ip address of the user in the current request.
      */
-    public static function get_remote_addr(){
+    public static function get_remote_addr( $return_header=FALSE ){
         $remote_addr = '';
+        $header_used = 'unknown';
 
         if( self::is_behind_cloudproxy() ){
             $alternatives = array(
@@ -558,6 +559,7 @@ class SucuriScan {
                     && self::is_valid_ip($_SERVER[$alternative])
                 ){
                     $remote_addr = $_SERVER[$alternative];
+                    $header_used = $alternative;
                     break;
                 }
             }
@@ -565,13 +567,27 @@ class SucuriScan {
 
         elseif( isset($_SERVER['REMOTE_ADDR']) ) {
             $remote_addr = $_SERVER['REMOTE_ADDR'];
+            $header_used = 'REMOTE_ADDR';
         }
 
         if( $remote_addr == '::1' ){
             $remote_addr = '127.0.0.1';
         }
 
+        if( $return_header ){
+            return $header_used;
+        }
+
         return $remote_addr;
+    }
+
+    /**
+     * Return the HTTP header used to retrieve the remote address.
+     *
+     * @return string The HTTP header used to retrieve the remote address.
+     */
+    public static function get_remote_addr_header(){
+        return self::get_remote_addr(TRUE);
     }
 
     /**
@@ -617,9 +633,9 @@ class SucuriScan {
      */
     public static function is_behind_cloudproxy( $verbose=FALSE ){
         $http_host = self::get_domain();
-        $host_by_name = @gethostbyname($http_host);
-        $host_by_addr = @gethostbyaddr($host_by_name);
-        $status = (bool) preg_match('/^cloudproxy[0-9]+\.sucuri\.net$/', $host_by_addr);
+        $host_by_addr = @gethostbyname($http_host);
+        $host_by_name = @gethostbyaddr($host_by_addr);
+        $status = (bool) preg_match('/^cloudproxy[0-9]+\.sucuri\.net$/', $host_by_name);
 
         if( $verbose ){
             return array(
@@ -670,6 +686,15 @@ class SucuriScan {
         }
 
         return NULL;
+    }
+
+    /**
+     * Retrieve the date in localized format based on the current time.
+     *
+     * @return string The date, translated if locale specifies it.
+     */
+    public static function current_datetime(){
+        return self::datetime( time() );
     }
 
     /**
@@ -771,6 +796,43 @@ class SucuriScan {
             $pattern = '/^([a-z0-9\+_\-]+)(\.[a-z0-9\+_\-]+)*@([a-z0-9\-]+\.)+[a-z]{2,6}$/ix';
             return (bool) preg_match($pattern, $email);
         }
+    }
+
+    /**
+     * Return a string with all the valid email addresses.
+     *
+     * @param  string  $email    The string that will be validated as an email address.
+     * @param  boolean $as_array TRUE to return the list of valid email addresses as an array.
+     * @return string            All the valid email addresses separated by a comma.
+     */
+    public static function get_valid_email( $email='', $as_array=FALSE ){
+        $valid_emails = array();
+
+        if( strpos($email, ',') !== FALSE ){
+            $addresses = explode(',', $email);
+
+            foreach( $addresses as $address ){
+                $address = trim($address);
+
+                if( self::is_valid_email($address) ){
+                    $valid_emails[] = $address;
+                }
+            }
+        }
+
+        elseif( self::is_valid_email($email) ){
+            $valid_emails[] = $email;
+        }
+
+        if( !empty($valid_emails) ){
+            if( $as_array === TRUE ){
+                return $valid_emails;
+            }
+
+            return self::implode(', ', $valid_emails);
+        }
+
+        return FALSE;
     }
 
     /**
@@ -3060,9 +3122,11 @@ class SucuriScanHook extends SucuriScanEvent {
         elseif(
             current_user_can('update_themes')
             && SucuriScanRequest::get('action', '(upgrade-theme|do-theme-upgrade)')
-            && SucuriScanRequest::post('checked')
+            && SucuriScanRequest::post('checked', '_array')
         ){
-            foreach( (array) $_POST['checked'] as $theme ){
+            $themes = SucuriScanRequest::post('checked', '_array');
+
+            foreach( $themes as $theme ){
                 $theme_info = wp_get_theme($theme);
                 $theme_name = ucwords($theme);
                 $theme_version = '0.0';
@@ -4028,7 +4092,7 @@ class SucuriScanMail extends SucuriScanOption {
 
         // Check whether the email notifications will be sent in HTML or Plain/Text.
         if( self::prettify_mails() ){
-            $headers = array( 'Content-type: text/html' );
+            $headers = array( 'content-type: text/html' );
             $data_set['PrettifyType'] = 'pretty';
         } else {
             $message = strip_tags($message);
@@ -4040,15 +4104,9 @@ class SucuriScanMail extends SucuriScanOption {
             if( $debug ){ die($message); }
 
             $subject = sprintf( 'Sucuri Alert, %s, %s', $wp_domain, $subject );
+            $mail_sent = wp_mail( $email, $subject, $message, $headers );
 
-            $email_sent = wp_mail(
-                $email,
-                $subject,
-                $message,
-                $headers
-            );
-
-            if( $email_sent ){
+            if( $mail_sent ){
                 $emails_sent_num = (int) self::get_option(':emails_sent');
                 self::update_option( ':emails_sent', $emails_sent_num + 1 );
                 self::update_option( ':last_email_at', time() );
@@ -4071,7 +4129,6 @@ class SucuriScanMail extends SucuriScanOption {
     private static function prettify_mail( $subject='', $message='', $data_set=array() ){
         $prettify_type = isset($data_set['PrettifyType']) ? $data_set['PrettifyType'] : 'simple';
         $template_name = 'notification-' . $prettify_type;
-        $remote_addr = self::get_remote_addr();
         $user = wp_get_current_user();
         $display_name = '';
 
@@ -4087,10 +4144,10 @@ class SucuriScanMail extends SucuriScanOption {
             'TemplateTitle' => 'Sucuri Alert',
             'Subject' => $subject,
             'Website' => self::get_option('siteurl'),
-            'RemoteAddress' => $remote_addr,
+            'RemoteAddress' => self::get_remote_addr(),
             'Message' => $message,
             'User' => $display_name,
-            'Time' => date('d/M/Y H:i:s'),
+            'Time' => SucuriScan::current_datetime(),
         );
 
         foreach( $data_set as $var_key => $var_value ){
@@ -6226,11 +6283,7 @@ function sucuriscan_cloudproxy_enabled(){
 
     $description = 'A WAF is a protection layer for your web site, blocking all sort of attacks (brute force attempts, '
         . 'DDoS, SQL injections, etc) and helping it remain malware and blacklist free. This test checks if your site is '
-        . 'using <a href="http://cloudproxy.sucuri.net/" target="_blank">Sucuri\'s CloudProxy WAF</a> to protect your site. '
-        . '</p><p>'
-        . '<b>HTTP Host:</b> <span class="sucuriscan-monospace">' . $proxy_info['http_host'] . '</span><br>'
-        . '<b>Host Name:</b> <span class="sucuriscan-monospace">' . $proxy_info['host_name'] . '</span><br>'
-        . '<b>Host Address:</b> <span class="sucuriscan-monospace">' . $proxy_info['host_addr'] . '</span>';
+        . 'using <a href="http://cloudproxy.sucuri.net/" target="_blank">Sucuri\'s CloudProxy WAF</a> to protect your site.';
 
     if( $proxy_info['status'] === FALSE ){
         $status = 0;
@@ -8247,8 +8300,10 @@ function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
 
         // Update the email where the event notifications will be sent.
         if( $new_email = SucuriScanRequest::post(':notify_to') ){
-            if( SucuriScan::is_valid_email($new_email) ){
-                SucuriScanOption::update_option( ':notify_to', $new_email );
+            $valid_email = SucuriScan::get_valid_email($new_email);
+
+            if( $valid_email ){
+                SucuriScanOption::update_option( ':notify_to', $valid_email );
                 SucuriScanEvent::notify_event( 'plugin_change', 'Email address to get the event notifications was changed' );
                 SucuriScanInterface::info( 'All the event notifications will be sent to the email specified.' );
             } else {
@@ -9018,7 +9073,12 @@ function sucuriscan_server_info(){
         'Plugin_version' => SUCURISCAN_VERSION,
         'Plugin_checksum' => SUCURISCAN_PLUGIN_CHECKSUM,
         'Last_filesystem_scan' => SucuriScanOption::get_filesystem_runtime(TRUE),
-        'Using_CloudProxy' => 'No',
+        'Using_CloudProxy' => 'Unknown',
+        'HTTP_Host' => 'Unknown',
+        'Host_Name' => 'Unknown',
+        'Host_Address' => 'Unknown',
+        'Remote_Address' => SucuriScan::get_remote_addr(),
+        'Remote_Address_Header' => SucuriScan::get_remote_addr_header(),
         'Operating_system' => sprintf('%s (%d Bit)', PHP_OS, PHP_INT_SIZE*8),
         'Server' => 'Unknown',
         'Developer_mode' => 'OFF',
@@ -9028,9 +9088,11 @@ function sucuriscan_server_info(){
         'PHP_version' => PHP_VERSION,
     );
 
-    if( SucuriScan::is_behind_cloudproxy() ){
-        $info_vars['Using_CloudProxy'] = 'Yes';
-    }
+    $proxy_info = SucuriScan::is_behind_cloudproxy(TRUE);
+    $info_vars['HTTP_Host'] = $proxy_info['http_host'];
+    $info_vars['Host_Name'] = $proxy_info['host_name'];
+    $info_vars['Host_Address'] = $proxy_info['host_addr'];
+    $info_vars['Using_CloudProxy'] = $proxy_info['status'] ? 'Yes' : 'No';
 
     if( defined('WP_DEBUG') && WP_DEBUG ){
         $info_vars['Developer_mode'] = 'ON';
