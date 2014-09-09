@@ -549,8 +549,9 @@ class SucuriScan {
                 'HTTP_X_FORWARDED',
                 'HTTP_FORWARDED_FOR',
                 'HTTP_FORWARDED',
-                'REMOTE_ADDR',
+                'HTTP_X_SUCURI_CLIENTIP',
                 'SUCURI_RIP',
+                'REMOTE_ADDR',
             );
 
             foreach( $alternatives as $alternative ){
@@ -747,6 +748,16 @@ class SucuriScan {
         $var_name = preg_replace($pattern, '_', $text);
 
         return $var_name;
+    }
+
+    /**
+     * Check whether a variable contains a serialized data or not.
+     *
+     * @param  string  $data The data that will be checked.
+     * @return boolean       TRUE if the data was serialized, FALSE otherwise.
+     */
+    public static function is_serialized( $data='' ){
+        return ( is_string($data) && preg_match('/^(a|O):[0-9]+:.+/', $data) );
     }
 
     /**
@@ -2179,7 +2190,23 @@ class SucuriScanOption extends SucuriScanRequest {
      */
     public static function get_ignored_events(){
         $post_types = self::get_option(':ignored_events');
-        $post_types_arr = @unserialize($post_types);
+        $post_types_arr = FALSE;
+
+        // Encode (old) serialized data into JSON.
+        if( self::is_serialized($post_types) ){
+            var_dump($post_types);
+            $post_types_arr = @unserialize($post_types);
+            $post_types_fix = json_encode($post_types_arr);
+            echo 'fixed';
+            self::update_option( ':ignored_events', $post_types_fix );
+
+            return $post_types_arr;
+        }
+
+        // Decode JSON-encoded data as an array.
+        elseif( preg_match('/^\{.+\}$/', $post_types) ){
+            $post_types_arr = @json_decode( $post_types, TRUE );
+        }
 
         if( !is_array($post_types_arr) ){
             $post_types_arr = array();
@@ -2205,7 +2232,7 @@ class SucuriScanOption extends SucuriScanRequest {
                 // Check if the event is not ignored already.
                 if( !array_key_exists($event_name, $ignored_events) ){
                     $ignored_events[$event_name] = time();
-                    $saved = self::update_option( ':ignored_events', serialize($ignored_events) );
+                    $saved = self::update_option( ':ignored_events', json_encode($ignored_events) );
 
                     return $saved;
                 }
@@ -2226,7 +2253,7 @@ class SucuriScanOption extends SucuriScanRequest {
 
         if( array_key_exists($event_name, $ignored_events) ){
             unset( $ignored_events[$event_name] );
-            $saved = self::update_option( ':ignored_events', serialize($ignored_events) );
+            $saved = self::update_option( ':ignored_events', json_encode($ignored_events) );
 
             return $saved;
         }
@@ -3368,9 +3395,10 @@ class SucuriScanAPI extends SucuriScanOption {
                     $response['body'] = @json_decode($response['body_raw']);
                 }
 
-                // Check if the response data is serialized, then unserialize it.
-                elseif( preg_match('/^(a|O):[0-9]+:.+/', $response['body']) ){
-                    $response['body'] = @unserialize($response['body']);
+                // Check if the response data is serialized (which we will consider as insecure).
+                elseif( self::is_serialized($response['body']) ){
+                    $response['body_raw'] = NULL;
+                    $response['body'] = 'ERROR:Serialized data is not supported.';
                 }
 
                 return $response;
@@ -3802,12 +3830,12 @@ class SucuriScanAPI extends SucuriScanOption {
      */
     public static function get_sitecheck_results( $domain='' ){
         if( !empty($domain) ){
-            $url = 'http://sitecheck.sucuri.net/scanner/';
+            $url = 'http://sitecheck.sucuri.net/';
             $response = self::api_call( $url, 'GET', array(
-                'serialized' => 1,
-                'clear' => 1,
-                'fromwp' => 2,
                 'scan' => $domain,
+                'fromwp' => 2,
+                'clear' => 1,
+                'json' => 1,
             ));
 
             if( $response ){
@@ -4994,8 +5022,12 @@ function sucuriscan_sitecheck_info( $res=array() ){
         $res = SucuriScanAPI::get_sitecheck_results($clean_domain);
 
         // Check for error messages in the request's response.
-        if( is_string($res) && preg_match('/^ERROR:(.*)/', $res, $error_m) ){
-            SucuriScanInterface::error( 'The site <code>' . $clean_domain . '</code> was not scanned: ' . $error_m[1] );
+        if( is_string($res) ){
+            if( preg_match('/^ERROR:(.*)/', $res, $error_m) ){
+                SucuriScanInterface::error( 'The site <code>' . $clean_domain . '</code> was not scanned: ' . $error_m[1] );
+            } else {
+                SucuriScanInterface::error( 'The API returned data that can not be processed.' );
+            }
         }
 
         else {
@@ -5239,14 +5271,16 @@ function sucuriscan_sitecheck_info( $res=array() ){
                                 <?php endforeach; ?>
                             <?php endif; ?>
 
-                            <?php foreach( $res['SYSTEM']['NOTICE'] as $j=>$notice ): ?>
-                                <?php if( is_array($notice) ){ $notice = implode(', ', $notice); } ?>
-                                <tr>
-                                    <td colspan="2">
-                                        <span class="sucuriscan-monospace"><?php _e($notice) ?></span>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
+                            <?php if( isset($res['SYSTEM']['NOTICE']) ): ?>
+                                <?php foreach( $res['SYSTEM']['NOTICE'] as $j=>$notice ): ?>
+                                    <?php if( is_array($notice) ){ $notice = implode(', ', $notice); } ?>
+                                    <tr>
+                                        <td colspan="2">
+                                            <span class="sucuriscan-monospace"><?php _e($notice) ?></span>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
 
                             <!-- Possible recommendations or outdated software on the site. -->
                             <?php if( $outdated_warns_exist || $recommendations_exist ): ?>
@@ -7562,7 +7596,7 @@ if( !function_exists('sucuri_set_lastlogin') ){
                 'user_lastlogin' => current_time('mysql')
             );
 
-            @file_put_contents($datastore_filepath, serialize($login_info)."\n", FILE_APPEND);
+            @file_put_contents($datastore_filepath, json_encode($login_info)."\n", FILE_APPEND);
         }
     }
     add_action('wp_login', 'sucuriscan_set_lastlogin', 50);
@@ -7617,8 +7651,14 @@ function sucuriscan_get_logins( $limit=10, $offset=0, $user_id=0 ){
             for( $i=$offset; $i<$total_lines; $i++ ){
                 $line = $reversed_lines[$i] ? trim($reversed_lines[$i]) : '';
 
-                if( preg_match('/^a:[0-9]+:.+/', $line) ){
-                    $last_login = @unserialize($line);
+                // Check if the data is serialized (which we will consider as insecure).
+                if( SucuriScan::is_serialized($line) ){
+                    $last_login = @unserialize($line); // TODO: Remove after version 1.7.5
+                } else {
+                    $last_login = @json_decode($line, TRUE);
+                }
+
+                if( $last_login ){
                     $last_login['user_lastlogin_timestamp'] = strtotime($last_login['user_lastlogin']);
                     $last_login['user_registered_timestamp'] = 0;
 
