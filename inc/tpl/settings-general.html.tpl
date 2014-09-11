@@ -164,6 +164,18 @@
         </tr>
 
         <tr>
+            <td>Scan error log files</td>
+            <td>%%SUCURI.ScanErrorlogsStatus%%</td>
+            <td class="td-with-button">
+                <form action="%%SUCURI.URL.Settings%%" method="post">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <input type="hidden" name="sucuriscan_scan_errorlogs" value="%%SUCURI.ScanErrorlogsSwitchValue%%" />
+                    <button type="submit" class="button-primary %%SUCURI.ScanErrorlogsSwitchCssClass%%">%%SUCURI.ScanErrorlogsSwitchText%%</button>
+                </form>
+            </td>
+        </tr>
+
+        <tr class="alternate">
             <td>Last Scanning</td>
             <td><span class="sucuriscan-monospace">%%SUCURI.ScanningRuntimeHuman%%</span></td>
             <td class="td-with-button">
@@ -174,7 +186,7 @@
             </td>
         </tr>
 
-        <tr class="alternate">
+        <tr>
             <td>Scanning frequency</td>
             <td>%%SUCURI.ScanningFrequency%%</td>
             <td class="td-with-button">
@@ -188,7 +200,7 @@
             </td>
         </tr>
 
-        <tr class="sucuriscan-%%SUCURI.ScanningInterfaceVisibility%%">
+        <tr class="alternate sucuriscan-%%SUCURI.ScanningInterfaceVisibility%%">
             <td>Scanning interface</td>
             <td>%%SUCURI.ScanningInterface%%</td>
             <td class="td-with-button">

@@ -182,7 +182,7 @@ if( defined('SUCURISCAN') ){
      */
 
     $sucuriscan_notify_options = array(
-        // 'sucuriscan_prettify_mails' => 'Enable email alerts in HTML (uncheck to get email in text/plain)',
+        // 'sucuriscan_prettify_mails' => 'Enable email alerts in HTML (uncheck to get email in text/plain)', // TODO: Investigate HTML mails issues.
         'sucuriscan_lastlogin_redirection' => 'Allow redirection after login to report the last-login information',
         'sucuriscan_notify_user_registration' => 'Enable email alerts for new user registration',
         'sucuriscan_notify_success_login' => 'Enable email alerts for successful logins',
@@ -369,6 +369,31 @@ class SucuriScan {
         }
 
         return $var_name;
+    }
+
+    /**
+     * Gets the value of a configuration option.
+     *
+     * @param  string $property The configuration option name.
+     * @return string           Value of the configuration option as a string on success.
+     */
+    public static function ini_get( $property='' ){
+        $ini_value = ini_get($property);
+
+        if( empty($ini_value) || is_null($ini_value) ){
+            switch( $property ){
+                case 'error_log': $ini_value = 'error_log'; break;
+                case 'safe_mode': $ini_value = 'Off'; break;
+                case 'allow_url_fopen': $ini_value = '1'; break;
+                case 'memory_limit': $ini_value = '128M'; break;
+                case 'upload_max_filesize': $ini_value = '2M'; break;
+                case 'post_max_size': $ini_value = '8M'; break;
+                case 'max_execution_time': $ini_value = '30'; break;
+                case 'max_input_time': $ini_value = '-1'; break;
+            }
+        }
+
+        return $ini_value;
     }
 
     /**
@@ -695,7 +720,9 @@ class SucuriScan {
      * @return string The date, translated if locale specifies it.
      */
     public static function current_datetime(){
-        return self::datetime( time() );
+        $local_time = current_time('timestamp');
+
+        return self::datetime($local_time);
     }
 
     /**
@@ -709,7 +736,8 @@ class SucuriScan {
             $timestamp = strtotime($timestamp);
         }
 
-        $diff = abs( time() - intval($timestamp) );
+        $local_time = current_time('timestamp');
+        $diff = abs( $local_time - intval($timestamp) );
 
         if( $diff == 0 ){ return 'just now'; }
 
@@ -929,7 +957,11 @@ class SucuriScanRequest extends SucuriScan {
     public static function request( $list=array(), $key='', $pattern='' ){
         $key = self::variable_prefix($key);
 
-        if( is_array($list) && isset($list[$key]) ){
+        if(
+            is_array($list)
+            && is_string($key)
+            && isset($list[$key])
+        ){
             // Select the key from the list and escape its content.
             $key_value = $list[$key];
 
@@ -941,7 +973,7 @@ class SucuriScanRequest extends SucuriScan {
                     case '_nonce': $pattern = '/^[a-z0-9]{10}$/'; break;
                     case '_page': $pattern = '/^[a-z_]+$/'; break;
                     case '_array': $pattern = '_array'; break;
-                    case '_yyyymmdd': $pattern = '/^[0-9]{4}\-[0-9]{2}\-[0-9]{2}$/'; break;
+                    case '_yyyymmdd': $pattern = '/^[0-9]{4}(\-[0-9]{2}){2}$/'; break;
                     default: $pattern = '/^'.$pattern.'$/'; break;
                 }
             }
@@ -1130,6 +1162,36 @@ class SucuriScanFileInfo extends SucuriScan {
     }
 
     /**
+     * Find a file under the directory tree specified.
+     *
+     * @param  string $filename  Name of the folder or file being scanned at the moment.
+     * @param  string $directory Directory where the scanner is located at the moment.
+     * @return array             List of file paths where the file was found.
+     */
+    public function find_file( $filename='', $directory=NULL ){
+        $file_paths = array();
+
+        if(
+            is_null($directory)
+            && defined('ABSPATH')
+        ){
+            $directory = ABSPATH;
+        }
+
+        if( is_dir($directory) ){
+            $dir_tree = $this->get_directory_tree( $directory );
+
+            foreach( $dir_tree as $filepath ){
+                if( stripos($filepath, $filename) !== FALSE ){
+                    $file_paths[] = $filepath;
+                }
+            }
+        }
+
+        return $file_paths;
+    }
+
+    /**
      * Check whether the built-in class SplFileObject is available in the system
      * or not, it is required to have PHP >= 5.1.0. The SplFileObject class offers
      * an object oriented interface for a file.
@@ -1269,7 +1331,7 @@ class SucuriScanFileInfo extends SucuriScan {
     }
 
     /**
-     * Skip some specific directories and filepaths from the filesystem scan.
+     * Skip some specific directories and file paths from the filesystem scan.
      *
      * @param  string  $directory Directory where the scanner is located at the moment.
      * @param  string  $filename  Name of the folder or file being scanned at the moment.
@@ -1876,6 +1938,7 @@ class SucuriScanOption extends SucuriScanRequest {
             'sucuriscan_scan_interface' => 'spl',
             'sucuriscan_scan_modfiles' => 'enabled',
             'sucuriscan_scan_checksums' => 'enabled',
+            'sucuriscan_scan_errorlogs' => 'enabled',
             'sucuriscan_runtime' => 0,
             'sucuriscan_lastlogin_redirection' => 'enabled',
             'sucuriscan_notify_to' => '',
@@ -4081,7 +4144,7 @@ class SucuriScanMail extends SucuriScanOption {
      * @return boolean Whether the emails will be in HTML or Plain/Text.
      */
     public static function prettify_mails(){
-        // return ( self::get_option(':prettify_mails') === 'enabled' );
+        // return ( self::get_option(':prettify_mails') === 'enabled' ); // TODO: Investigate HTML mails issues.
         return FALSE;
     }
 
@@ -5936,6 +5999,7 @@ function sucuriscan_hardening_page(){
             sucuriscan_harden_adminuser();
             sucuriscan_harden_fileeditor();
             sucuriscan_harden_dbtables();
+            sucuriscan_harden_errorlog();
             ?>
         </form>
     </div>
@@ -6546,6 +6610,76 @@ function sucuriscan_harden_dbtables(){
         'Database table set to the default value <code>wp_</code>.',
         'It checks whether your database table prefix has been changed from the default <code>wp_</code>',
         '<strong>Be aware that this hardening procedure can cause your site to go down</strong>'
+    );
+}
+
+/**
+ * Check whether an error_log file exists in the project.
+ *
+ * @return void
+ */
+function sucuriscan_harden_errorlog(){
+    $hardened = 1;
+    $log_filename = SucuriScan::ini_get('error_log');
+    $scan_errorlogs = SucuriScanOption::get_option(':scan_errorlogs');
+
+    $description = 'PHP uses files named as <code>' . $log_filename . '</code> to log errors found in '
+        . 'the code, these files may leak sensitive information of your project allowing an attacker '
+        . 'to find vulnerabilities in the code. You must use these files to fix any bug while using '
+        . 'a development environment, and remove them in production mode.';
+
+    // Search error log files in the project.
+    if( $scan_errorlogs != 'disabled' ){
+        $sucuri_fileinfo = new SucuriScanFileInfo();
+        $sucuri_fileinfo->ignore_files = FALSE;
+        $sucuri_fileinfo->ignore_directories = FALSE;
+        $error_logs = $sucuri_fileinfo->find_file('error_log');
+        $total_log_files = count($error_logs);
+    } else {
+        $error_logs = array();
+        $total_log_files = 0;
+        $description .= '<div class="sucuriscan-inline-alert-error"><p>The filesystem scan for error '
+            . 'log files is disabled, so even if there are logs in your project they will be not '
+            . 'shown here. You can enable the scanner again from the plugin <em>Settings</em> '
+            . 'page.</p></div>';
+    }
+
+    // Remove every error log file found in the filesystem scan.
+    if( SucuriScanRequest::post(':run_hardening') ){
+        if( SucuriScanRequest::post(':harden_errorlog') ){
+            $removed_logs = 0;
+
+            foreach( $error_logs as $i => $error_log_path ){
+                if( unlink($error_log_path) ){
+                    unset($error_logs[$i]);
+                    $removed_logs += 1;
+                }
+            }
+
+            SucuriScanInterface::info( 'Error log files removed <code>' . $removed_logs . ' out of ' . $total_log_files . '</code>' );
+        }
+    }
+
+    // List the error log files in a HTML table.
+    if( !empty($error_logs) ){
+        $hardened = 0;
+        $description .= '</p><ul class="sucuriscan-list-as-table">';
+
+        foreach( $error_logs as $error_log_path ){
+            $description .= '<li>' . $error_log_path . '</li>';
+        }
+
+        $description .= '</ul><p>';
+    }
+
+    sucuriscan_harden_status(
+        'Error logs',
+        $hardened,
+        ( $hardened == 0 ? 'sucuriscan_harden_errorlog' : NULL ),
+        'There are no error log files in your project.',
+        'There are ' . $total_log_files . ' error log files in your project.',
+        $description,
+        NULL
     );
 }
 
@@ -8299,6 +8433,14 @@ function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
             SucuriScanInterface::info( 'Filesystem scanner for file integrity was <code>' . $action_d . '</code>' );
         }
 
+        // Enable or disable the filesystem scanner for error logs.
+        if( $scan_errorlogs = SucuriScanRequest::post(':scan_errorlogs', '(en|dis)able') ){
+            $action_d = $scan_errorlogs . 'd';
+            SucuriScanOption::update_option(':scan_errorlogs', $action_d);
+            SucuriScanEvent::notify_event( 'plugin_change', 'Filesystem scanner for error logs was: ' . $action_d );
+            SucuriScanInterface::info( 'Filesystem scanner for error logs was <code>' . $action_d . '</code>' );
+        }
+
         // Modify the schedule of the filesystem scanner.
         if( $frequency = SucuriScanRequest::post(':scan_frequency') ){
             $allowed_frequency = array_keys($sucuriscan_schedule_allowed);
@@ -8535,6 +8677,7 @@ function sucuriscan_settings_general(){
     $scan_interface = SucuriScanOption::get_option(':scan_interface');
     $scan_modfiles = SucuriScanOption::get_option(':scan_modfiles');
     $scan_checksums = SucuriScanOption::get_option(':scan_checksums');
+    $scan_errorlogs = SucuriScanOption::get_option(':scan_errorlogs');
     $emails_per_hour = SucuriScanOption::get_option(':emails_per_hour');
     $maximum_failed_logins = SucuriScanOption::get_option(':maximum_failed_logins');
     $verify_ssl_cert = SucuriScanOption::get_option(':verify_ssl_cert');
@@ -8575,6 +8718,11 @@ function sucuriscan_settings_general(){
         'ScanChecksumsSwitchText' => 'Disable',
         'ScanChecksumsSwitchValue' => 'disable',
         'ScanChecksumsSwitchCssClass' => 'button-danger',
+        /* Scan error logs. */
+        'ScanErrorlogsStatus' => 'Enabled',
+        'ScanErrorlogsSwitchText' => 'Disable',
+        'ScanErrorlogsSwitchValue' => 'disable',
+        'ScanErrorlogsSwitchCssClass' => 'button-danger',
         /* Filsystem scanning frequency. */
         'ScanningFrequency' => 'Undefined',
         'ScanningFrequencyOptions' => $scan_freq_options,
@@ -8614,6 +8762,13 @@ function sucuriscan_settings_general(){
         $template_variables['ScanChecksumsSwitchText'] = 'Enable';
         $template_variables['ScanChecksumsSwitchValue'] = 'enable';
         $template_variables['ScanChecksumsSwitchCssClass'] = 'button-success';
+    }
+
+    if( $scan_errorlogs == 'disabled' ){
+        $template_variables['ScanErrorlogsStatus'] = 'Disabled';
+        $template_variables['ScanErrorlogsSwitchText'] = 'Enable';
+        $template_variables['ScanErrorlogsSwitchValue'] = 'enable';
+        $template_variables['ScanErrorlogsSwitchCssClass'] = 'button-success';
     }
 
     if( array_key_exists($scan_freq, $sucuriscan_schedule_allowed) ){
@@ -9168,7 +9323,7 @@ function sucuriscan_server_info(){
     );
 
     foreach( $field_names as $php_flag ){
-        $php_flag_value = ini_get($php_flag);
+        $php_flag_value = SucuriScan::ini_get($php_flag);
         $php_flag_name = 'PHP_' . $php_flag;
         $info_vars[$php_flag_name] = $php_flag_value ? $php_flag_value : 'N/A';
     }
