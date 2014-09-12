@@ -220,7 +220,7 @@ integrity checking. We encourage you to visit this section and tune your
 security needs as you see fit. 
 
 
-== Frequently Asked Questions ==
+== FAQ ==
 
 = If I install the Sucuri Security plugin do I get a Sucuri account? =
 
