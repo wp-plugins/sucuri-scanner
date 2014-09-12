@@ -220,6 +220,85 @@ integrity checking. We encourage you to visit this section and tune your
 security needs as you see fit. 
 
 
+== Frequently Asked Questions ==
+
+= If I install the Sucuri Security plugin do I get a Sucuri account? =
+
+No, this is a free plugin that we offer at no charge. It does not mean you get a free account.
+
+
+= If I have the premium plugin, do I need the Free plugin? =
+
+The free plugin will be replacing the Premium plugin in the coming weeks.
+Eventually, there will only be one plugin. If you have the premium plugin, and
+install the free version, the free version will overwrite the premium version.
+
+= Do I still need Sucuri’s products if I have this plugin? =
+
+Yes. This plugin compliments your existing security toolsets. It is not
+designed to replace the Sucuri AntiVirus or Firewall products. 
+
+= Where do I get support for this plugin? =
+
+The best place is to engage us via the <a
+href=“https://wordpress.org/support/plugin/sucuri-scanner”>Support Forum. If
+you are a client, <a href=“https://support.sucuri.net/support/?new”you can
+submit a ticket here</a>.
+
+= Do I need WordFence if I have your WordPress Security plugin? =
+
+If you bundle the plugin with our suite of products, then no, you do not
+require the WordFence plugin. 
+
+= Do I need iThemes Security if I have your WordPress Security plugin? =
+
+If you bundle the plugin with our suite of products, then no, you do not
+require the WordFence plugin. 
+
+= What are the Remote Security Malware Scanning Limitations? =
+
+Because the security malware scanner is remote, it is unable to see things
+that are on the server but that are not displaying on the browser. If you are
+interested in this, we encourage you to subscribe to our Website AntiVirus
+product. 
+
+This issues includes things like Phishing pages, Backdoors, Mailer Scripts,
+etc… 
+
+= Your plugin didn’t detect this malware? =
+
+This happens, reference the Remote scanner limitations above. This should not
+be confused with our Website AntiVirus product. If you have malware, and you
+are a client, submit a ticket so that <a
+href=“https://support.sucuri.net/support/?new&mremoval”>we can help you get
+clean.</a> 
+
+If you are not a client, and you want to share what you have found please send
+it to <a href=“mailto:labs@sucuri.net”>labs@sucuri.net</a>. 
+
+The plugin is not performing application level malware / security scanning so
+this is not uncommon. 
+
+= Is it free to enable the Website Firewall option? =
+
+No, it is not. To enable you must subscribe to the <a
+href=“https://sucuri.net/website-firewall-signup”>Website Firewall
+service</a>.
+
+= Will this plugin impact the performance of my website? =
+
+No, it will not.
+
+= Do the logs get stored to my database? =
+
+No, it does not. 
+
+= Are there any issues installing your plugin with any hosts? =
+
+Not that we are aware of.
+
+
+
 
 == Changelog ==
 
