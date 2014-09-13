@@ -5,10 +5,16 @@
             <a href="#" data-tabname="settings-general">General Settings</a>
         </li>
         <li>
-            <a href="#" data-tabname="settings-notifications">Notification Settings</a>
+            <a href="#" data-tabname="settings-scanner">Scanner Settings</a>
         </li>
         <li>
-            <a href="#" data-tabname="settings-ignorerules">Ignore Notifications</a>
+            <a href="#" data-tabname="settings-ignorescanning">Ignore Scanning</a>
+        </li>
+        <li>
+            <a href="#" data-tabname="settings-notifications">Alert Settings</a>
+        </li>
+        <li>
+            <a href="#" data-tabname="settings-ignorerules">Ignore Alerts</a>
         </li>
         <li>
             <a href="#" data-tabname="settings-heartbeat">Heartbeat</a>
@@ -18,6 +24,14 @@
     <div class="sucuriscan-tab-containers">
         <div id="sucuriscan-settings-general">
             %%SUCURI.Settings.General%%
+        </div>
+
+        <div id="sucuriscan-settings-scanner">
+            %%SUCURI.Settings.Scanner%%
+        </div>
+
+        <div id="sucuriscan-settings-ignorescanning">
+            %%SUCURI.Settings.IgnoreScanning%%
         </div>
 
         <div id="sucuriscan-settings-notifications">

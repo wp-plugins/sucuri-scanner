@@ -560,7 +560,8 @@ class SucuriScan {
     /**
      * Retrieve the real ip address of the user in the current request.
      *
-     * @return string The real ip address of the user in the current request.
+     * @param  boolean $return_header Whether the header name where the address was found must be returned.
+     * @return string                 The real ip address of the user in the current request.
      */
     public static function get_remote_addr( $return_header=FALSE ){
         $remote_addr = '';
@@ -693,6 +694,19 @@ class SucuriScan {
     }
 
     /**
+     * Returns the current time measured in the number of seconds since the Unix Epoch.
+     *
+     * @return integer Return current Unix timestamp.
+     */
+    public static function local_time(){
+        if( function_exists('current_time') ){
+            return current_time('timestamp');
+        } else {
+            return time();
+        }
+    }
+
+    /**
      * Retrieve the date in localized format, based on timestamp.
      *
      * If the locale specifies the locale month and weekday, then the locale will
@@ -720,7 +734,7 @@ class SucuriScan {
      * @return string The date, translated if locale specifies it.
      */
     public static function current_datetime(){
-        $local_time = current_time('timestamp');
+        $local_time = self::local_time();
 
         return self::datetime($local_time);
     }
@@ -736,7 +750,7 @@ class SucuriScan {
             $timestamp = strtotime($timestamp);
         }
 
-        $local_time = current_time('timestamp');
+        $local_time = self::local_time();
         $diff = abs( $local_time - intval($timestamp) );
 
         if( $diff == 0 ){ return 'just now'; }
@@ -892,6 +906,21 @@ class SucuriScan {
     }
 
     /**
+     * Same as the excerpt method but with the string reversed.
+     *
+     * @param  string  $text   String of characters that will be cut.
+     * @param  integer $length Maximum length of the returned string, default is 10.
+     * @return string          Short version of the text specified.
+     */
+    public static function excerpt_rev( $text='', $length=10 ){
+        $str_reversed = strrev($text);
+        $str_excerpt = self::excerpt( $str_reversed, $length );
+        $text_transformed = strrev($str_excerpt);
+
+        return $text_transformed;
+    }
+
+    /**
      * Check whether an list is a multidimensional array or not.
      *
      * @param  array   $list An array or multidimensional array of different values.
@@ -984,7 +1013,7 @@ class SucuriScanRequest extends SucuriScan {
             }
 
             // Check the format of the request data with a regex defined above.
-            if( preg_match($pattern, $key_value) ){
+            if( @preg_match($pattern, $key_value) ){
                 return self::escape($key_value);
             }
         }
@@ -1059,6 +1088,16 @@ class SucuriScanFileInfo extends SucuriScan {
     public $ignore_directories = TRUE;
 
     /**
+     * A list of ignored directory paths, these folders will be skipped during the
+     * execution of the file system scans, and any sub-directory or files inside
+     * these paths will be ignored too.
+     *
+     * @see SucuriScanFSScanner.get_ignored_directories()
+     * @var array
+     */
+    private $ignored_directories = array();
+
+    /**
      * Whether the filesystem scanner should run recursively or not.
      *
      * @var boolean
@@ -1086,34 +1125,37 @@ class SucuriScanFileInfo extends SucuriScan {
         $project_signatures = '';
         $abs_path = rtrim( ABSPATH, '/' );
         $files = $this->get_directory_tree($directory, $scan_with);
-        sort($files);
 
         if( $as_array ){
             $project_signatures = array();
         }
 
-        foreach( $files as $filepath){
-            $file_checksum = @md5_file($filepath);
-            $filesize = @filesize($filepath);
+        if( $files ){
+            sort($files);
 
-            if( $as_array ){
-                $basename = str_replace( $abs_path . '/', '', $filepath );
-                $project_signatures[$basename] = array(
-                    'filepath' => $filepath,
-                    'checksum' => $file_checksum,
-                    'filesize' => $filesize,
-                    'created_at' => filectime($filepath),
-                    'modified_at' => filemtime($filepath),
-                );
-            } else {
-                $filepath = str_replace( $abs_path, $abs_path . '/', $filepath );
-                $project_signatures .= sprintf(
-                    "%s%s%s%s\n",
-                    $file_checksum,
-                    $filesize,
-                    chr(32),
-                    $filepath
-                );
+            foreach( $files as $filepath){
+                $file_checksum = @md5_file($filepath);
+                $filesize = @filesize($filepath);
+
+                if( $as_array ){
+                    $basename = str_replace( $abs_path . '/', '', $filepath );
+                    $project_signatures[$basename] = array(
+                        'filepath' => $filepath,
+                        'checksum' => $file_checksum,
+                        'filesize' => $filesize,
+                        'created_at' => filectime($filepath),
+                        'modified_at' => filemtime($filepath),
+                    );
+                } else {
+                    $filepath = str_replace( $abs_path, $abs_path . '/', $filepath );
+                    $project_signatures .= sprintf(
+                        "%s%s%s%s\n",
+                        $file_checksum,
+                        $filesize,
+                        chr(32),
+                        $filepath
+                    );
+                }
             }
         }
 
@@ -1132,6 +1174,7 @@ class SucuriScanFileInfo extends SucuriScan {
     public function get_directory_tree($directory='', $scan_with='spl'){
         if( file_exists($directory) && is_dir($directory) ){
             $tree = array();
+            $this->ignored_directories = SucuriScanFSScanner::get_ignored_directories();
 
             switch( $scan_with ){
                 case 'spl':
@@ -1333,20 +1376,30 @@ class SucuriScanFileInfo extends SucuriScan {
     /**
      * Skip some specific directories and file paths from the filesystem scan.
      *
-     * @param  string  $directory Directory where the scanner is located at the moment.
-     * @param  string  $filename  Name of the folder or file being scanned at the moment.
-     * @return boolean            Either TRUE or FALSE representing that the scan should ignore this folder or not.
+     * @param  string  $directory      Directory where the scanner is located at the moment.
+     * @param  string  $filename       Name of the folder or file being scanned at the moment.
+     * @return boolean                 Either TRUE or FALSE representing that the scan should ignore this folder or not.
      */
     private function ignore_folderpath( $directory='', $filename='' ){
         // Ignoring current and parent folders.
         if( $filename == '.' || $filename == '..' ){ return TRUE; }
 
         if( $this->ignore_directories ){
+            // Ignore directories based on a common regular expression.
             $filepath = realpath( $directory . '/' . $filename );
             $pattern = '/\/wp-content\/(uploads|cache|backup|w3tc)/';
 
             if( preg_match($pattern, $filepath) ){
                 return TRUE;
+            }
+
+            // Ignore directories specified by the administrator.
+            if( !empty($this->ignored_directories) ){
+                foreach( $this->ignored_directories['directories'] as $ignored_dir ){
+                    if( strpos($directory, $ignored_dir) !== FALSE ){
+                        return TRUE;
+                    }
+                }
             }
         }
 
@@ -2379,30 +2432,6 @@ class SucuriScanOption extends SucuriScanRequest {
         }
 
         return $response;
-    }
-
-    /**
-     * Retrieve the last time when the filesystem scan was ran.
-     *
-     * @param  boolean $format Whether the timestamp must be formatted as date/time or not.
-     * @return string          The timestamp of the runtime, or an string with the date/time.
-     */
-    public static function get_filesystem_runtime( $format=FALSE ){
-        $runtime = self::get_option(':runtime');
-
-        if( $runtime > 0 ){
-            if( $format ){
-                return SucuriScan::datetime($runtime);
-            }
-
-            return $runtime;
-        }
-
-        if( $format ){
-            return '<em>Unknown</em>';
-        }
-
-        return FALSE;
     }
 
 }
@@ -3455,7 +3484,8 @@ class SucuriScanAPI extends SucuriScanOption {
                     isset($response['headers']['content-type'])
                     && $response['headers']['content-type'] == 'application/json'
                 ){
-                    $response['body'] = @json_decode($response['body_raw']);
+                    $assoc = ( isset($args['assoc']) && $args['assoc'] === TRUE ) ? TRUE : FALSE;
+                    $response['body'] = @json_decode($response['body_raw'], $assoc);
                 }
 
                 // Check if the response data is serialized (which we will consider as insecure).
@@ -3899,6 +3929,8 @@ class SucuriScanAPI extends SucuriScanOption {
                 'fromwp' => 2,
                 'clear' => 1,
                 'json' => 1,
+            ), array(
+                'assoc' => TRUE
             ));
 
             if( $response ){
@@ -4621,6 +4653,161 @@ class SucuriScanTemplate extends SucuriScanRequest {
         }
 
         return $html_links;
+    }
+
+}
+
+/**
+ * File System Scanner
+ *
+ * The File System Scanner component performs full and incremental scans over a
+ * file system folder, maintaining a snapshot of the filesystem and comparing it
+ * with the current content to establish what content has been updated. Updated
+ * content is then submitted to the remote server and it is stored for future
+ * analysis.
+ */
+class SucuriScanFSScanner extends SucuriScan {
+
+    /**
+     * Retrieve the last time when the filesystem scan was ran.
+     *
+     * @param  boolean $format Whether the timestamp must be formatted as date/time or not.
+     * @return string          The timestamp of the runtime, or an string with the date/time.
+     */
+    public static function get_filesystem_runtime( $format=FALSE ){
+        $runtime = SucuriScanOption::get_option(':runtime');
+
+        if( $runtime > 0 ){
+            if( $format ){
+                return SucuriScan::datetime($runtime);
+            }
+
+            return $runtime;
+        }
+
+        if( $format ){
+            return '<em>Unknown</em>';
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Add a new directory path to the list of ignored paths.
+     *
+     * @param  string  $directory_path The (full) absolute path of a directory.
+     * @return boolean                 TRUE if the directory path was added to the list, FALSE otherwise.
+     */
+    public static function ignore_directory( $directory_path='' ){
+        $cache = new SucuriScanCache('ignorescanning');
+
+        // Use the checksum of the directory path as the cache key.
+        $cache_key = md5($directory_path);
+        $cache_value = array(
+            'directory_path' => $directory_path,
+            'ignored_at' => self::local_time(),
+        );
+        $cached = $cache->add( $cache_key, $cache_value );
+
+        return $cached;
+    }
+
+    /**
+     * Remove a directory path from the list of ignored paths.
+     *
+     * @param  string  $directory_path The (full) absolute path of a directory.
+     * @return boolean                 TRUE if the directory path was removed to the list, FALSE otherwise.
+     */
+    public static function unignore_directory( $directory_path='' ){
+        $cache = new SucuriScanCache('ignorescanning');
+
+        // Use the checksum of the directory path as the cache key.
+        $cache_key = md5($directory_path);
+        $removed = $cache->delete($cache_key);
+
+        return $removed;
+    }
+
+    /**
+     * Retrieve a list of directories ignored.
+     *
+     * Retrieve a list of directory paths that will be ignored during the file
+     * system scans, any sub-directory and files inside these folders will be
+     * skipped automatically and will not be used to detect malware or modifications
+     * in the site.
+     *
+     * The structure of the array returned by the function will always be composed
+     * by four (4) indexes which will facilitate the execution of common conditions
+     * in the implementation code.
+     *
+     * <ul>
+     * <li>raw: Will contains the raw data retrieved from the built-in cache system.</li>
+     * <li>checksums: Will contains the md5 of all the directory paths.</li>
+     * <li>directories: Will contains a list of directory paths.</li>
+     * <li>ignored_at_list: Will contains a list of timestamps for when the directories were ignored.</li>
+     * </ul>
+     *
+     * @return array List of ignored directory paths.
+     */
+    public static function get_ignored_directories(){
+        $response = array(
+            'raw' => array(),
+            'checksums' => array(),
+            'directories' => array(),
+            'ignored_at_list' => array(),
+        );
+
+        $cache = new SucuriScanCache('ignorescanning');
+        $cache_lifetime = 0; // It is not necessary to expire this cache.
+        $ignored_directories = $cache->get_all( $cache_lifetime, 'array' );
+
+        if( $ignored_directories ){
+            $response['raw'] = $ignored_directories;
+
+            foreach( $ignored_directories as $checksum => $data ){
+                $response['checksums'][] = $checksum;
+                $response['directories'][] = $data['directory_path'];
+                $response['ignored_at_list'][] = $data['ignored_at'];
+            }
+        }
+
+        return $response;
+    }
+
+    /**
+     * Run file system scan and retrieve ignored folders.
+     *
+     * Run a file system scan and retrieve an array with two indexes, the first
+     * containing a list of ignored directory paths and their respective timestamps
+     * of when they were added by an administrator user, and the second containing a
+     * list of directories that are not being ignored.
+     *
+     * @return array List of ignored and not ignored directories.
+     */
+    public static function get_ignored_directories_live(){
+        $response = array(
+            'is_ignored' => array(),
+            'is_not_ignored' => array(),
+        );
+
+        // Get the ignored directories from the cache.
+        $ignored_directories = self::get_ignored_directories();
+
+        if( $ignored_directories ){
+            $response['is_ignored'] = $ignored_directories['raw'];
+        }
+
+        // Scan the project and file all directories.
+        $sucuri_fileinfo = new SucuriScanFileInfo();
+        $sucuri_fileinfo->ignore_files = TRUE;
+        $sucuri_fileinfo->ignore_directories = TRUE;
+        $directory_list = $sucuri_fileinfo->get_diretories_only(ABSPATH);
+
+        if( $directory_list ){
+            $response['is_not_ignored'] = $directory_list;
+        }
+
+        return $response;
     }
 
 }
@@ -6960,7 +7147,13 @@ function sucuriscan_core_files(){
 
                 foreach( $file_list as $file_path ){
                     // Skip files that were marked as fixed.
-                    if( array_key_exists(md5($file_path), $ignored_files) ){ continue; }
+                    if( $ignored_files ){
+                        $file_path_checksum = md5($file_path);
+
+                        if( array_key_exists($file_path_checksum, $ignored_files) ){
+                            continue;
+                        }
+                    }
 
                     // Generate the HTML code from the snippet template for this file.
                     $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
@@ -8360,6 +8553,8 @@ function sucuriscan_settings_page(){
     $template_variables = array(
         'PageTitle' => 'Settings',
         'Settings.General' => sucuriscan_settings_general(),
+        'Settings.Scanner' => sucuriscan_settings_scanner(),
+        'Settings.IgnoreScanning' => sucuriscan_settings_ignorescanning(),
         'Settings.Notifications' => sucuriscan_settings_notifications(),
         'Settings.IgnoreRules' => sucuriscan_settings_ignore_rules(),
         'Settings.Heartbeat' => sucuriscan_settings_heartbeat(),
@@ -8443,9 +8638,7 @@ function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
 
         // Modify the schedule of the filesystem scanner.
         if( $frequency = SucuriScanRequest::post(':scan_frequency') ){
-            $allowed_frequency = array_keys($sucuriscan_schedule_allowed);
-
-            if( in_array($frequency, $allowed_frequency) ){
+            if( array_key_exists($frequency, $sucuriscan_schedule_allowed) ){
                 SucuriScanOption::update_option(':scan_frequency', $frequency);
                 wp_clear_scheduled_hook('sucuriscan_scheduled_scan');
 
@@ -8453,8 +8646,9 @@ function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
                     wp_schedule_event( time()+10, $frequency, 'sucuriscan_scheduled_scan' );
                 }
 
-                SucuriScanEvent::notify_event( 'plugin_change', 'Filesystem scanning frequency changed to: ' . $frequency );
-                SucuriScanInterface::info( 'Filesystem scan scheduled to run <code>'.$frequency.'</code>' );
+                $frequency_title = $sucuriscan_schedule_allowed[$frequency];
+                SucuriScanEvent::notify_event( 'plugin_change', 'Filesystem scanning frequency changed to: ' . $frequency_title );
+                SucuriScanInterface::info( 'Filesystem scan scheduled to run <code>'.$frequency_title.'</code>' );
             }
         }
 
@@ -8587,6 +8781,31 @@ function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
             }
         }
 
+        // Ignore a new directory path for the file system scans.
+        if( $action = SucuriScanRequest::post(':ignorescanning_action', '(ignore|unignore)') ){
+            $ignore_directories = SucuriScanRequest::post(':ignorescanning_dirs', '_array');
+
+            if( empty($ignore_directories) ){
+                SucuriScanInterface::error( 'You did not choose a directory path from the list.' );
+            }
+
+            elseif( $action == 'ignore' ){
+                foreach( $ignore_directories as $directory_path ){
+                    SucuriScanFSScanner::ignore_directory($directory_path);
+                }
+
+                SucuriScanInterface::info( 'Directories selected from the list will be ignored in future scans.' );
+            }
+
+            elseif( $action == 'unignore' ) {
+                foreach( $ignore_directories as $directory_path ){
+                    SucuriScanFSScanner::unignore_directory($directory_path);
+                }
+
+                SucuriScanInterface::info( 'Directories selected from the list will not be ignored anymore.' );
+            }
+        }
+
         // Update the settings for the heartbeat API.
         if( $heartbeat_status = SucuriScanRequest::post(':heartbeat_status') ){
             $statuses_allowed = SucuriScanHeartbeat::statuses_allowed();
@@ -8639,9 +8858,7 @@ function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
  */
 function sucuriscan_settings_general(){
 
-    global $sucuriscan_schedule_allowed,
-        $sucuriscan_interface_allowed,
-        $sucuriscan_emails_per_hour,
+    global $sucuriscan_emails_per_hour,
         $sucuriscan_maximum_failed_logins,
         $sucuriscan_verify_ssl_cert;
 
@@ -8672,16 +8889,9 @@ function sucuriscan_settings_general(){
 
     // Get initial variables to decide some things bellow.
     $api_key = SucuriScanAPI::get_plugin_key();
-    $fs_scanner = SucuriScanOption::get_option(':fs_scanner');
-    $scan_freq = SucuriScanOption::get_option(':scan_frequency');
-    $scan_interface = SucuriScanOption::get_option(':scan_interface');
-    $scan_modfiles = SucuriScanOption::get_option(':scan_modfiles');
-    $scan_checksums = SucuriScanOption::get_option(':scan_checksums');
-    $scan_errorlogs = SucuriScanOption::get_option(':scan_errorlogs');
     $emails_per_hour = SucuriScanOption::get_option(':emails_per_hour');
     $maximum_failed_logins = SucuriScanOption::get_option(':maximum_failed_logins');
     $verify_ssl_cert = SucuriScanOption::get_option(':verify_ssl_cert');
-    $runtime_scan_human = SucuriScanOption::get_filesystem_runtime(TRUE);
 
     // Check whether the domain name is valid or not.
     if( !$api_key ){
@@ -8691,18 +8901,66 @@ function sucuriscan_settings_general(){
     }
 
     // Generate the HTML code for the option list in the form select fields.
-    $scan_freq_options = SucuriScanTemplate::get_select_options( $sucuriscan_schedule_allowed, $scan_freq );
-    $scan_interface_options = SucuriScanTemplate::get_select_options( $sucuriscan_interface_allowed, $scan_interface );
     $emails_per_hour_options = SucuriScanTemplate::get_select_options( $sucuriscan_emails_per_hour, $emails_per_hour );
     $maximum_failed_logins_options = SucuriScanTemplate::get_select_options( $sucuriscan_maximum_failed_logins, $maximum_failed_logins );
     $verify_ssl_cert_options = SucuriScanTemplate::get_select_options( $sucuriscan_verify_ssl_cert, $verify_ssl_cert );
 
     $template_variables = array(
-        'APIKey' => $api_key,
+        'APIKey' => ( !$api_key ? '<em>(not set)</em>' : $api_key ),
         'APIKey.RecoverVisibility' => SucuriScanTemplate::visibility( !$api_key && !$display_manual_key_form ),
         'APIKey.ManualKeyFormVisibility' => SucuriScanTemplate::visibility($display_manual_key_form),
         'APIKey.RemoveVisibility' => SucuriScanTemplate::visibility($api_key),
         'InvalidDomainVisibility' => SucuriScanTemplate::visibility($invalid_domain),
+        'NotifyTo' => SucuriScanOption::get_option(':notify_to'),
+        'EmailsPerHour' => 'Undefined',
+        'EmailsPerHourOptions' => $emails_per_hour_options,
+        'MaximumFailedLogins' => 'Undefined',
+        'MaximumFailedLoginsOptions' => $maximum_failed_logins_options,
+        'VerifySSLCert' => 'Undefined',
+        'VerifySSLCertOptions' => $verify_ssl_cert_options,
+        'RequestTimeout' => SucuriScanOption::get_option(':request_timeout') . ' seconds',
+        'ModalWhenAPIRegistered' => $api_registered_modal,
+    );
+
+    if( array_key_exists($emails_per_hour, $sucuriscan_emails_per_hour) ){
+        $template_variables['EmailsPerHour'] = $sucuriscan_emails_per_hour[$emails_per_hour];
+    }
+
+    if( array_key_exists($maximum_failed_logins, $sucuriscan_maximum_failed_logins) ){
+        $template_variables['MaximumFailedLogins'] = $sucuriscan_maximum_failed_logins[$maximum_failed_logins];
+    }
+
+    if( array_key_exists($verify_ssl_cert, $sucuriscan_verify_ssl_cert) ){
+        $template_variables['VerifySSLCert'] = $sucuriscan_verify_ssl_cert[$verify_ssl_cert];
+    }
+
+    return SucuriScanTemplate::get_section('settings-general', $template_variables);
+}
+
+/**
+ * Read and parse the content of the scanner settings template.
+ *
+ * @return string Parsed HTML code for the scanner settings panel.
+ */
+function sucuriscan_settings_scanner(){
+
+    global $sucuriscan_schedule_allowed,
+        $sucuriscan_interface_allowed;
+
+    // Get initial variables to decide some things bellow.
+    $fs_scanner = SucuriScanOption::get_option(':fs_scanner');
+    $scan_freq = SucuriScanOption::get_option(':scan_frequency');
+    $scan_interface = SucuriScanOption::get_option(':scan_interface');
+    $scan_modfiles = SucuriScanOption::get_option(':scan_modfiles');
+    $scan_checksums = SucuriScanOption::get_option(':scan_checksums');
+    $scan_errorlogs = SucuriScanOption::get_option(':scan_errorlogs');
+    $runtime_scan_human = SucuriScanFSScanner::get_filesystem_runtime(TRUE);
+
+    // Generate the HTML code for the option list in the form select fields.
+    $scan_freq_options = SucuriScanTemplate::get_select_options( $sucuriscan_schedule_allowed, $scan_freq );
+    $scan_interface_options = SucuriScanTemplate::get_select_options( $sucuriscan_interface_allowed, $scan_interface );
+
+    $template_variables = array(
         /* Filesystem scanner */
         'FsScannerStatus' => 'Enabled',
         'FsScannerSwitchText' => 'Disable',
@@ -8728,19 +8986,8 @@ function sucuriscan_settings_general(){
         'ScanningFrequencyOptions' => $scan_freq_options,
         'ScanningInterface' => ( $scan_interface ? $sucuriscan_interface_allowed[$scan_interface] : 'Undefined' ),
         'ScanningInterfaceOptions' => $scan_interface_options,
-        'ScanningInterfaceVisibility' => SucuriScanTemplate::visibility( !SucuriScanFileInfo::is_spl_available() ),
         /* Filesystem scanning runtime. */
         'ScanningRuntimeHuman' => $runtime_scan_human,
-        'ModalWhenAPIRegistered' => $api_registered_modal,
-        'NotifyTo' => SucuriScanOption::get_option(':notify_to'),
-        'EmailsPerHour' => 'Undefined',
-        'EmailsPerHourOptions' => $emails_per_hour_options,
-        'MaximumFailedLogins' => 'Undefined',
-        'MaximumFailedLoginsOptions' => $maximum_failed_logins_options,
-        'VerifySSLCert' => 'Undefined',
-        'VerifySSLCertOptions' => $verify_ssl_cert_options,
-        'RequestTimeout' => SucuriScanOption::get_option(':request_timeout') . ' seconds',
-        'ModalWhenAPIRegistered' => $api_registered_modal,
     );
 
     if( $fs_scanner == 'disabled' ){
@@ -8775,19 +9022,7 @@ function sucuriscan_settings_general(){
         $template_variables['ScanningFrequency'] = $sucuriscan_schedule_allowed[$scan_freq];
     }
 
-    if( array_key_exists($emails_per_hour, $sucuriscan_emails_per_hour) ){
-        $template_variables['EmailsPerHour'] = $sucuriscan_emails_per_hour[$emails_per_hour];
-    }
-
-    if( array_key_exists($maximum_failed_logins, $sucuriscan_maximum_failed_logins) ){
-        $template_variables['MaximumFailedLogins'] = $sucuriscan_maximum_failed_logins[$maximum_failed_logins];
-    }
-
-    if( array_key_exists($verify_ssl_cert, $sucuriscan_verify_ssl_cert) ){
-        $template_variables['VerifySSLCert'] = $sucuriscan_verify_ssl_cert[$verify_ssl_cert];
-    }
-
-    return SucuriScanTemplate::get_section('settings-general', $template_variables);
+    return SucuriScanTemplate::get_section('settings-scanner', $template_variables);
 }
 
 /**
@@ -8884,9 +9119,61 @@ function sucuriscan_settings_ignore_rules(){
 }
 
 /**
+ * Read and parse the content of the ignore-scanning settings template.
+ *
+ * @return string Parsed HTML code for the ignore-scanning settings panel.
+ */
+function sucuriscan_settings_ignorescanning(){
+    $template_variables = array(
+        'IgnoreScanning.ResourceList' => '',
+    );
+
+    $dir_list_list = SucuriScanFSScanner::get_ignored_directories_live();
+    $counter = 0;
+
+    foreach( $dir_list_list as $group => $dir_list ){
+        foreach( $dir_list as $dir_data ){
+            $valid_entry = FALSE;
+            $snippet_data = array(
+                'IgnoreScanning.CssClass' => '',
+                'IgnoreScanning.Directory' => '',
+                'IgnoreScanning.DirectoryPath' => '',
+                'IgnoreScanning.IgnoredAt' => '',
+                'IgnoreScanning.IgnoredAtText' => 'ok',
+                'IgnoreScanning.IgnoredCssClass' => 'success',
+            );
+
+            if( $group == 'is_ignored' ){
+                $valid_entry = TRUE;
+                $snippet_data['IgnoreScanning.Directory'] = urlencode($dir_data['directory_path']);
+                $snippet_data['IgnoreScanning.DirectoryPath'] = SucuriScan::escape($dir_data['directory_path']);
+                $snippet_data['IgnoreScanning.IgnoredAt'] = SucuriScan::datetime($dir_data['ignored_at']);
+                $snippet_data['IgnoreScanning.IgnoredAtText'] = 'ignored';
+                $snippet_data['IgnoreScanning.IgnoredCssClass'] = 'warning';
+            }
+
+            elseif( $group == 'is_not_ignored' ){
+                $valid_entry = TRUE;
+                $snippet_data['IgnoreScanning.Directory'] = urlencode($dir_data);
+                $snippet_data['IgnoreScanning.DirectoryPath'] = SucuriScan::escape($dir_data);
+            }
+
+            if( $valid_entry ){
+                $css_class = ( $counter %2 == 0 ) ? '' : 'alternate';
+                $snippet_data['IgnoreScanning.CssClass'] = $css_class;
+                $template_variables['IgnoreScanning.ResourceList'] .= SucuriScanTemplate::get_snippet('settings-ignorescanning', $snippet_data);
+                $counter += 1;
+            }
+        }
+    }
+
+    return SucuriScanTemplate::get_section('settings-ignorescanning', $template_variables);
+}
+
+/**
  * Read and parse the content of the heartbeat settings template.
  *
- * @return string Parsed HTML code for the ignored-rules settings panel.
+ * @return string Parsed HTML code for the heartbeat settings panel.
  */
 function sucuriscan_settings_heartbeat(){
     // Current values set in the options table.
@@ -9269,7 +9556,7 @@ function sucuriscan_server_info(){
     $info_vars = array(
         'Plugin_version' => SUCURISCAN_VERSION,
         'Plugin_checksum' => SUCURISCAN_PLUGIN_CHECKSUM,
-        'Last_filesystem_scan' => SucuriScanOption::get_filesystem_runtime(TRUE),
+        'Last_filesystem_scan' => SucuriScanFSScanner::get_filesystem_runtime(TRUE),
         'Using_CloudProxy' => 'Unknown',
         'HTTP_Host' => 'Unknown',
         'Host_Name' => 'Unknown',

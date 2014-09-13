@@ -15,7 +15,7 @@
                 <div class="sucuriscan-inline-alert-warning">
                     <p>
                         If you choose to change the password of your own user, then your current session
-                        will expire inmediately. You will need to log into the admin panel with the new
+                        will expire immediately. You will need to log into the admin panel with the new
                         password that will be sent to your email. If you are unsure of this, do not
                         select your account from the list.
                     </p>

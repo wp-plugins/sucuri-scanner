@@ -103,11 +103,12 @@
 /* WordPress Alerts */
 div.sucuriscan-alert{position:relative;margin:0 0 20px 0}
 div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:18px;font-weight:bold;text-decoration:none}
-.sucuriscan-inline-alert, .sucuriscan-inline-alert-updated, .sucuriscan-inline-alert-error, .sucuriscan-inline-alert-warning{background:#fff;box-shadow:0 1px 1px 0 rgba(0,0,0,.1);padding:0;border-left:4px solid #ddd}
-.sucuriscan-inline-alert > p, .sucuriscan-inline-alert-updated > p, .sucuriscan-inline-alert-error > p, .sucuriscan-inline-alert-warning > p{margin:0;padding:8px 12px;border:1px solid #ddd;border-left:0}
+.sucuriscan-inline-alert, .sucuriscan-inline-alert-updated, .sucuriscan-inline-alert-error, .sucuriscan-inline-alert-warning, .sucuriscan-inline-alert-info{background:#fff;box-shadow:0 1px 1px 0 rgba(0,0,0,.1);padding:0;border-left:4px solid #ddd}
+.sucuriscan-inline-alert > p, .sucuriscan-inline-alert-updated > p, .sucuriscan-inline-alert-error > p, .sucuriscan-inline-alert-warning > p, .sucuriscan-inline-alert-info > p{margin:0;padding:8px 12px;border:1px solid #ddd;border-left:0}
 .sucuriscan-inline-alert-updated{border-left-color:#7ad03a}
 .sucuriscan-inline-alert-warning{border-left-color:#ffba00}
 .sucuriscan-inline-alert-error{border-left-color:#dd3d36}
+.sucuriscan-inline-alert-info{border-left-color:#2ea2cc}
 /* Tabulation Panels */
 .sucuriscan-tabs{}
 .sucuriscan-tabs > ul{margin:0}
@@ -222,6 +223,7 @@ div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:1
 .sucuriscan-maincontent .sucuriscan-settings form{display:inline-block}
 .sucuriscan-maincontent .sucuriscan-settings select, .sucuriscan-maincontent .sucuriscan-settings .input-text{width:220px}
 .sucuriscan-maincontent .sucuriscan-settings-notifications{margin-top:0}
+.sucuriscan-maincontent .sucuriscan-settings-ignorescanning{margin-top:0}
 .sucuriscan-maincontent .sucuriscan-settings-heartbeat{}
 .sucuriscan-maincontent .sucuriscan-wpcron-list{margin-top:0}
 /* Responsive Styles */
@@ -247,7 +249,6 @@ div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:1
 .sucuriscan-maincontent #poststuff{min-width:initial;padding-top:0}
 .sucuriscan-maincontent .widefat tbody th.check-column{padding:6px 0 3px 0}
 .sucuriscan-maincontent .hardening-box .primary-secondary{margin:0 0 0 10px}
-.sucuri-inline-error{font-weight:bold;color:red}
 .sucuriscan-maincontent .alternate{background:#f5f5f5}
 .sucuriscan-maincontent hr{border:none;border-top:1px solid #999}
 .sucuriscan-maincontent table td > table{background:#fff}
