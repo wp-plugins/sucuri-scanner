@@ -3,7 +3,7 @@ Contributors: dd@sucuri.net
 Donate Link: http://sitecheck.sucuri.net
 Tags: malware, security, firewall, scan, spam, virus, sucuri, protection,WordPress Security, Login Security,Security Auditing,File Integrity,htaccess,phishing,backdoors,SQL Injection, RFI, LFI, XSS, CSRF,
 Requires at least:3.2
-Stable tag:1.7.0
+Stable tag:1.7.1
 Tested up to: 4.0
 
 The Sucuri WordPress Security plugin is the best security toolset for security integrity monitoring, activity monitoring and malware detection. It’s a complementary toolset to your existing security posture.
@@ -245,15 +245,14 @@ href=“https://wordpress.org/support/plugin/sucuri-scanner”>Support Forum. If
 you are a client, <a href=“https://support.sucuri.net/support/?new”you can
 submit a ticket here</a>.
 
-= Do I need WordFence if I have your WordPress Security plugin? =
+= Does your plugin conflict with WordFence? =
 
-If you bundle the plugin with our suite of products, then no, you do not
-require the WordFence plugin. 
+The plugin does not, but there might be issues with our scanners. If you get
+an “Unable to Properly Scan Your Site” It’s likely because the WordFence
+plugin is blocking our scanner as an invalid crawler. 
 
-= Do I need iThemes Security if I have your WordPress Security plugin? =
+You would have to white list our IP address on the WordFence dashboard.
 
-If you bundle the plugin with our suite of products, then no, you do not
-require the WordFence plugin. 
 
 = What are the Remote Security Malware Scanning Limitations? =
 
@@ -301,6 +300,9 @@ Not that we are aware of.
 
 
 == Changelog ==
+
+= 1.7.1 =
+* Fixed remote scanning that was not loading automatically on some installs.
 
 = 1.7.0 =
 * Added Hardening option to remove error log files
