@@ -13,6 +13,9 @@
         <li>
             <a href="#" data-tabname="wpconfig-vars">Config. Variables</a>
         </li>
+        <li>
+            <a href="#" data-tabname="error-logs">Error Logs</a>
+        </li>
     </ul>
 
     <div class="sucuriscan-tab-containers">
@@ -30,6 +33,10 @@
 
         <div id="sucuriscan-wpconfig-vars">
             %%SUCURI.WordpressConfig%%
+        </div>
+
+        <div id="sucuriscan-error-logs">
+            %%SUCURI.ErrorLogs%%
         </div>
     </div>
 </div>

@@ -17,6 +17,9 @@
             <a href="#" data-tabname="settings-ignorerules">Ignore Alerts</a>
         </li>
         <li>
+            <a href="#" data-tabname="settings-trustip">Trust IP</a>
+        </li>
+        <li>
             <a href="#" data-tabname="settings-heartbeat">Heartbeat</a>
         </li>
     </ul>
@@ -40,6 +43,10 @@
 
         <div id="sucuriscan-settings-ignorerules">
             %%SUCURI.Settings.IgnoreRules%%
+        </div>
+
+        <div id="sucuriscan-settings-trustip">
+            %%SUCURI.Settings.TrustIP%%
         </div>
 
         <div id="sucuriscan-settings-heartbeat">

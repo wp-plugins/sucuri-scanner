@@ -129,6 +129,11 @@ define('SUCURISCAN_LASTLOGINS_USERSLIMIT', 25);
 define('SUCURISCAN_AUDITLOGS_PER_PAGE', 50);
 
 /**
+ * The maximum quantity of buttons in the paginations.
+ */
+define('SUCURISCAN_MAX_PAGINATION_BUTTONS', 20);
+
+/**
  * The minimum quantity of seconds to wait before each filesystem scan.
  */
 define('SUCURISCAN_MINIMUM_RUNTIME', 10800);
@@ -664,6 +669,18 @@ class SucuriScan {
         $host_by_name = @gethostbyaddr($host_by_addr);
         $status = (bool) preg_match('/^cloudproxy[0-9]+\.sucuri\.net$/', $host_by_name);
 
+        /*
+         * If the DNS reversion failed but the CloudProxy API key is set, then consider
+         * the site as protected by a firewall. A fake key can be used to bypass the DNS
+         * checking, but that is not something that will affect us, only the client.
+         */
+        if (
+            $status === FALSE
+            && SucuriScanAPI::get_cloudproxy_key()
+        ) {
+            $status = TRUE;
+        }
+
         if( $verbose ){
             return array(
                 'http_host' => $http_host,
@@ -825,6 +842,44 @@ class SucuriScan {
 
                 return TRUE;
             }
+        }
+
+        return FALSE;
+    }
+
+
+    /**
+     * Check whether an IP address is formatted as CIDR or not.
+     *
+     * @param  string $remote_addr The supposed ip address that will be checked.
+     * @return boolean             Either TRUE or FALSE if the ip address specified is valid or not.
+     */
+    public static function is_valid_cidr( $remote_addr='' ){
+        if ( preg_match('/^([0-9\.]{7,15})\/(8|16|24)$/', $remote_addr, $match) ) {
+            if ( self::is_valid_ip($match[1]) ) {
+                return TRUE;
+            }
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Separate the parts of an IP address.
+     *
+     * @param  string $remote_addr The supposed ip address that will be formatted.
+     * @return array               Clean address, CIDR range, and CIDR format; FALSE otherwise.
+     */
+    public static function get_ip_info( $remote_addr='' ){
+        if ( $remote_addr ) {
+            $addr_info = array();
+            $ip_parts = explode( '/', $remote_addr );
+            $addr_info['remote_addr'] = $ip_parts[0];
+            $addr_info['cidr_range'] = isset($ip_parts[1]) ? $ip_parts[1] : '32';
+            $addr_info['cidr_format'] = $addr_info['remote_addr'] . '/' . $addr_info['cidr_range'];
+
+
+            return $addr_info;
         }
 
         return FALSE;
@@ -1070,6 +1125,15 @@ class SucuriScanRequest extends SucuriScan {
 class SucuriScanFileInfo extends SucuriScan {
 
     /**
+     * Define the interface that will be used to execute the file system scans, the
+     * available options are SPL, OpenDir, and Glob (all in lowercase). This can be
+     * configured from the settings page.
+     *
+     * @var string
+     */
+    public $scan_interface = 'spl';
+
+    /**
      * Whether the list of files that can be ignored from the filesystem scan will
      * be used to return the directory tree, this should be disabled when scanning a
      * directory without the need to filter the items in the list.
@@ -1117,14 +1181,13 @@ class SucuriScanFileInfo extends SucuriScan {
      * on some rules defined by the developer.
      *
      * @param  string  $directory Parent directory where the filesystem scan will start.
-     * @param  string  $scan_with Set the tool used to scan the filesystem, SplFileInfo by default.
      * @param  boolean $as_array  Whether the result of the operation will be returned as an array or string.
      * @return array              List of files in the main and subdirectories of the folder specified.
      */
-    public function get_directory_tree_md5( $directory='', $scan_with='spl', $as_array=FALSE ){
+    public function get_directory_tree_md5( $directory='', $as_array=FALSE ){
         $project_signatures = '';
         $abs_path = rtrim( ABSPATH, '/' );
-        $files = $this->get_directory_tree($directory, $scan_with);
+        $files = $this->get_directory_tree($directory);
 
         if( $as_array ){
             $project_signatures = array();
@@ -1168,20 +1231,24 @@ class SucuriScanFileInfo extends SucuriScan {
      * on some rules defined by the developer.
      *
      * @param  string $directory Parent directory where the filesystem scan will start.
-     * @param  string $scan_with Set the tool used to scan the filesystem, SplFileInfo by default.
      * @return array             List of files in the main and subdirectories of the folder specified.
      */
-    public function get_directory_tree($directory='', $scan_with='spl'){
+    public function get_directory_tree($directory=''){
         if( file_exists($directory) && is_dir($directory) ){
             $tree = array();
-            $this->ignored_directories = SucuriScanFSScanner::get_ignored_directories();
 
-            switch( $scan_with ){
+            // Check whether the ignore scanning feature is enabled or not.
+            if( SucuriScanFSScanner::will_ignore_scanning() ){
+                $this->ignored_directories = SucuriScanFSScanner::get_ignored_directories();
+            }
+
+            switch( $this->scan_interface ){
                 case 'spl':
                     if( $this->is_spl_available() ){
                         $tree = $this->get_directory_tree_with_spl($directory);
                     } else {
-                        $tree = $this->get_directory_tree($directory, 'opendir');
+                        $this->scan_interface = 'opendir';
+                        $tree = $this->get_directory_tree($directory);
                     }
                     break;
 
@@ -1194,7 +1261,8 @@ class SucuriScanFileInfo extends SucuriScan {
                     break;
 
                 default:
-                    $tree = $this->get_directory_tree($directory, 'spl');
+                    $this->scan_interface = 'spl';
+                    $tree = $this->get_directory_tree($directory);
                     break;
             }
 
@@ -1321,14 +1389,18 @@ class SucuriScanFileInfo extends SucuriScan {
             foreach( $files_found as $filepath ){
                 $filepath = realpath($filepath);
                 $directory = dirname($filepath);
-                $filename = array_pop(explode('/', $filepath));
+                $filepath_parts = explode('/', $filepath);
+                $filename = array_pop($filepath_parts);
 
                 if( is_dir($filepath) ){
                     if( $this->ignore_folderpath($directory, $filename) ){ continue; }
 
                     if( $this->run_recursively ){
-                        $sub_files = $this->get_directory_tree_with_opendir($filepath);
-                        $files = array_merge($files, $sub_files);
+                        $sub_files = $this->get_directory_tree_with_glob($filepath);
+
+                        if( $sub_files ){
+                            $files = array_merge($files, $sub_files);
+                        }
                     }
                 } else {
                     if( $this->ignore_filepath($filename) ){ continue; }
@@ -1361,7 +1433,10 @@ class SucuriScanFileInfo extends SucuriScan {
 
                 if( $this->run_recursively ){
                     $sub_files = $this->get_directory_tree_with_opendir($filepath);
-                    $files = array_merge($files, $sub_files);
+
+                    if( $sub_files ){
+                        $files = array_merge($files, $sub_files);
+                    }
                 }
             } else {
                 if( $this->ignore_filepath($filename) ){ continue; }
@@ -1443,11 +1518,16 @@ class SucuriScanFileInfo extends SucuriScan {
             $dir_tree = $this->get_directory_tree($dir_tree);
         }
 
-        foreach( $dir_tree as $filepath ){
-            $dir_path = dirname($filepath);
+        if( is_array($dir_tree) && !empty($dir_tree) ){
+            foreach( $dir_tree as $filepath ){
+                $dir_path = dirname($filepath);
 
-            if( !in_array($dir_path, $dirs) ){
-                $dirs[] = $dir_path;
+                if(
+                    !in_array($dir_path, $dirs)
+                    && !in_array($dir_path, $this->ignored_directories['directories'])
+                ){
+                    $dirs[] = $dir_path;
+                }
             }
         }
 
@@ -1514,6 +1594,53 @@ class SucuriScanFileInfo extends SucuriScan {
      */
     public static function file_lines( $filepath='' ){
         return @file( $filepath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES );
+    }
+
+    /**
+     * Function to emulate the UNIX tail function by displaying the last X number of
+     * lines in a file. Useful for large files, such as logs, when you want to
+     * process lines in PHP or write lines to a database.
+     *
+     * @param  string  $file_path Path to the file.
+     * @param  integer $lines     Number of lines to retrieve from the end of the file.
+     * @param  boolean $adaptive  Whether the buffer will adapt to a specific number of bytes or not.
+     * @return string             Text contained at the end of the file.
+     */
+    public static function tail_file( $file_path='', $lines=1, $adaptive=true ) {
+        $file = @fopen( $file_path, 'rb' );
+        $limit = $lines;
+
+        if ( $file ) {
+            fseek( $file, -1, SEEK_END );
+
+            if     ( $adaptive && $lines < 2  ) { $buffer = 64; }
+            elseif ( $adaptive && $lines < 10 ) { $buffer = 512; }
+            else                                { $buffer = 4096; }
+
+            if ( fread($file, 1) != "\n" ) { $lines -= 1; }
+
+            $output = '';
+            $chunk = '';
+
+            while ( ftell($file) > 0 && $lines >= 0 ) {
+                $seek = min( ftell($file), $buffer );
+                fseek( $file, -$seek, SEEK_CUR );
+                $chunk = fread( $file, $seek );
+                $output = $chunk . $output;
+                fseek( $file, -mb_strlen($chunk, '8bit'), SEEK_CUR );
+                $lines -= substr_count( $chunk, "\n" );
+            }
+
+            fclose($file);
+
+            $lines_arr = explode( "\n", $output );
+            $lines_count = count($lines_arr);
+            $result = array_slice( $lines_arr, ($lines_count - $limit) );
+
+            return $result;
+        }
+
+        return FALSE;
     }
 
 }
@@ -1992,6 +2119,9 @@ class SucuriScanOption extends SucuriScanRequest {
             'sucuriscan_scan_modfiles' => 'enabled',
             'sucuriscan_scan_checksums' => 'enabled',
             'sucuriscan_scan_errorlogs' => 'enabled',
+            'sucuriscan_parse_errorlogs' => 'enabled',
+            'sucuriscan_errorlogs_limit' => 30,
+            'sucuriscan_ignore_scanning' => 'disabled',
             'sucuriscan_runtime' => 0,
             'sucuriscan_lastlogin_redirection' => 'enabled',
             'sucuriscan_notify_to' => '',
@@ -2310,10 +2440,8 @@ class SucuriScanOption extends SucuriScanRequest {
 
         // Encode (old) serialized data into JSON.
         if( self::is_serialized($post_types) ){
-            var_dump($post_types);
             $post_types_arr = @unserialize($post_types);
             $post_types_fix = json_encode($post_types_arr);
-            echo 'fixed';
             self::update_option( ':ignored_events', $post_types_fix );
 
             return $post_types_arr;
@@ -2542,8 +2670,8 @@ class SucuriScanEvent extends SucuriScan {
             self::report_site_version();
 
             $sucuri_fileinfo = new SucuriScanFileInfo();
-            $scan_interface = SucuriScanOption::get_option(':scan_interface');
-            $signatures = $sucuri_fileinfo->get_directory_tree_md5(ABSPATH, $scan_interface);
+            $sucuri_fileinfo->scan_interface = SucuriScanOption::get_option(':scan_interface');
+            $signatures = $sucuri_fileinfo->get_directory_tree_md5(ABSPATH);
 
             if( $signatures ){
                 $hashes_sent = SucuriScanAPI::send_hashes( $signatures );
@@ -2631,6 +2759,10 @@ class SucuriScanEvent extends SucuriScan {
         $email = SucuriScanOption::get_option(':notify_to');
         $email_params = array();
 
+        if ( self::is_trusted_ip() ) {
+            $notify = 'disabled';
+        }
+
         if( $notify == 'enabled' ){
             if( $event == 'post_publication' ){
                 $event = 'post_update';
@@ -2654,6 +2786,54 @@ class SucuriScanEvent extends SucuriScan {
             $mail_sent = SucuriScanMail::send_mail( $email, $title, $content, $email_params );
 
             return $mail_sent;
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * Check whether an IP address is being trusted or not.
+     *
+     * @param  string  $remote_addr The supposed ip address that will be checked.
+     * @return boolean              TRUE if the IP address of the user is trusted, FALSE otherwise.
+     */
+    private static function is_trusted_ip( $remote_addr='' ){
+        $cache = new SucuriScanCache('trustip');
+        $trusted_ips = $cache->get_all();
+
+        if ( !$remote_addr ) {
+            $remote_addr = SucuriScan::get_remote_addr();
+        }
+
+        $addr_md5 = md5($remote_addr);
+
+        // Check if the CIDR in range 32 of this IP is trusted.
+        if ( array_key_exists($addr_md5, $trusted_ips) ) {
+            return TRUE;
+        }
+
+        foreach ( $trusted_ips as $cache_key => $ip_info ) {
+            $ip_parts = explode( '.', $ip_info->remote_addr );
+            $ip_pattern = FALSE;
+
+            // Generate the regular expression for CIDR range 24.
+            if ( $ip_info->cidr_range == 24 ) {
+                $ip_pattern = sprintf( '/^%d\.%d\.%d\.[0-9]{1,3}$/', $ip_parts[0], $ip_parts[1], $ip_parts[2] );
+            }
+
+            // Generate the regular expression for CIDR range 16.
+            elseif ( $ip_info->cidr_range == 16 ) {
+                $ip_pattern = sprintf( '/^%d\.%d(\.[0-9]{1,3}){2}$/', $ip_parts[0], $ip_parts[1] );
+            }
+
+            // Generate the regular expression for CIDR range 8.
+            elseif ( $ip_info->cidr_range == 8 ) {
+                $ip_pattern = sprintf( '/^%d(\.[0-9]{1,3}){3}$/', $ip_parts[0] );
+            }
+
+            if ( $ip_pattern && preg_match($ip_pattern, $remote_addr) ) {
+                return TRUE;
+            }
         }
 
         return FALSE;
@@ -4027,8 +4207,8 @@ class SucuriScanAPI extends SucuriScanOption {
 
         // Get the plugin's basic information from WordPress transient data.
         $plugins = get_plugins();
-        $pattern = '/^http:\/\/wordpress\.org\/plugins\/(.*)\/$/';
-        $wp_market = 'http://wordpress.org/plugins/%s/';
+        $pattern = '/^http(s)?:\/\/wordpress\.org\/plugins\/(.*)\/$/';
+        $wp_market = 'https://wordpress.org/plugins/%s/';
 
         // Loop through each plugin data and complement its information with more attributes.
         foreach( $plugins as $plugin_path => $plugin_data ){
@@ -4043,7 +4223,7 @@ class SucuriScanAPI extends SucuriScanOption {
                 && preg_match($pattern, $plugin_data['PluginURI'], $match)
             ){
                 $repository = $match[0];
-                $repository_name = $match[1];
+                $repository_name = $match[2];
                 $is_free_plugin = TRUE;
             }
 
@@ -4693,6 +4873,18 @@ class SucuriScanFSScanner extends SucuriScan {
     }
 
     /**
+     * Check whether the administrator enabled the feature to ignore some
+     * directories during the file system scans. This function is overwritten by a
+     * GET parameter in the settings page named no_scan which must be equal to the
+     * number one.
+     *
+     * @return boolean Whether the feature to ignore files is enabled or not.
+     */
+    public static function will_ignore_scanning(){
+        return ( SucuriScanOption::get_option(':ignore_scanning') === 'enabled' );
+    }
+
+    /**
      * Add a new directory path to the list of ignored paths.
      *
      * @param  string  $directory_path The (full) absolute path of a directory.
@@ -4801,6 +4993,7 @@ class SucuriScanFSScanner extends SucuriScan {
         $sucuri_fileinfo = new SucuriScanFileInfo();
         $sucuri_fileinfo->ignore_files = TRUE;
         $sucuri_fileinfo->ignore_directories = TRUE;
+        $sucuri_fileinfo->scan_interface = SucuriScanOption::get_option(':scan_interface');
         $directory_list = $sucuri_fileinfo->get_diretories_only(ABSPATH);
 
         if( $directory_list ){
@@ -4808,6 +5001,77 @@ class SucuriScanFSScanner extends SucuriScan {
         }
 
         return $response;
+    }
+
+    /**
+     * Read and parse the lines inside a PHP error log file.
+     *
+     * @param  array $error_logs The content of an error log file, or an array with the lines.
+     * @return array             List of valid error logs with their attributes separated.
+     */
+    public static function parse_error_logs( $error_logs=array() ){
+        $logs_arr = array();
+        $pattern = '/^'
+            . '(\[(\S+) ([0-9:]{5,8}) (\S+)\] )?'     // Detect date, time, and timezone.
+            . '(PHP )?([a-zA-Z ]+):\s'                // Detect PHP error severity.
+            . '(.+) in (.+)'                      // Detect error message, and file path.
+            . '(:| on line )([0-9]+)'                 // Detect line number.
+            . '$/';
+
+        if ( is_string($error_logs) ) {
+            $error_logs = explode( "\n", $error_logs );
+        }
+
+        foreach ( (array) $error_logs as $line ) {
+            if ( !is_string($line) || empty($line) ) { continue; }
+
+            if ( preg_match($pattern, $line, $match) ) {
+                $data_set = array(
+                    'date' => '',
+                    'time' => '',
+                    'timestamp' => 0,
+                    'date_time' => '',
+                    'time_zone' => '',
+                    'error_type' => '',
+                    'error_code' => 'unknown',
+                    'error_message' => '',
+                    'file_path' => '',
+                    'line_number' => 0,
+                );
+
+                // Basic attributes from the scrapping.
+                $data_set['date'] = $match[2];
+                $data_set['time'] = $match[3];
+                $data_set['time_zone'] = $match[4];
+                $data_set['error_type'] = trim($match[6]);
+                $data_set['error_message'] = trim($match[7]);
+                $data_set['file_path'] = trim($match[8]);
+                $data_set['line_number'] = (int) $match[10];
+
+                // Additional data from the attributes.
+                if ( $data_set['date'] ) {
+                    $data_set['date_time'] = $data_set['date']
+                        . "\x20" . $data_set['time']
+                        . "\x20" . $data_set['time_zone'];
+                    $data_set['timestamp'] = strtotime( $data_set['date_time'] );
+                }
+
+                if ( $data_set['error_type'] ) {
+                    $valid_types = array( 'warning', 'notice', 'error' );
+
+                    foreach ( $valid_types as $valid_type ) {
+                        if ( stripos($data_set['error_type'], $valid_type) !== FALSE ) {
+                            $data_set['error_code'] = $valid_type;
+                            break;
+                        }
+                    }
+                }
+
+                $logs_arr[] = (object) $data_set;
+            }
+        }
+
+        return $logs_arr;
     }
 
 }
@@ -6563,15 +6827,14 @@ function sucuriscan_harden_phpversion(){
  */
 function sucuriscan_cloudproxy_enabled(){
     $btn_string = '';
-    $verbosity = TRUE;
-    $proxy_info = SucuriScan::is_behind_cloudproxy($verbosity);
+    $proxy_info = SucuriScan::is_behind_cloudproxy();
     $status = 1;
 
     $description = 'A WAF is a protection layer for your web site, blocking all sort of attacks (brute force attempts, '
         . 'DDoS, SQL injections, etc) and helping it remain malware and blacklist free. This test checks if your site is '
         . 'using <a href="http://cloudproxy.sucuri.net/" target="_blank">Sucuri\'s CloudProxy WAF</a> to protect your site.';
 
-    if( $proxy_info['status'] === FALSE ){
+    if( $proxy_info === FALSE ){
         $status = 0;
         $btn_string = '<a href="http://cloudproxy.sucuri.net/" target="_blank" class="button button-primary">Harden</a>';
     }
@@ -6976,13 +7239,14 @@ function sucuriscan_get_integrity_tree( $dir='./', $recursive=FALSE ){
     $sucuri_fileinfo->ignore_files = FALSE;
     $sucuri_fileinfo->ignore_directories = FALSE;
     $sucuri_fileinfo->run_recursively = $recursive;
-    $integrity_tree = $sucuri_fileinfo->get_directory_tree_md5( $dir, 'opendir', TRUE );
+    $sucuri_fileinfo->scan_interface = 'opendir';
+    $integrity_tree = $sucuri_fileinfo->get_directory_tree_md5( $dir, TRUE );
 
-    if( $integrity_tree ){
-        return $integrity_tree;
+    if( !$integrity_tree ){
+        $integrity_tree = array();
     }
 
-    return FALSE;
+    return $integrity_tree;
 }
 
 /**
@@ -7055,10 +7319,16 @@ function sucuriscan_auditlogs(){
         $template_variables['AuditLogs.NoItemsVisibility'] = 'hidden';
 
         if( $total_items > 0 ){
+            $max_pages = ceil( $audit_logs->total_entries / $max_per_page );
+
+            if( $max_pages > SUCURISCAN_MAX_PAGINATION_BUTTONS ){
+                $max_pages = SUCURISCAN_MAX_PAGINATION_BUTTONS;
+            }
+
             $template_variables['AuditLogs.PaginationVisibility'] = 'visible';
             $template_variables['AuditLogs.PaginationLinks'] = SucuriScanTemplate::get_pagination(
                 '%%SUCURI.URL.Home%%',
-                $max_per_page * 5, /* TODO: Temporary value while we get the total logs. */
+                $max_per_page * $max_pages,
                 $max_per_page
             );
         }
@@ -7339,7 +7609,7 @@ function sucuriscan_modified_files(){
         // Search modified files among the project's files.
         $content_hashes = sucuriscan_get_integrity_tree( ABSPATH.'wp-content', true );
 
-        if( $content_hashes ){
+        if( !empty($content_hashes) ){
             $template_variables['ModifiedFiles.Days'] = $back_days;
             $back_days = current_time('timestamp') - ( $back_days * 86400);
             $counter = 0;
@@ -8080,7 +8350,9 @@ if( !function_exists('sucuri_get_user_lastlogin') ){
 
                 $lastlogin_message = sprintf(
                     'Last time you logged in was at <code>%s</code> from <code>%s</code> - <code>%s</code>',
-                    date('d/M/Y H:i'), $row->user_remoteaddr, $row->user_hostname
+                    SucuriScan::datetime($row->user_lastlogin_timestamp),
+                    $row->user_remoteaddr,
+                    $row->user_hostname
                 );
                 $lastlogin_message .= chr(32).'(<a href="'.SucuriScanTemplate::get_url('lastlogins').'">view all logs</a>)';
                 SucuriScanInterface::info( $lastlogin_message );
@@ -8557,6 +8829,7 @@ function sucuriscan_settings_page(){
         'Settings.IgnoreScanning' => sucuriscan_settings_ignorescanning(),
         'Settings.Notifications' => sucuriscan_settings_notifications(),
         'Settings.IgnoreRules' => sucuriscan_settings_ignore_rules(),
+        'Settings.TrustIP' => sucuriscan_settings_trust_ip(),
         'Settings.Heartbeat' => sucuriscan_settings_heartbeat(),
     );
 
@@ -8629,11 +8902,41 @@ function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
         }
 
         // Enable or disable the filesystem scanner for error logs.
+        if( $ignore_scanning = SucuriScanRequest::post(':ignore_scanning', '(en|dis)able') ){
+            $action_d = $ignore_scanning . 'd';
+            SucuriScanOption::update_option(':ignore_scanning', $action_d);
+            SucuriScanEvent::notify_event( 'plugin_change', 'Filesystem scanner rules to ignore directories was: ' . $action_d );
+            SucuriScanInterface::info( 'Filesystem scanner rules to ignore directories was <code>' . $action_d . '</code>' );
+        }
+
+        // Enable or disable the filesystem scanner for error logs.
         if( $scan_errorlogs = SucuriScanRequest::post(':scan_errorlogs', '(en|dis)able') ){
             $action_d = $scan_errorlogs . 'd';
             SucuriScanOption::update_option(':scan_errorlogs', $action_d);
             SucuriScanEvent::notify_event( 'plugin_change', 'Filesystem scanner for error logs was: ' . $action_d );
             SucuriScanInterface::info( 'Filesystem scanner for error logs was <code>' . $action_d . '</code>' );
+        }
+
+        // Enable or disable the error logs parsing.
+        if( $parse_errorlogs = SucuriScanRequest::post(':parse_errorlogs', '(en|dis)able') ){
+            $action_d = $parse_errorlogs . 'd';
+            SucuriScanOption::update_option(':parse_errorlogs', $action_d);
+            SucuriScanEvent::notify_event( 'plugin_change', 'Analysis of error logs was: ' . $action_d );
+            SucuriScanInterface::info( 'Analysis of error logs was <code>' . $action_d . '</code>' );
+        }
+
+        // Update the limit of error log lines to parse.
+        if( $errorlogs_limit = SucuriScanRequest::post(':errorlogs_limit', '[0-9]+') ){
+            if ( $errorlogs_limit > 1000 ) {
+                SucuriScanInterface::error( 'Analyze more than 1,000 lines will take too much time.' );
+            } else {
+                SucuriScanOption::update_option(':errorlogs_limit', $errorlogs_limit);
+                SucuriScanInterface::info( 'Analyze last <code>' . $errorlogs_limit . '</code> entries encountered in the error logs.' );
+
+                if ( $errorlogs_limit == 0 ) {
+                    SucuriScanOption::update_option(':parse_errorlogs', 'disabled');
+                }
+            }
         }
 
         // Modify the schedule of the filesystem scanner.
@@ -8806,6 +9109,38 @@ function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
             }
         }
 
+        // Trust and IP address to ignore notifications for a subnet.
+        if( $trust_ip = SucuriScanRequest::post(':trust_ip') ){
+            if(
+                SucuriScan::is_valid_ip($trust_ip)
+                || SucuriScan::is_valid_cidr($trust_ip)
+            ){
+                $cache = new SucuriScanCache('trustip');
+                $ip_info = SucuriScan::get_ip_info($trust_ip);
+                $ip_info['added_at'] = SucuriScan::local_time();
+                $cache_key = md5($ip_info['remote_addr']);
+
+                if ( $cache->exists($cache_key) ) {
+                    SucuriScanInterface::error( 'The IP address specified was already trusted.' );
+                } elseif ( $cache->add( $cache_key, $ip_info ) ) {
+                    SucuriScanInterface::info( 'The IP address specified was trusted successfully.' );
+                } else {
+                    SucuriScanInterface::error( 'The new entry was not saved in the datastore file.' );
+                }
+            }
+        }
+
+        // Trust and IP address to ignore notifications for a subnet.
+        if( $del_trust_ip = SucuriScanRequest::post(':del_trust_ip', '_array') ){
+            $cache = new SucuriScanCache('trustip');
+
+            foreach ( $del_trust_ip as $cache_key ) {
+                $cache->delete($cache_key);
+            }
+
+            SucuriScanInterface::info( 'The IP addresses selected were deleted successfully.' );
+        }
+
         // Update the settings for the heartbeat API.
         if( $heartbeat_status = SucuriScanRequest::post(':heartbeat_status') ){
             $statuses_allowed = SucuriScanHeartbeat::statuses_allowed();
@@ -8954,6 +9289,9 @@ function sucuriscan_settings_scanner(){
     $scan_modfiles = SucuriScanOption::get_option(':scan_modfiles');
     $scan_checksums = SucuriScanOption::get_option(':scan_checksums');
     $scan_errorlogs = SucuriScanOption::get_option(':scan_errorlogs');
+    $parse_errorlogs = SucuriScanOption::get_option(':parse_errorlogs');
+    $errorlogs_limit = SucuriScanOption::get_option(':errorlogs_limit');
+    $ignore_scanning = SucuriScanOption::get_option(':ignore_scanning');
     $runtime_scan_human = SucuriScanFSScanner::get_filesystem_runtime(TRUE);
 
     // Generate the HTML code for the option list in the form select fields.
@@ -8976,11 +9314,21 @@ function sucuriscan_settings_scanner(){
         'ScanChecksumsSwitchText' => 'Disable',
         'ScanChecksumsSwitchValue' => 'disable',
         'ScanChecksumsSwitchCssClass' => 'button-danger',
+        /* Ignore scanning. */
+        'IgnoreScanningStatus' => 'Enabled',
+        'IgnoreScanningSwitchText' => 'Disable',
+        'IgnoreScanningSwitchValue' => 'disable',
+        'IgnoreScanningSwitchCssClass' => 'button-danger',
         /* Scan error logs. */
         'ScanErrorlogsStatus' => 'Enabled',
         'ScanErrorlogsSwitchText' => 'Disable',
         'ScanErrorlogsSwitchValue' => 'disable',
         'ScanErrorlogsSwitchCssClass' => 'button-danger',
+        /* Parse error logs. */
+        'ParseErrorLogsStatus' => 'Enabled',
+        'ParseErrorLogsSwitchText' => 'Disable',
+        'ParseErrorLogsSwitchValue' => 'disable',
+        'ParseErrorLogsSwitchCssClass' => 'button-danger',
         /* Filsystem scanning frequency. */
         'ScanningFrequency' => 'Undefined',
         'ScanningFrequencyOptions' => $scan_freq_options,
@@ -8988,6 +9336,7 @@ function sucuriscan_settings_scanner(){
         'ScanningInterfaceOptions' => $scan_interface_options,
         /* Filesystem scanning runtime. */
         'ScanningRuntimeHuman' => $runtime_scan_human,
+        'ErrorLogsLimit' => $errorlogs_limit,
     );
 
     if( $fs_scanner == 'disabled' ){
@@ -9011,11 +9360,25 @@ function sucuriscan_settings_scanner(){
         $template_variables['ScanChecksumsSwitchCssClass'] = 'button-success';
     }
 
+    if( $ignore_scanning == 'disabled' ){
+        $template_variables['IgnoreScanningStatus'] = 'Disabled';
+        $template_variables['IgnoreScanningSwitchText'] = 'Enable';
+        $template_variables['IgnoreScanningSwitchValue'] = 'enable';
+        $template_variables['IgnoreScanningSwitchCssClass'] = 'button-success';
+    }
+
     if( $scan_errorlogs == 'disabled' ){
         $template_variables['ScanErrorlogsStatus'] = 'Disabled';
         $template_variables['ScanErrorlogsSwitchText'] = 'Enable';
         $template_variables['ScanErrorlogsSwitchValue'] = 'enable';
         $template_variables['ScanErrorlogsSwitchCssClass'] = 'button-success';
+    }
+
+    if( $parse_errorlogs == 'disabled' ){
+        $template_variables['ParseErrorLogsStatus'] = 'Disabled';
+        $template_variables['ParseErrorLogsSwitchText'] = 'Enable';
+        $template_variables['ParseErrorLogsSwitchValue'] = 'enable';
+        $template_variables['ParseErrorLogsSwitchCssClass'] = 'button-success';
     }
 
     if( array_key_exists($scan_freq, $sucuriscan_schedule_allowed) ){
@@ -9119,6 +9482,48 @@ function sucuriscan_settings_ignore_rules(){
 }
 
 /**
+ * Read and parse the content of the trust-ip settings template.
+ *
+ * @return string Parsed HTML code for the trust-ip settings panel.
+ */
+function sucuriscan_settings_trust_ip(){
+    $template_variables = array(
+        'TrustedIPs.List' => '',
+        'TrustedIPs.NoItems.Visibility' => 'visible',
+    );
+
+    $cache = new SucuriScanCache('trustip');
+    $trusted_ips = $cache->get_all();
+
+    if ( $trusted_ips ) {
+        $counter = 0;
+
+        foreach ( $trusted_ips as $cache_key => $ip_info ) {
+            $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
+
+            if ( $ip_info->cidr_range == 32 ) {
+                $ip_info->cidr_format = 'n/a';
+            }
+
+            $template_variables['TrustedIPs.List'] .= SucuriScanTemplate::get_snippet('settings-trustip', array(
+                'TrustIP.CssClass' => $css_class,
+                'TrustIP.CacheKey' => $cache_key,
+                'TrustIP.RemoteAddr' => SucuriScan::escape($ip_info->remote_addr),
+                'TrustIP.CIDRFormat' => SucuriScan::escape($ip_info->cidr_format),
+                'TrustIP.AddedAt' => SucuriScan::datetime($ip_info->added_at),
+            ));
+            $counter += 1;
+        }
+
+        if ( $counter > 0 ) {
+            $template_variables['TrustedIPs.NoItems.Visibility'] = 'hidden';
+        }
+    }
+
+    return SucuriScanTemplate::get_section('settings-trustip', $template_variables);
+}
+
+/**
  * Read and parse the content of the ignore-scanning settings template.
  *
  * @return string Parsed HTML code for the ignore-scanning settings panel.
@@ -9126,44 +9531,61 @@ function sucuriscan_settings_ignore_rules(){
 function sucuriscan_settings_ignorescanning(){
     $template_variables = array(
         'IgnoreScanning.ResourceList' => '',
+        'IgnoreScanning.DisabledVisibility' => 'visible',
+        'IgnoreScanning.NoItemsVisibility' => 'visible',
     );
 
-    $dir_list_list = SucuriScanFSScanner::get_ignored_directories_live();
-    $counter = 0;
+    $ignore_scanning = SucuriScanFSScanner::will_ignore_scanning();
 
-    foreach( $dir_list_list as $group => $dir_list ){
-        foreach( $dir_list as $dir_data ){
-            $valid_entry = FALSE;
-            $snippet_data = array(
-                'IgnoreScanning.CssClass' => '',
-                'IgnoreScanning.Directory' => '',
-                'IgnoreScanning.DirectoryPath' => '',
-                'IgnoreScanning.IgnoredAt' => '',
-                'IgnoreScanning.IgnoredAtText' => 'ok',
-                'IgnoreScanning.IgnoredCssClass' => 'success',
-            );
+    // Allow disable of this option temporarily.
+    if( SucuriScanRequest::get('no_scan') == 1 ){
+        $ignore_scanning = FALSE;
+    }
 
-            if( $group == 'is_ignored' ){
-                $valid_entry = TRUE;
-                $snippet_data['IgnoreScanning.Directory'] = urlencode($dir_data['directory_path']);
-                $snippet_data['IgnoreScanning.DirectoryPath'] = SucuriScan::escape($dir_data['directory_path']);
-                $snippet_data['IgnoreScanning.IgnoredAt'] = SucuriScan::datetime($dir_data['ignored_at']);
-                $snippet_data['IgnoreScanning.IgnoredAtText'] = 'ignored';
-                $snippet_data['IgnoreScanning.IgnoredCssClass'] = 'warning';
+    // Scan the project and get the ignored paths.
+    if( $ignore_scanning === TRUE ){
+        $counter = 0;
+        $template_variables['IgnoreScanning.DisabledVisibility'] = 'hidden';
+        $dir_list_list = SucuriScanFSScanner::get_ignored_directories_live();
+
+        foreach( $dir_list_list as $group => $dir_list ){
+            foreach( $dir_list as $dir_data ){
+                $valid_entry = FALSE;
+                $snippet_data = array(
+                    'IgnoreScanning.CssClass' => '',
+                    'IgnoreScanning.Directory' => '',
+                    'IgnoreScanning.DirectoryPath' => '',
+                    'IgnoreScanning.IgnoredAt' => '',
+                    'IgnoreScanning.IgnoredAtText' => 'ok',
+                    'IgnoreScanning.IgnoredCssClass' => 'success',
+                );
+
+                if( $group == 'is_ignored' ){
+                    $valid_entry = TRUE;
+                    $snippet_data['IgnoreScanning.Directory'] = urlencode($dir_data['directory_path']);
+                    $snippet_data['IgnoreScanning.DirectoryPath'] = SucuriScan::escape($dir_data['directory_path']);
+                    $snippet_data['IgnoreScanning.IgnoredAt'] = SucuriScan::datetime($dir_data['ignored_at']);
+                    $snippet_data['IgnoreScanning.IgnoredAtText'] = 'ignored';
+                    $snippet_data['IgnoreScanning.IgnoredCssClass'] = 'warning';
+                }
+
+                elseif( $group == 'is_not_ignored' ){
+                    $valid_entry = TRUE;
+                    $snippet_data['IgnoreScanning.Directory'] = urlencode($dir_data);
+                    $snippet_data['IgnoreScanning.DirectoryPath'] = SucuriScan::escape($dir_data);
+                }
+
+                if( $valid_entry ){
+                    $css_class = ( $counter %2 == 0 ) ? '' : 'alternate';
+                    $snippet_data['IgnoreScanning.CssClass'] = $css_class;
+                    $template_variables['IgnoreScanning.ResourceList'] .= SucuriScanTemplate::get_snippet('settings-ignorescanning', $snippet_data);
+                    $counter += 1;
+                }
             }
+        }
 
-            elseif( $group == 'is_not_ignored' ){
-                $valid_entry = TRUE;
-                $snippet_data['IgnoreScanning.Directory'] = urlencode($dir_data);
-                $snippet_data['IgnoreScanning.DirectoryPath'] = SucuriScan::escape($dir_data);
-            }
-
-            if( $valid_entry ){
-                $css_class = ( $counter %2 == 0 ) ? '' : 'alternate';
-                $snippet_data['IgnoreScanning.CssClass'] = $css_class;
-                $template_variables['IgnoreScanning.ResourceList'] .= SucuriScanTemplate::get_snippet('settings-ignorescanning', $snippet_data);
-                $counter += 1;
-            }
+        if( $counter > 0 ){
+            $template_variables['IgnoreScanning.NoItemsVisibility'] = 'hidden';
         }
     }
 
@@ -9251,6 +9673,7 @@ function sucuriscan_infosys_page(){
         'Cronjobs' => sucuriscan_show_cronjobs(),
         'HTAccessIntegrity' => sucuriscan_infosys_htaccess(),
         'WordpressConfig' => sucuriscan_infosys_wpconfig(),
+        'ErrorLogs' => sucuriscan_infosys_errorlogs(),
     );
 
     echo SucuriScanTemplate::get_template('infosys', $template_variables);
@@ -9368,19 +9791,23 @@ function sucuriscan_infosys_wpconfig(){
 
         // Parse the main configuration file and look for constants and global variables.
         foreach( (array) $wp_config_content as $line ){
+            // Ignore commented lines.
+            if ( preg_match('/^\s?(#|\/\/)/', $line) ) { continue; }
+
             // Detect PHP constants even if the line if indented.
-            if( preg_match('/define\(/', $line) ){
-                $line = preg_replace('*define\((.+)\);*', '$1', $line);
+            elseif ( preg_match('/define\(/', $line) ) {
+                $line = preg_replace('/.*define\((.+)\);.*/', '$1', $line);
                 $line_parts = explode(',', $line, 2);
             }
 
             // Detect global variables like the database table prefix.
-            else if( preg_match('/^\$[a-zA-Z_]+/', $line) ){
+            elseif( preg_match('/^\$[a-zA-Z_]+/', $line) ){
+                $line = preg_replace( '/;\s\/\/.*/', ';', $line );
                 $line_parts = explode('=', $line, 2);
             }
 
             // Ignore other lines.
-            else{ continue; }
+            else { continue; }
 
             // Clean and append the rule to the wp_config_rules variable.
             if( isset($line_parts) && count($line_parts)==2 ){
@@ -9539,6 +9966,59 @@ function sucuriscan_infosys_form_submissions(){
         }
 
     }
+}
+
+/**
+ * Locate, parse and display the latest error logged in the main error_log file.
+ *
+ * @return array A list of pseudo-variables and values that will replace them in the HTML template.
+ */
+function sucuriscan_infosys_errorlogs(){
+    $template_variables = array(
+        'ErrorLog.Path' => '',
+        'ErrorLog.Exists' => 'No',
+        'ErrorLog.NoItemsVisibility' => 'visible',
+        'ErrorLog.DisabledVisibility' => 'visible',
+        'ErrorLog.FileSize' => '0B',
+        'ErrorLog.List' => '',
+    );
+
+    $error_log_path = realpath( ABSPATH . '/error_log' );
+    $parse_errorlogs = ( SucuriScanOption::get_option(':parse_errorlogs') !== 'disabled' );
+    $errorlogs_limit = SucuriScanOption::get_option(':errorlogs_limit');
+
+    if ( $error_log_path && $parse_errorlogs ) {
+        $template_variables['ErrorLog.Path'] = $error_log_path;
+        $template_variables['ErrorLog.Exists'] = 'Yes';
+        $template_variables['ErrorLog.FileSize'] = SucuriScan::human_filesize( filesize($error_log_path) );
+        $template_variables['ErrorLog.DisabledVisibility'] = 'hidden';
+
+        $last_lines = SucuriScanFileInfo::tail_file( $error_log_path, $errorlogs_limit );
+        $error_logs = SucuriScanFSScanner::parse_error_logs($last_lines);
+        $error_logs = array_reverse($error_logs);
+        $counter = 0;
+
+        foreach ( $error_logs as $error_log ) {
+            $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
+            $template_variables['ErrorLog.List'] .= SucuriScanTemplate::get_snippet('infosys-errorlogs', array(
+                'ErrorLog.CssClass' => $css_class,
+                'ErrorLog.DateTime' => SucuriScan::datetime( $error_log->timestamp ),
+                'ErrorLog.ErrorType' => SucuriScan::escape( $error_log->error_type ),
+                'ErrorLog.ErrorCode' => SucuriScan::escape($error_log->error_code),
+                'ErrorLog.ErrorAbbr' => strtoupper( substr($error_log->error_code, 0, 1) ),
+                'ErrorLog.ErrorMessage' => SucuriScan::escape( $error_log->error_message ),
+                'ErrorLog.FilePath' => SucuriScan::escape( $error_log->file_path ),
+                'ErrorLog.LineNumber' => SucuriScan::escape( $error_log->line_number ),
+            ));
+            $counter += 1;
+        }
+
+        if ( $counter > 0 ) {
+            $template_variables['ErrorLog.NoItemsVisibility'] = 'hidden';
+        }
+    }
+
+    return SucuriScanTemplate::get_section('infosys-errorlogs', $template_variables);
 }
 
 /**

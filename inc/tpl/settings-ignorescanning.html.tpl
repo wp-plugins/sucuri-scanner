@@ -13,6 +13,13 @@
                 directories, this will force the plugin to ignore the files inside these
                 folders.
             </p>
+
+            <div class="sucuriscan-inline-alert-warning sucuriscan-%%SUCURI.IgnoreScanning.DisabledVisibility%%">
+                <p>
+                    The feature to ignore directories during the file system scans is disabled, go
+                    to the <em>Scanner Settings</em> panel to enable it.
+                </p>
+            </div>
         </div>
     </div>
 </div>
@@ -33,6 +40,12 @@
 
         <tbody>
             %%SUCURI.IgnoreScanning.ResourceList%%
+
+            <tr class="sucuriscan-%%SUCURI.IgnoreScanning.NoItemsVisibility%%">
+                <td colspan="4">
+                    <em>List is empty.</em>
+                </td>
+            </tr>
         </tbody>
 
         <tfoot>

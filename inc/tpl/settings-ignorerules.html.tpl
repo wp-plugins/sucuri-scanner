@@ -45,15 +45,4 @@
     <tbody>
         %%SUCURI.IgnoreRules.PostTypes%%
     </tbody>
-
-    <tfoot>
-        <tr>
-            <td colspan="5">
-                <em>
-                    <strong>Notifications example:</strong>
-                    <code>Post_Type</code> changed from private to published <code>#ID</code> (<code>Title</code>)
-                </em>
-            </td>
-        </tr>
-    </tfoot>
 </table>
