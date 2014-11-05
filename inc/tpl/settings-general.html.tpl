@@ -127,5 +127,17 @@
             </td>
         </tr>
 
+        <tr>
+            <td>Log storage path</td>
+            <td><span class="sucuriscan-monospace" title="%%SUCURI.DatastorePath%%">%%SUCURI.DatastorePathShort%%</span></td>
+            <td class="td-with-button">
+                <form action="%%SUCURI.URL.Settings%%" method="post">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <input type="text" name="sucuriscan_datastore_path" class="input-text" placeholder="Directory to save logs..." />
+                    <button type="submit" class="button-primary">Change</button>
+                </form>
+            </td>
+        </tr>
+
     </tbody>
 </table>

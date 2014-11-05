@@ -245,6 +245,9 @@ if( defined('SUCURISCAN') ){
         'false' => 'Stop peer\'s cert verification',
     );
 
+    $sucuriscan_no_notices_in = array(
+    );
+
     /**
      * Remove the WordPress generator meta-tag from the source code.
      */
@@ -459,9 +462,24 @@ class SucuriScan {
      * @return string       The full filesystem path including the directory specified.
      */
     public static function datastore_folder_path( $path='' ){
-        $wp_dir_array = wp_upload_dir();
-        $wp_dir_array['basedir'] = untrailingslashit($wp_dir_array['basedir']);
-        $wp_filepath = $wp_dir_array['basedir'] . '/sucuri/' . $path;
+        $datastore_path = SucuriScanOption::get_option(':datastore_path');
+
+        // Use the uploads folder by default.
+        if ( empty($datastore_path) ) {
+            if ( function_exists('wp_upload_dir') ) {
+                $wp_dir_array = wp_upload_dir();
+                $wp_dir_array['basedir'] = untrailingslashit($wp_dir_array['basedir']);
+                $datastore_path = $wp_dir_array['basedir'] . '/sucuri';
+            }
+
+            else {
+                $datastore_path = rtrim(ABSPATH, '/') . '/wp-content/uploads/sucuri';
+            }
+
+            SucuriScanOption::update_option( ':datastore_path', $datastore_path );
+        }
+
+        $wp_filepath = rtrim($datastore_path, '/') . '/' . $path;
 
         return $wp_filepath;
     }
@@ -1014,6 +1032,30 @@ class SucuriScan {
         } else {
             return implode( $separator, $list );
         }
+    }
+
+    /**
+     * Determine if the plugin notices can be displayed in the current page.
+     *
+     * @param  string  $current_page Identifier of the current page.
+     * @return boolean               TRUE if the current page must not have noticies.
+     */
+    public static function no_notices_here( $current_page=false ){
+        global $sucuriscan_no_notices_in;
+
+        if ( $current_page === false ) {
+            $current_page = SucuriScanRequest::get('page');
+        }
+
+        if (
+            isset($sucuriscan_no_notices_in)
+            && is_array($sucuriscan_no_notices_in)
+            && !empty($sucuriscan_no_notices_in)
+        ) {
+            return (bool) in_array($current_page, $sucuriscan_no_notices_in);
+        }
+
+        return false;
     }
 
 }
@@ -2113,6 +2155,7 @@ class SucuriScanOption extends SucuriScanRequest {
         $defaults = array(
             'sucuriscan_api_key' => FALSE,
             'sucuriscan_account' => '',
+            'sucuriscan_datastore_path' => '',
             'sucuriscan_fs_scanner' => 'enabled',
             'sucuriscan_scan_frequency' => 'hourly',
             'sucuriscan_scan_interface' => 'spl',
@@ -5477,6 +5520,7 @@ class SucuriScanInterface {
     public static function setup_notice(){
         if(
             current_user_can('manage_options')
+            && SucuriScan::no_notices_here() === false
             && !SucuriScanAPI::get_plugin_key()
             && SucuriScanRequest::post(':plugin_api_key') === FALSE
             && SucuriScanRequest::post(':recover_key') === FALSE
@@ -8579,6 +8623,16 @@ function sucuriscan_failed_logins_panel(){
     $max_failed_logins = SucuriScanOption::get_option(':maximum_failed_logins');
     $notify_bruteforce_attack = SucuriScanOption::get_option(':notify_bruteforce_attack');
     $failed_logins = sucuriscan_get_failed_logins();
+    $old_failed_logins = sucuriscan_get_failed_logins(true);
+
+    if (
+        is_array($failed_logins)
+        && !empty($failed_logins)
+    ) {
+        $failed_logins = array_merge( $failed_logins, $old_failed_logins );
+    } else {
+        $failed_logins = $old_failed_logins;
+    }
 
     if( $failed_logins ){
         $counter = 0;
@@ -8620,11 +8674,13 @@ function sucuriscan_failed_logins_panel(){
  *
  * @see sucuriscan_reset_failed_logins()
  *
- * @param  boolean $reset Whether the file will be resetted or not.
- * @return string         The full (relative) path where the file is located.
+ * @param  boolean $get_old_logs Whether the old logs will be retrieved or not.
+ * @param  boolean $reset        Whether the file will be resetted or not.
+ * @return string                The full (relative) path where the file is located.
  */
-function sucuriscan_failed_logins_datastore_path( $reset=FALSE ){
-    $datastore_path = SucuriScan::datastore_folder_path('sucuri-failedlogins.php');
+function sucuriscan_failed_logins_datastore_path( $get_old_logs=false, $reset=false ){
+    $file_name = $get_old_logs ? 'sucuri-oldfailedlogins.php' : 'sucuri-failedlogins.php';
+    $datastore_path = SucuriScan::datastore_folder_path($file_name);
     $default_content = sucuriscan_failed_logins_default_content();
 
     // Create the file if it does not exists.
@@ -8662,10 +8718,11 @@ function sucuriscan_failed_logins_default_content(){
  * with the report) or reset the file after considering it a normal behavior of
  * the site.
  *
- * @return array Information and entries gathered from the failed logins datastore file.
+ * @param  boolean $get_old_logs Whether the old logs will be retrieved or not.
+ * @return array                 Information and entries gathered from the failed logins datastore file.
  */
-function sucuriscan_get_failed_logins(){
-    $datastore_path = sucuriscan_failed_logins_datastore_path();
+function sucuriscan_get_failed_logins( $get_old_logs=false ){
+    $datastore_path = sucuriscan_failed_logins_datastore_path($get_old_logs);
     $default_content = sucuriscan_failed_logins_default_content();
     $default_content_n = substr_count($default_content, "\n");
 
@@ -8811,7 +8868,19 @@ function sucuriscan_report_failed_logins( $failed_logins=array() ){
  * @return boolean Whether the datastore file was resetted or not.
  */
 function sucuriscan_reset_failed_logins(){
-    return (bool) sucuriscan_failed_logins_datastore_path(TRUE);
+    $datastore_path = SucuriScan::datastore_folder_path('sucuri-failedlogins.php');
+    $datastore_backup_path = sucuriscan_failed_logins_datastore_path(true, false);
+    $default_content = sucuriscan_failed_logins_default_content();
+    $current_content = @file_get_contents($datastore_path);
+    $current_content = str_replace( $default_content, '', $current_content );
+
+    @file_put_contents(
+        $datastore_backup_path,
+        $current_content,
+        FILE_APPEND
+    );
+
+    return (bool) sucuriscan_failed_logins_datastore_path(false, true);
 }
 
 /**
@@ -9024,6 +9093,31 @@ function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
         if( $request_timeout = SucuriScanRequest::post(':request_timeout', '[0-9]+') ){
             SucuriScanOption::update_option(':request_timeout', $request_timeout);
             SucuriScanInterface::info( 'API request timeout set to <code>' . $request_timeout . '</code> seconds.' );
+        }
+
+        // Update the datastore path (if the new directory exists).
+        if( $datastore_path = SucuriScanRequest::post(':datastore_path') ){
+            $current_datastore_path = SucuriScanOption::datastore_folder_path();
+
+            if ( file_exists($datastore_path) ) {
+                if ( is_writable($datastore_path) ) {
+                    SucuriScanOption::update_option(':datastore_path', $datastore_path);
+                    SucuriScanInterface::info( 'Datastore path changed to <code>' . $datastore_path . '</code>' );
+
+                    if ( file_exists($current_datastore_path) ) {
+                        $new_datastore_path = SucuriScanOption::datastore_folder_path();
+                        @rename( $current_datastore_path, $new_datastore_path );
+                    }
+                }
+
+                else {
+                    SucuriScanInterface::error( 'The new directory path is not writable.' );
+                }
+            }
+
+            else {
+                SucuriScanInterface::error( 'The directory path specified does not exists.' );
+            }
         }
 
         // Update the notification settings.
@@ -9254,6 +9348,8 @@ function sucuriscan_settings_general(){
         'VerifySSLCert' => 'Undefined',
         'VerifySSLCertOptions' => $verify_ssl_cert_options,
         'RequestTimeout' => SucuriScanOption::get_option(':request_timeout') . ' seconds',
+        'DatastorePath' => SucuriScanOption::get_option(':datastore_path'),
+        'DatastorePathShort' => '',
         'ModalWhenAPIRegistered' => $api_registered_modal,
     );
 
@@ -9267,6 +9363,10 @@ function sucuriscan_settings_general(){
 
     if( array_key_exists($verify_ssl_cert, $sucuriscan_verify_ssl_cert) ){
         $template_variables['VerifySSLCert'] = $sucuriscan_verify_ssl_cert[$verify_ssl_cert];
+    }
+
+    if ( !empty($template_variables['DatastorePath']) ) {
+        $template_variables['DatastorePathShort'] = SucuriScan::excerpt_rev( $template_variables['DatastorePath'], 30 );
     }
 
     return SucuriScanTemplate::get_section('settings-general', $template_variables);
@@ -10081,6 +10181,7 @@ function sucuriscan_server_info(){
 
     $field_names = array(
         'safe_mode',
+        'expose_php',
         'allow_url_fopen',
         'memory_limit',
         'upload_max_filesize',
