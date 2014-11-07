@@ -2813,12 +2813,12 @@ class SucuriScanEvent extends SucuriScan {
             }
 
             elseif( $event == 'failed_login' ){
-                $content .= '<br><br><em>Explanation: Someone failed to login to your site. If you
-                    are getting too many of these messages, it is likely your site is under a brute
-                    force attack. You can disable the notifications for failed logins from
-                    <a href="' . SucuriScanTemplate::get_url('settings') . '" target="_blank">here</a>.
-                    More details at <a href="http://kb.sucuri.net/definitions/attacks/brute-force/password-guessing"
-                    target="_blank">Password Guessing Brute Force Attacks</a>.</em>';
+                $content .= "<br>\n<br>\n<em>Explanation: Someone failed to login to your site. If you";
+                $content .= " are getting too many of these messages, it is likely your site is under a brute";
+                $content .= " force attack. You can disable the notifications for failed logins from here [1].";
+                $content .= " More details at Password Guessing Brute Force Attacks [2].</em><br>\n<br>\n";
+                $content .= "[1] " . SucuriScanTemplate::get_url('settings') . " <br>\n";
+                $content .= "[2] http://kb.sucuri.net/definitions/attacks/brute-force/password-guessing <br>\n";
             }
 
             // Send a notification even if the limit of emails per hour was reached.
@@ -3236,7 +3236,11 @@ class SucuriScanHook extends SucuriScanEvent {
         if( empty($title) ){ $title = 'Unknown'; }
 
         $password = SucuriScanRequest::post('pwd');
-        $message = 'User authentication failed: '.$title;
+        $message = 'User authentication failed: ' . $title;
+
+        if ( sucuriscan_collect_wrong_passwords() === true ) {
+            $message .= "<br>\nUser wrong password: " . $password;
+        }
 
         self::report_event( 2, 'core', $message );
         self::notify_event( 'failed_login', $message );
