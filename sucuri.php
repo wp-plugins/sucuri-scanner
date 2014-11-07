@@ -5062,7 +5062,7 @@ class SucuriScanFSScanner extends SucuriScan {
     public static function parse_error_logs( $error_logs=array() ){
         $logs_arr = array();
         $pattern = '/^'
-            . '(\[(\S+) ([0-9:]{5,8}) (\S+)\] )?'     // Detect date, time, and timezone.
+            . '(\[(\S+) ([0-9:]{5,8})( \S+)?\] )?'     // Detect date, time, and timezone.
             . '(PHP )?([a-zA-Z ]+):\s'                // Detect PHP error severity.
             . '(.+) in (.+)'                      // Detect error message, and file path.
             . '(:| on line )([0-9]+)'                 // Detect line number.
@@ -5092,7 +5092,7 @@ class SucuriScanFSScanner extends SucuriScan {
                 // Basic attributes from the scrapping.
                 $data_set['date'] = $match[2];
                 $data_set['time'] = $match[3];
-                $data_set['time_zone'] = $match[4];
+                $data_set['time_zone'] = trim($match[4]);
                 $data_set['error_type'] = trim($match[6]);
                 $data_set['error_message'] = trim($match[7]);
                 $data_set['file_path'] = trim($match[8]);
