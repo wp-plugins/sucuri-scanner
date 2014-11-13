@@ -592,13 +592,13 @@ class SucuriScan {
 
         if( self::is_behind_cloudproxy() ){
             $alternatives = array(
+                'HTTP_X_SUCURI_CLIENTIP',
                 'HTTP_X_REAL_IP',
                 'HTTP_CLIENT_IP',
                 'HTTP_X_FORWARDED_FOR',
                 'HTTP_X_FORWARDED',
                 'HTTP_FORWARDED_FOR',
                 'HTTP_FORWARDED',
-                'HTTP_X_SUCURI_CLIENTIP',
                 'SUCURI_RIP',
                 'REMOTE_ADDR',
             );
