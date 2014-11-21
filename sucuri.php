@@ -2852,7 +2852,11 @@ class SucuriScanEvent extends SucuriScan {
         $addr_md5 = md5($remote_addr);
 
         // Check if the CIDR in range 32 of this IP is trusted.
-        if ( array_key_exists($addr_md5, $trusted_ips) ) {
+        if (
+            is_array($trusted_ips)
+            && !empty($trusted_ips)
+            && array_key_exists($addr_md5, $trusted_ips)
+        ) {
             return TRUE;
         }
 
@@ -4204,9 +4208,10 @@ class SucuriScanAPI extends SucuriScanOption {
      */
     public static function get_official_checksums( $version=0 ){
         $url = 'http://api.wordpress.org/core/checksums/1.0/';
+        $language = defined('WPLANG') ? WPLANG : 'en_US';
         $response = self::api_call( $url, 'GET', array(
             'version' => $version,
-            'locale' => 'en_US',
+            'locale' => $language,
         ));
 
         if( $response ){
