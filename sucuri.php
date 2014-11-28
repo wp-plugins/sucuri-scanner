@@ -4208,7 +4208,7 @@ class SucuriScanAPI extends SucuriScanOption {
      */
     public static function get_official_checksums( $version=0 ){
         $url = 'http://api.wordpress.org/core/checksums/1.0/';
-        $language = defined('WPLANG') ? WPLANG : 'en_US';
+        $language = 'en_US'; /* WPLANG does not works. */
         $response = self::api_call( $url, 'GET', array(
             'version' => $version,
             'locale' => $language,
