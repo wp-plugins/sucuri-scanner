@@ -110,6 +110,30 @@
         </tr>
 
         <tr class="alternate">
+            <td>SiteCheck scanner</td>
+            <td>%%SUCURI.SiteCheckScannerStatus%%</td>
+            <td class="td-with-button">
+                <form action="%%SUCURI.URL.Settings%%#settings-scanner" method="post">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <input type="hidden" name="sucuriscan_sitecheck_scanner" value="%%SUCURI.SiteCheckScannerSwitchValue%%" />
+                    <button type="submit" class="button-primary %%SUCURI.SiteCheckScannerSwitchCssClass%%">%%SUCURI.SiteCheckScannerSwitchText%%</button>
+                </form>
+            </td>
+        </tr>
+
+        <tr>
+            <td>SiteCheck counter</td>
+            <td><span class="sucuriscan-monospace">%%SUCURI.SiteCheckCounter%% scans so far</span></td>
+            <td class="td-with-button">
+                <form action="%%SUCURI.URL.Scanner%%" method="post">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <input type="hidden" name="sucuriscan_malware_scan" value="1" />
+                    <button type="submit" class="button-primary">Force Scan</button>
+                </form>
+            </td>
+        </tr>
+
+        <tr class="alternate">
             <td>Last Scanning</td>
             <td><span class="sucuriscan-monospace">%%SUCURI.ScanningRuntimeHuman%%</span></td>
             <td class="td-with-button">

@@ -23,6 +23,10 @@ jQuery(document).ready(function($){
             var container = $('.sucuriscan-tab-containers > #sucuriscan-'+container_id);
 
             if( container.length ){
+                var current_href = location.href.replace(location.hash, '');
+                var new_location_href = current_href + '#' + container_id;
+                window.history.pushState( {}, document.title, new_location_href );
+
                 $('.sucuriscan-tabs > ul a').removeClass(active_class);
                 $('.sucuriscan-tab-containers > div').addClass(hidden_class);
                 button.addClass(active_class);

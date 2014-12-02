@@ -1,6 +1,6 @@
 
 <tr class="%%SUCURI.Notification.CssClass%%">
-    <td colspan="3">
+    <td>
         <div>
             <label>
                 <input type="hidden" name="%%SUCURI.Notification.Name%%" value="0" />

@@ -62,7 +62,7 @@
         </tr>
 
         <tr>
-            <td>Notify events to</td>
+            <td>Send alerts to</td>
             <td>%%SUCURI.NotifyTo%%</td>
             <td class="td-with-button">
                 <form action="%%SUCURI.URL.Settings%%" method="post">
@@ -141,7 +141,7 @@
 
         <tr>
             <td>Log storage path</td>
-            <td><span class="sucuriscan-monospace" title="%%SUCURI.DatastorePath%%">%%SUCURI.DatastorePathShort%%</span></td>
+            <td><span class="sucuriscan-monospace sucuriscan-wraptext" title="%%SUCURI.DatastorePath%%">%%SUCURI.DatastorePath%%</span></td>
             <td class="td-with-button">
                 <form action="%%SUCURI.URL.Settings%%" method="post">
                     <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />

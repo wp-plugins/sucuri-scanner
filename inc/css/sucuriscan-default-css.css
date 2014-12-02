@@ -130,11 +130,13 @@ div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:1
 .sucuriscan-malwarescan-message{margin-bottom:20px !important}
 .sucuriscan-loading{background:#fff;text-align:center;padding:30px;padding-bottom:15px;border:1px solid #ddd;border-radius:4px}
 .sucuriscan-loading p, .sucuriscan-loading h3{margin:0;padding:0}
-.sucuriscan-loading .title{font-size:26px;margin-bottom:10px}
-.sucuriscan-loading .description{font-size:18px}
+.sucuriscan-loading .title{font-size:28px;margin-bottom:10px}
+.sucuriscan-loading .description{font-size:16px}
 .sucuriscan-sitelogo{width:190px;height:100px;background:url('http://sitecheck.sucuri.net/images/sucuri-sprite.png') no-repeat;margin:0 auto}
 .sucuriscan-sitecheck-form{margin:20px 0 0 0}
 .sucuriscan-sitecheck-form .button.button-hero{padding:0 46px}
+.sucuriscan-loading .sucuriscan-sitecheck-disclaimer{text-align:justify;padding-top:20px;border-top:1px solid #ddd}
+.sucuriscan-loading .sucuriscan-sitecheck-disclaimer p{font-size:10px}
 /* Scanner Results */
 .sucuriscan-maincontent .sucuriscan-border{border:0;border-left:4px solid #ddd}
 .sucuriscan-maincontent .sucuriscan-border > h3, .sucuriscan-maincontent .sucuriscan-border > .inside{border-top:1px solid #e5e5e5;border-right:1px solid #e5e5e5}
@@ -163,7 +165,7 @@ div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:1
 .sucuriscan-maincontent .sucuriscan-integrity-message{position:relative}
 .sucuriscan-maincontent .sucuriscan-integrity-message .sucuriscan-integrity-mark{position:absolute;top:1px;right:1px;background:#7ad03a;font-weight:bold;color:#fff;line-height:35px;padding:0 10px;border-left:1px solid #ddd}
 .sucuriscan-maincontent .sucuriscan-auditlogs{margin-bottom:0}
-.sucuriscan-maincontent .sucuriscan-auditlogs td small{font-style:italic}
+.sucuriscan-maincontent .sucuriscan-auditlogs .sucuriscan-list-as-table{margin-bottom:0}
 .sucuriscan-maincontent .sucuriscan-auditlogs .sucuriscan-maxper-page{text-align:right}
 .sucuriscan-maincontent .sucuriscan-ignoredfiles{margin-top:0}
 .sucuriscan-maincontent .sucuriscan-modifiedfiles .sucuriscan-ellipsis{width:100px}
@@ -231,6 +233,8 @@ div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:1
 .sucuriscan-maincontent .sucuriscan-infosys-htaccess .inside .sucuriscan-inline-alert-updated{margin-bottom:10px}
 .sucuriscan-maincontent .sucuriscan-errorlogs .inside .sucuriscan-inline-alert-error{margin-top:10px}
 .sucuriscan-maincontent .sucuriscan-errorlogs-list{}
+.sucuriscan-maincontent .sucuriscan-subject-formats{margin:0}
+.sucuriscan-maincontent .sucuriscan-subject-formats input[type=text]{width:40%;margin-left:10px}
 /* Parent Resetter: Midnight */
 .admin-color-blue .wrap div.sucuriscan-setup-notice, .admin-color-blue .sucuriscan-ad:nth-child(odd){background:#e5d1ae;border-color:#d39323}
 .admin-color-coffee .wrap div.sucuriscan-setup-notice, .admin-color-coffee .sucuriscan-ad:nth-child(odd){background:#e4cfbe;border-color:#b78a66}
