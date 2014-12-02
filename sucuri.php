@@ -3919,7 +3919,13 @@ class SucuriScanAPI extends SucuriScanOption {
                     if( $response['body']->status == 1 ){
                         return TRUE;
                     } else {
-                        SucuriScanInterface::error( ucwords($response['body']->action) . ': ' . $response['body']->messages[0] );
+                        $action_message = 'Unknown error, there is no more information.';
+
+                        if ( isset($response['body']->messages[0]) ) {
+                            $action_message = $response['body']->messages[0];
+                        }
+
+                        SucuriScanInterface::error( ucwords($response['body']->action) . ': ' . $action_message );
                     }
                 } else {
                     SucuriScanInterface::error( 'Could not determine the status of an API call.' );
