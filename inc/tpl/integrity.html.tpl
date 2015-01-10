@@ -4,5 +4,7 @@
 
     %%SUCURI.CoreFiles%%
 
+    %%SUCURI.AuditReports%%
+
     %%SUCURI.AuditLogs%%
 </div>

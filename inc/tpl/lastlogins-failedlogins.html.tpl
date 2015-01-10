@@ -15,7 +15,7 @@
 
             <div class="sucuriscan-inline-alert-error sucuriscan-%%SUCURI.FailedLogins.WarningVisibility%%">
                 <p>
-                    The option to notify possible <strong>password guessing</strong> attacks is
+                    The option to alert possible <strong>password guessing</strong> attacks is
                     disabled, failed logins reports will not be sent to your email when they occur.
                     Go to the <a href="%%SUCURI.URL.Settings%%#settings-notifications">notification
                     settings</a> to enable the brute-force attack alerts.
@@ -24,11 +24,10 @@
 
             <div class="sucuriscan-inline-alert-error sucuriscan-%%SUCURI.FailedLogins.CollectPasswordsVisibility%%">
                 <p>
-                    If you type a wrong password by mistake your password, the plugin will log the
-                    username and password in the security logs <em>(which are text/plain
-                    files)</em>. If someone get access to your API key, or your server fails to
-                    process the PHP files <em>(which is not usual but may happen)</em> then an
-                    attacker may get your credentials and invade your site. Change this from the <a
+                    If you mistype your password the plugin will log the username and password in
+                    the security logs. If someone get access to your API key, or your server fails
+                    to process the PHP files (which is not usual but may happen) then an attacker
+                    may steal your credentials and get access to your site. Change this from the <a
                     href="%%SUCURI.URL.Settings%%#settings-general">general settings</a>
                 </p>
             </div>

@@ -4,6 +4,7 @@
         <h3>Error Logs</h3>
 
         <div class="inside">
+
             <p>
                 Web servers like Apache, Nginx and others use files to record errors encountered
                 during the execution of a dynamic language or the server processes. Depending on
@@ -16,10 +17,10 @@
                 <p>
                     If you are a developer, you may want to check the latest errors encountered by
                     the server before delete the log file, that way you can see where the
-                    application is failing and fix the errors. Note that many error log files may
-                    have thousand of lines, so you will only see the latest entries to prevent PHP
-                    interpreter to stop the execution of the parser when the maximum execution time
-                    is reached.
+                    application is failing and fix the errors. Note that a log file may have
+                    thousand of lines, so to prevent an overflow in the memory of the PHP
+                    interpreter the plugin limits the process to the <strong>latest
+                    %%SUCURI.ErrorLog.LogsLimit%% lines</strong> inserted in the log file.
                 </p>
             </div>
 
@@ -29,6 +30,18 @@
                     panel in the <em>Settings</em> page to enable it.
                 </p>
             </div>
+
+            <div class="sucuriscan-inline-alert-warning sucuriscan-%%SUCURI.ErrorLog.InvalidFormatVisibility%%">
+                <p>
+                    Note that if the log file is not empty but the table is, it means that the
+                    format of the logs used by the web server is not supported by the scanner,
+                    you can try to increase the number of lines processed though from
+                    <a href="%%SUCURI.URL.Settings%%#settings-scanner">here</a> in case that
+                    other lines have a different format which is very common on servers with
+                    mixed configurations.
+                </p>
+            </div>
+
         </div>
     </div>
 </div>
@@ -59,6 +72,12 @@
 
     <tbody>
         %%SUCURI.ErrorLog.List%%
+
+        <tr class="sucuriscan-%%SUCURI.ErrorLog.InvalidFormatVisibility%%">
+            <td colspan="5">
+                <em>No valid logs in the last %%SUCURI.ErrorLog.LogsLimit%% lines of the error log file.</em>
+            </td>
+        </tr>
 
         <tr class="sucuriscan-%%SUCURI.ErrorLog.NoItemsVisibility%%">
             <td colspan="5">

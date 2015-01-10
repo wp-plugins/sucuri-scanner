@@ -12,17 +12,20 @@
 
     <h2 class="nav-tab-wrapper sucuriscan-navbar">
         %%SUCURI.Navbar%%
+
+        <a class="button button-hero button-primary sucuriscan-review-hero"
+        href="http://goo.gl/aByqP5" target="_blank">Review Plugin</a>
     </h2>
 
     <div class="sucuriscan-maincontent sucuriscan-clearfix">
 
-        <div class="sucuriscan-leftside sucuriscan-%%SUCURI.PageStyleClass%%">
+        <div class="sucuriscan-leftside sucuriscan-%%SUCURI.LayoutType%% sucuriscan-%%SUCURI.PageStyleClass%%">
 
             %%SUCURI.PageContent%%
 
         </div>
 
-        <div class="sucuriscan-sidebar">
+        <div class="sucuriscan-sidebar sucuriscan-%%SUCURI.AdsVisibility%%">
 
             <div class="sucuriscan-ad">
                 <h2>Is your website infected with malware? Blacklisted by Google?</h2>

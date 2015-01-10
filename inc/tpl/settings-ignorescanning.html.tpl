@@ -33,7 +33,7 @@
                 <label class="screen-reader-text" for="cb-select-all-1">Select All</label>
                 <input id="cb-select-all-1" type="checkbox">
             </th>
-            <th class="manage-column" width="80">Ignored</th>
+            <th class="manage-column">&nbsp;</th>
             <th class="manage-column">Directory</th>
             <th class="manage-column" width="180">Ignored At</th>
         </thead>

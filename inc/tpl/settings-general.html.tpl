@@ -127,7 +127,7 @@
             </td>
         </tr>
 
-        <tr>
+        <tr class="alternate">
             <td>Collect failed passwords</td>
             <td>%%SUCURI.CollectWrongPasswords%%</td>
             <td class="td-with-button">
@@ -141,11 +141,47 @@
 
         <tr>
             <td>Log storage path</td>
-            <td><span class="sucuriscan-monospace sucuriscan-wraptext" title="%%SUCURI.DatastorePath%%">%%SUCURI.DatastorePath%%</span></td>
+            <td class="sucuriscan-wraptext"><span class="sucuriscan-monospace" title="%%SUCURI.DatastorePath%%">%%SUCURI.DatastorePath%%</span></td>
             <td class="td-with-button">
                 <form action="%%SUCURI.URL.Settings%%" method="post">
                     <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
                     <input type="text" name="sucuriscan_datastore_path" class="input-text" placeholder="Directory to save logs..." />
+                    <button type="submit" class="button-primary">Change</button>
+                </form>
+            </td>
+        </tr>
+
+        <tr class="alternate">
+            <td>Audit logs report</td>
+            <td>%%SUCURI.AuditReportStatus%%</td>
+            <td class="td-with-button">
+                <form action="%%SUCURI.URL.Settings%%" method="post">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <input type="hidden" name="sucuriscan_audit_report" value="%%SUCURI.AuditReportSwitchValue%%" />
+                    <button type="submit" class="button-primary %%SUCURI.AuditReportSwitchCssClass%%">%%SUCURI.AuditReportSwitchText%%</button>
+                </form>
+            </td>
+        </tr>
+
+        <tr>
+            <td>Audit report limit</td>
+            <td>Process latest %%SUCURI.AuditReportLimit%% logs</td>
+            <td class="td-with-button">
+                <form action="%%SUCURI.URL.Settings%%" method="post">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <input type="text" name="sucuriscan_logs4report" class="input-text" placeholder="e.g. 500" />
+                    <button type="submit" class="button-primary">Change</button>
+                </form>
+            </td>
+        </tr>
+
+        <tr class="alternate">
+            <td>Plugin advertisement</td>
+            <td>%%SUCURI.AdsVisibility%%</td>
+            <td class="td-with-button">
+                <form action="%%SUCURI.URL.Settings%%" method="post">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <input type="text" name="sucuriscan_ads_visibility" class="input-text" placeholder="Type: SHOW or HIDE" />
                     <button type="submit" class="button-primary">Change</button>
                 </form>
             </td>

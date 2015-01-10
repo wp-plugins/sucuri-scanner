@@ -1,4 +1,33 @@
 
+<div id="poststuff">
+    <div class="postbox sucuriscan-border sucuriscan-table-description">
+        <h3>Modified Files</h3>
+
+        <div class="inside">
+
+            <p>
+                If your site was recently attacked, you can see which files were modified to
+                assist with any investigation. Note that in most Unix file systems, a file is
+                considered modified when its inode data is changed; that is, when the
+                permissions, owner, group, or other metadata from the inode is updated.
+            </p>
+
+            <div class="sucuriscan-inline-alert-error sucuriscan-%%SUCURI.ModifiedFiles.DisabledVisibility%%">
+                <p>
+                    The scanner that searches for modified files under the content directory is
+                    disabled. This tool is disabled by default to prevent an overflow in the memory
+                    of the PHP interpreter in the majority of websites that have too many files in
+                    their projects, but you can enable this scanner from
+                    <a href="%%SUCURI.URL.Settings%%#settings-scanner">here</a> though, and if you
+                    experience issues like <em>"Internal Server Error"</em> messages or blank pages
+                    just disable the scanner again.
+                </p>
+            </div>
+
+        </div>
+    </div>
+</div>
+
 <table class="wp-list-table widefat sucuriscan-table sucuriscan-table-double-title sucuriscan-modifiedfiles">
     <thead>
         <tr>
@@ -22,9 +51,9 @@
         </tr>
 
         <tr>
-            <th>Filepath</th>
-            <th width="130">CheckSum</th>
-            <th width="200">Modification</th>
+            <th>File Path</th>
+            <th width="100">File Size</th>
+            <th width="190">Modified at</th>
         </tr>
     </thead>
 

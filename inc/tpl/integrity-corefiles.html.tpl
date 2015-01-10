@@ -14,19 +14,14 @@
     <table class="wp-list-table widefat sucuriscan-table sucuriscan-corefiles sucuriscan-%%SUCURI.CoreFiles.BadVisibility%%">
         <thead>
             <tr>
-                <th colspan="3" class="sucuriscan-clearfix thead-with-button">
+                <th colspan="4" class="sucuriscan-clearfix thead-with-button">
                     <span>Core integrity (%%SUCURI.CoreFiles.ListCount%% files)</span>
-                    <div class="sucuriscan-pull-right sucuriscan-corefiles-abbrs">
-                        <span class="sucuriscan-status-type sucuriscan-status-added">Added</span>
-                        <span class="sucuriscan-status-type sucuriscan-status-modified">Modified</span>
-                        <span class="sucuriscan-status-type sucuriscan-status-removed">Removed</span>
-                        <button id="sucuriscan-corefiles-show" class="button button-primary thead-topright-action" data-action="show">Show files</button>
-                    </div>
+                    <button id="sucuriscan-corefiles-show" class="button button-primary thead-topright-action" data-action="show">Show files</button>
                 </th>
             </tr>
 
             <tr>
-                <td colspan="3" class="sucuriscan-corefiles-warning">
+                <td colspan="4" class="sucuriscan-corefiles-warning">
                     <div>
                         <p>
                             Changes in the integrity of your core files were detected. There are files that
@@ -44,8 +39,9 @@
                     <label class="screen-reader-text" for="cb-select-all-1">Select All</label>
                     <input id="cb-select-all-1" type="checkbox">
                 </th>
-                <th width="70" class="manage-column">Status</th>
-                <th class="manage-column">Filepath</th>
+                <th width="80" class="manage-column">Status</th>
+                <th width="100" class="manage-column">File Size</th>
+                <th class="manage-column">File Path</th>
             </tr>
         </thead>
 
@@ -55,7 +51,7 @@
 
         <tfoot>
             <tr>
-                <td colspan="3">
+                <td colspan="4">
                     <p>
                         The action to restore the content of a file will only work with files that were
                         <b>modified</b> or <b>removed</b>, for files that were <b>added</b> you must
