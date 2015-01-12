@@ -37,6 +37,14 @@
 
                     <tbody>
                         %%SUCURI.ResetPassword.UserList%%
+
+                        <tr class="sucuriscan-%%SUCURI.ResetPassword.PaginationVisibility%%">
+                            <td colspan="4">
+                                <ul class="sucuriscan-pagination">
+                                    %%SUCURI.ResetPassword.PaginationLinks%%
+                                </ul>
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
 

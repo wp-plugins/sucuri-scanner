@@ -1067,6 +1067,15 @@ class SucuriScan {
         return false;
     }
 
+    /**
+     * Check whether the site is running over the Nginx web server.
+     *
+     * @return boolean TRUE if the site is running over Nginx, FALSE otherwise.
+     */
+    public static function is_nginx_server(){
+        return (bool) preg_match( '/^nginx(\/[0-9\.]+)?$/', @$_SERVER['SERVER_SOFTWARE'] );
+    }
+
 }
 
 /**
@@ -5304,9 +5313,9 @@ class SucuriScanTemplate extends SucuriScanRequest {
      * @return integer Page number of the link clicked in a pagination.
      */
     public static function get_page_number(){
-        $num = self::get( 'num', '[0-9]{1,2}' );
+        $paged = self::get( 'paged', '[0-9]{1,5}' );
 
-        return ( $num ? intval($num) : 1 );
+        return ( $paged ? intval($paged) : 1 );
     }
 
     /**
@@ -5322,6 +5331,13 @@ class SucuriScanTemplate extends SucuriScanRequest {
         $html_links = '';
         $page_number = self::get_page_number();
         $max_pages = ceil($total_items / $max_per_page);
+        $extra_url = '';
+
+        // Fix for inline anchor URLs.
+        if ( preg_match('/^(.+)(#.+)$/', $base_url, $match) ) {
+            $base_url = $match[1];
+            $extra_url = $match[2];
+        }
 
         // Generate the HTML links for the pagination.
         for( $j=1; $j<=$max_pages; $j++ ){
@@ -5332,8 +5348,8 @@ class SucuriScanTemplate extends SucuriScanRequest {
             }
 
             $html_links .= sprintf(
-                '<li><a href="%s&num=%d" class="%s">%s</a></li>',
-                $base_url, $j, $link_class, $j
+                '<li><a href="%s&paged=%d%s" class="%s">%s</a></li>',
+                $base_url, $j, $extra_url, $link_class, $j
             );
         }
 
@@ -7075,9 +7091,15 @@ function sucuriscan_hardening_page(){
             sucuriscan_harden_version();
             sucuriscan_cloudproxy_enabled();
             sucuriscan_harden_removegenerator();
-            sucuriscan_harden_upload();
-            sucuriscan_harden_wpcontent();
-            sucuriscan_harden_wpincludes();
+
+            if ( SucuriScan::is_nginx_server() === true ) {
+                sucuriscan_harden_nginx_phpfpm();
+            } else {
+                sucuriscan_harden_upload();
+                sucuriscan_harden_wpcontent();
+                sucuriscan_harden_wpincludes();
+            }
+
             sucuriscan_harden_phpversion();
             sucuriscan_harden_secretkeys();
             sucuriscan_harden_readme();
@@ -7123,23 +7145,27 @@ function sucuriscan_harden_status( $title='', $status=0, $type='', $messageok=''
                 <p><?php _e($desc) ?></p>
             <?php endif; ?>
 
-            <div class="sucuriscan-hstatus sucuriscan-hstatus-<?php _e($status) ?>">
-                <?php if( $type != NULL ): ?>
-                    <?php if( $status == 1 ): ?>
-                        <input type="submit" name="<?php _e($type) ?>_unharden" value="Revert hardening" class="button-secondary" />
-                    <?php else: ?>
-                        <input type="submit" name="<?php _e($type) ?>" value="Harden" class="button-primary" />
+            <?php if ( $status <= 5 ): ?>
+                <div class="sucuriscan-hstatus sucuriscan-hstatus-<?php _e($status) ?>">
+                    <?php if( $type != NULL ): ?>
+                        <?php if( $status === 1 ): ?>
+                            <input type="submit" name="<?php _e($type) ?>_unharden" value="Revert hardening" class="button-secondary" />
+                        <?php elseif( $status === 0 ): ?>
+                            <input type="submit" name="<?php _e($type) ?>" value="Harden" class="button-primary" />
+                        <?php endif; ?>
                     <?php endif; ?>
-                <?php endif; ?>
 
-                <span>
-                    <?php if( $status == 1 ): ?>
-                        <?php _e($messageok) ?>
-                    <?php else: ?>
-                        <?php _e($messagewarn) ?>
-                    <?php endif; ?>
-                </span>
-            </div>
+                    <span>
+                        <?php if( $status === 1 ): ?>
+                            <?php _e($messageok) ?>
+                        <?php elseif( $status === 0 ): ?>
+                            <?php _e($messagewarn) ?>
+                        <?php elseif( $status === 2 ): ?>
+                            Can not be determined.
+                        <?php endif; ?>
+                    </span>
+                </div>
+            <?php endif; ?>
 
             <?php if( $updatemsg != NULL ): ?>
                 <p><?php _e($updatemsg) ?></p>
@@ -7204,6 +7230,38 @@ function sucuriscan_harden_removegenerator(){
         NULL,
         'It checks if your WordPress version is being hidden from being displayed '
         .'in the generator tag (enabled by default with this plugin).'
+    );
+}
+
+function sucuriscan_harden_nginx_phpfpm(){
+    $description = 'It seems that you are using the Nginx web server, if that is
+        the case then you will need to add the following code into the global
+        <code>nginx.conf</code> file or the virtualhost associated with this
+        website. Choose the correct rules for the directories that you want to
+        protect. If you encounter errors after restart the web server then revert
+        the changes and contact the support team of your hosting company, or read
+        the official article about <a href="http://codex.wordpress.org/Nginx">
+        WordPress on Nginx</a>.</p>';
+
+    $description .= "<pre class='code'># Block PHP files in uploads directory.\nlocation ~* /(?:uploads|files)/.*\.php$ {\n\x20\x20deny all;\n}</pre>";
+    $description .= "<pre class='code'># Block PHP files in content directory.\nlocation ~* /wp-content/.*\.php$ {\n\x20\x20deny all;\n}</pre>";
+    $description .= "<pre class='code'># Block PHP files in includes directory.\nlocation ~* /wp-includes/.*\.php$ {\n\x20\x20deny all;\n}</pre>";
+
+    $description .= "<pre class='code'>";
+    $description .= "# Block PHP files in uploads, content, and includes directory.\n";
+    $description .= "location ~* /(?:uploads|files|wp-content|wp-includes)/.*\.php$ {\n";
+    $description .= "\x20\x20deny all;\n";
+    $description .= "}</pre>";
+
+    $description .= '<p class="sucuriscan-hidden">';
+
+    sucuriscan_harden_status(
+        'Block PHP files',
+        999,
+        null,
+        null,
+        null,
+        $description
     );
 }
 
@@ -7492,7 +7550,7 @@ function sucuriscan_cloudproxy_enabled(){
 
     if( $proxy_info === FALSE ){
         $status = 0;
-        $btn_string = '<a href="http://cloudproxy.sucuri.net/" target="_blank" class="button button-primary">Harden</a>';
+        $btn_string = '<a href="http://goo.gl/qfNkMq" target="_blank" class="button button-primary">Harden</a>';
     }
 
     sucuriscan_harden_status(
@@ -8528,26 +8586,56 @@ function sucuriscan_update_secret_keys( $process_form=FALSE ){
 function sucuriscan_posthack_users( $process_form=FALSE ){
     $template_variables = array(
         'ResetPassword.UserList' => '',
+        'ResetPassword.PaginationLinks' => '',
+        'ResetPassword.PaginationVisibility' => 'hidden',
     );
 
     // Process the form submission (if any).
     sucuriscan_reset_user_password($process_form);
 
     // Fill the user list for ResetPassword action.
-    $user_list = get_users();
+    $user_list = false;
+    $page_number = SucuriScanTemplate::get_page_number();
+    $max_per_page = SUCURISCAN_MAX_PAGINATION_BUTTONS;
+    $dbquery = new WP_User_Query( array(
+        'number' => $max_per_page,
+        'offset' => ( $page_number - 1 ) * $max_per_page,
+        'fields' => 'all_with_meta',
+        'orderby' => 'ID',
+    ) );
 
-    if( $user_list ){
+    // Retrieve the results and build the pagination links.
+    if ( $dbquery ) {
+        $total_items = $dbquery->get_total();
+        $user_list = $dbquery->get_results();
+
+        $template_variables['ResetPassword.PaginationLinks'] = SucuriScanTemplate::get_pagination(
+            '%%SUCURI.URL.Posthack%%#reset-users-password',
+            $total_items,
+            $max_per_page
+        );
+
+        if ( $total_items > SUCURISCAN_MAX_PAGINATION_BUTTONS ) {
+            $template_variables['ResetPassword.PaginationVisibility'] = 'visible';
+        }
+    }
+
+    if ( $user_list !== false ) {
         $counter = 0;
 
         foreach( $user_list as $user ){
             $user->user_registered_timestamp = strtotime($user->user_registered);
             $user->user_registered_formatted = SucuriScan::datetime($user->user_registered_timestamp);
             $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
+            $display_username = ( $user->user_login != $user->display_name )
+                ? sprintf( '%s (%s)', $user->user_login, $user->display_name )
+                : $user->user_login;
 
             $template_variables['ResetPassword.UserList'] .= SucuriScanTemplate::get_snippet('posthack-resetpassword', array(
                 'ResetPassword.UserId' => $user->ID,
                 'ResetPassword.Username' => SucuriScan::escape($user->user_login),
                 'ResetPassword.Displayname' => SucuriScan::escape($user->display_name),
+                'ResetPassword.DisplayUsername' => SucuriScan::escape($display_username),
                 'ResetPassword.Email' => SucuriScan::escape($user->user_email),
                 'ResetPassword.Registered' => $user->user_registered_formatted,
                 'ResetPassword.Roles' => @implode(', ', $user->roles),

@@ -4,7 +4,7 @@
     <td>%%SUCURI.AdminUsers.RegisteredAt%%</td>
     <td class="adminusers-lastlogin">
         <div class="sucuriscan-%%SUCURI.AdminUsers.NoLastLogins%%">
-            <i>There isn't information available for this account.</i>
+            <i>No data available for this account.</i>
         </div>
 
         <table class="widefat sucuriscan-admins-lastlogins sucuriscan-%%SUCURI.AdminUsers.NoLastLoginsTable%%">

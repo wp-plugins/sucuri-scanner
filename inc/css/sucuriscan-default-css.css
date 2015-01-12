@@ -215,9 +215,11 @@ td.sucuriscan-corefiles-warning > div{background:#f2dede;color:#a94442;border-co
 .sucuriscan-request-summary td+td{font-family:monospace;word-break:break-all}
 /* Hardening Status */
 .sucuriscan-hstatus{position:relative;margin:0 -12px;padding:10px 12px;border:1px solid transparent}
-.sucuriscan-hstatus-1{background-color:#dff0d8;color:#3c763d;border-color:#d6e9c6}
 .sucuriscan-hstatus-0{background-color:#f2dede;color:#a94442;border-color:#ebccd1}
+.sucuriscan-hstatus-1{background-color:#dff0d8;color:#3c763d;border-color:#d6e9c6}
+.sucuriscan-hstatus-2{background-color:#dee4f2;color:#4263a9;border-color:#ccd0eb}
 .sucuriscan-hstatus .button-primary, .sucuriscan-hstatus .button-secondary{position:absolute;top:5px;right:5px}
+.sucuriscan-hardening .postbox .inside pre{background:#eaeaea;padding:10px}
 /* Last Logins Styles */
 .sucuriscan-lastlogin-outof{font-style:italic;color:#999;margin-right:10px}
 .sucuriscan-admins-lastlogins .sucuriscan-ellipsis{width:170px}

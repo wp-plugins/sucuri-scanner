@@ -5,20 +5,26 @@
 
         <div class="inside">
             <p>
-                This information will be used to determine if your site is being victim of a brute-force attack using the
-                <a href="http://kb.sucuri.net/definitions/attacks/brute-force/password-guessing" target="_blank">password
-                guessing</a> technique. Multiple failed logins will be considered part of the attack if there are more than
-                <code>%%SUCURI.FailedLogins.MaxFailedLogins%%</code> during the same hour, that's why you will only see
-                <em>(in this table)</em> information of the last hour, previous reports will be sent to your email if you
-                checked the alert option in the settings page to receive notifications of brute-force attacks.
+                This information will be used to determine if your site is being victim of
+                <a href="http://kb.sucuri.net/definitions/attacks/brute-force/password-guessing"
+                target="_blank">Password Guessing Brute Force Attacks</a>. These logs will be
+                accumulated and the plugin will send a report via email if there are more than
+                <code>%%SUCURI.FailedLogins.MaxFailedLogins%%</code> failed login attempts during
+                the same hour, you can change this number from <a href="%%SUCURI.URL.Settings%%#settings-general">here</a>.
+                <strong>Note.</strong> Some <em>"Two-Factor Authentication"</em> plugins do not
+                follow the same rules that WordPress have to report failed login attempts, so
+                you may not see all the attempts in this panel if you have one of these plugins
+                installed.
             </p>
 
-            <div class="sucuriscan-inline-alert-error sucuriscan-%%SUCURI.FailedLogins.WarningVisibility%%">
+            <div class="sucuriscan-inline-alert-warning sucuriscan-%%SUCURI.FailedLogins.WarningVisibility%%">
                 <p>
-                    The option to alert possible <strong>password guessing</strong> attacks is
-                    disabled, failed logins reports will not be sent to your email when they occur.
-                    Go to the <a href="%%SUCURI.URL.Settings%%#settings-notifications">notification
-                    settings</a> to enable the brute-force attack alerts.
+                    The option to alert possible <a href="http://kb.sucuri.net/definitions/attacks/brute-force/password-guessing"
+                    target="_blank">Password Guessing Brute Force Attacks</a> is disabled, you will
+                    not receive email reports with the attempts collected during the attacks, but
+                    you will continue receiving the alerts of failed logins if you have enabled that
+                    option. Go to the <a href="%%SUCURI.URL.Settings%%#settings-notifications">alert
+                    settings</a> panel to change this configuration.
                 </p>
             </div>
 
