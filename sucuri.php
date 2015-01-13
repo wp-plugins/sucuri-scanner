@@ -4228,7 +4228,7 @@ class SucuriScanAPI extends SucuriScanOption {
             $response['body']->output_data = array();
             $log_pattern = '/^([0-9-: ]+) (.*) : (.*)/';
             $extra_pattern = '/(.+ \(multiple entries\):) (.+)/';
-            $generic_pattern = '/^([A-Z][a-z]{3,7}): ([a-zA-Z\s\-\(\)]+, )?(\S+; )?(.+)/';
+            $generic_pattern = '/^([A-Z][a-z]{3,7}): ([0-9a-zA-Z\s\-\(\)]+, )?(\S+; )?(.+)/';
 
             foreach( $response['body']->output as $log ){
                 if( preg_match($log_pattern, $log, $log_match) ){
@@ -4287,12 +4287,12 @@ class SucuriScanAPI extends SucuriScanOption {
      */
     public static function get_audit_event_types(){
         $event_types = array(
-            'debug' => '#c690ec',
-            'notice' => '#428bca',
-            'info' => '#5bc0de',
-            'warning' => '#f0ad4e',
-            'error' => '#f27d7d',
             'critical' => '#000000',
+            'debug' => '#c690ec',
+            'error' => '#f27d7d',
+            'info' => '#5bc0de',
+            'notice' => '#428bca',
+            'warning' => '#f0ad4e',
         );
 
         return $event_types;
@@ -4390,8 +4390,6 @@ class SucuriScanAPI extends SucuriScanOption {
             }
 
             if ( $report['total_events'] > 0 ) {
-                arsort($report['events_per_type']);
-
                 return $report;
             }
         }
@@ -7899,7 +7897,7 @@ function sucuriscan_integrity_form_submissions(){
         }
 
         // Restore, Remove, Mark as fixed the core files.
-        $allowed_actions = '(restore|remove|fixed)';
+        $allowed_actions = '(restore|delete|fixed)';
         $integrity_action = SucuriScanRequest::post(':integrity_action', $allowed_actions);
 
         if( $integrity_action !== FALSE ){
@@ -7907,7 +7905,13 @@ function sucuriscan_integrity_form_submissions(){
             $integrity_files = SucuriScanRequest::post(':integrity_files', '_array');
             $integrity_types = SucuriScanRequest::post(':integrity_types', '_array');
             $files_selected = count($integrity_files);
+            $files_affected = array();
             $files_processed = 0;
+            $action_titles = array(
+                'restore' => 'Core file restored',
+                'delete' => 'Non-core file deleted',
+                'fixed' => 'Core file marked as fixed',
+            );
 
             foreach( $integrity_files as $i => $file_path ){
                 $full_path = ABSPATH . $file_path;
@@ -7919,13 +7923,13 @@ function sucuriscan_integrity_form_submissions(){
                         if( $file_content ){
                             $restored = @file_put_contents( $full_path, $file_content, LOCK_EX );
                             $files_processed += ( $restored ? 1 : 0 );
-                            SucuriScanEvent::report_notice_event( 'Core file restored: ' . $full_path );
+                            $files_affected[] = $full_path;
                         }
                         break;
-                    case 'remove':
+                    case 'delete':
                         if( @unlink($full_path) ){
                             $files_processed += 1;
-                            SucuriScanEvent::report_notice_event( 'Non-core file deleted: ' . $full_path );
+                            $files_affected[] = $full_path;
                         }
                         break;
                     case 'fixed':
@@ -7937,8 +7941,26 @@ function sucuriscan_integrity_form_submissions(){
                         );
                         $cached = $cache->add( $cache_key, $cache_value );
                         $files_processed += ( $cached ? 1 : 0 );
-                        SucuriScanEvent::report_warning_event( 'Core file marked as fixed: ' . $full_path );
+                        $files_affected[] = $full_path;
                         break;
+                }
+            }
+
+            // Report files affected as a single event.
+            if ( !empty($files_affected) ) {
+                $message_tpl = ( count($files_affected) > 1 )
+                    ? '%s: (multiple entries): %s'
+                    : '%s: %s';
+                $message = sprintf(
+                    $message_tpl,
+                    $action_titles[$integrity_action],
+                    @implode(',', $files_affected)
+                );
+
+                switch( $integrity_action ){
+                    case 'restore': SucuriScanEvent::report_info_event($message); break;
+                    case 'delete': SucuriScanEvent::report_notice_event($message); break;
+                    case 'fixed': SucuriScanEvent::report_warning_event($message); break;
                 }
             }
 

@@ -64,7 +64,7 @@
                         <select name="sucuriscan_integrity_action">
                             <option value="">Choose action</option>
                             <option value="restore">Restore file(s) content</option>
-                            <option value="remove">Remove file(s)</option>
+                            <option value="delete">Delete file(s)</option>
                             <option value="fixed">Mark as fixed</option>
                         </select>
                     </label>

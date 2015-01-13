@@ -106,7 +106,6 @@ jQuery(document).ready(function($){
         subtitle: { text: 'Source: http://sucuri.net/' },
         chart: { type: 'bar' },
         credits: { enabled: true },
-        colors: [ '#428bca' ],
         xAxis: {
             title: { text: 'User Accounts' },
             categories: [ %%SUCURI.AuditReport.EventsPerUserCategories%% ],
@@ -137,7 +136,6 @@ jQuery(document).ready(function($){
         subtitle: { text: 'Source: http://sucuri.net/' },
         chart: { type: 'bar' },
         credits: { enabled: true },
-        colors: [ '#5bc0de' ],
         xAxis: {
             title: { text: 'IP Addresses' },
             categories: [ %%SUCURI.AuditReport.EventsPerIPAddressCategories%% ],
