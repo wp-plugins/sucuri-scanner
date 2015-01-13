@@ -249,6 +249,7 @@ td.sucuriscan-corefiles-warning > div{background:#f2dede;color:#a94442;border-co
 .sucuriscan-maincontent .sucuriscan-settings form{display:inline-block}
 .sucuriscan-maincontent .sucuriscan-settings select, .sucuriscan-maincontent .sucuriscan-settings .input-text{width:220px;margin:0}
 .sucuriscan-maincontent .sucuriscan-settings-notifications{margin-top:0}
+.sucuriscan-maincontent .sucuriscan-settings-notifications .dashicons-before:before{margin-right:5px}
 .sucuriscan-maincontent .sucuriscan-settings-ignorescanning{margin-top:0}
 .sucuriscan-maincontent .sucuriscan-settings-trustip{margin-top:0}
 .sucuriscan-maincontent .sucuriscan-settings-heartbeat{}

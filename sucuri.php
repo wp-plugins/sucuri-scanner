@@ -187,26 +187,28 @@ if( defined('SUCURISCAN') ){
      */
 
     $sucuriscan_notify_options = array(
-        'sucuriscan_prettify_mails' => 'Enable email alerts in HTML <em>(uncheck to get email in plain text format)</em>',
+        'sucuriscan_notify_plugin_change' => 'Receive email alerts for <strong>Sucuri</strong> plugin changes',
+        'sucuriscan_prettify_mails' => 'Receive email alerts in HTML <em>(there may be issues with some mail services)</em>',
         'sucuriscan_lastlogin_redirection' => 'Allow redirection after login to report the last-login information',
-        'sucuriscan_notify_user_registration' => 'Enable email alerts for new user registration',
-        'sucuriscan_notify_success_login' => 'Enable email alerts for successful logins',
-        'sucuriscan_notify_failed_login' => 'Enable email alerts for failed logins',
-        'sucuriscan_notify_bruteforce_attack' => 'Enable email alerts for login brute-force attack',
-        'sucuriscan_notify_post_publication' => 'Enable email alerts for new site content',
-        'sucuriscan_notify_theme_editor' => 'Enable email alerts when a file is modified via the theme/plugin editor',
-        'sucuriscan_notify_website_updated' => 'Enable email alerts when your website is updated',
-        'sucuriscan_notify_settings_updated' => 'Enable email alerts when your website settings are updated',
-        'sucuriscan_notify_theme_switched' => 'Enable email alerts when the website theme is switched',
-        'sucuriscan_notify_theme_updated' => 'Enable email alerts when a theme is updated',
-        'sucuriscan_notify_widget_added' => 'Enable email alerts when a widget is added to a sidebar',
-        'sucuriscan_notify_widget_deleted' => 'Enable email alerts when a widget is deleted from a sidebar',
-        'sucuriscan_notify_plugin_change' => 'Enable email alerts for Sucuri plugin changes',
-        'sucuriscan_notify_plugin_activated' => 'Enable email alerts when a plugin is activated',
-        'sucuriscan_notify_plugin_deactivated' => 'Enable email alerts when a plugin is deactivated',
-        'sucuriscan_notify_plugin_updated' => 'Enable email alerts when a plugin is updated',
-        'sucuriscan_notify_plugin_installed' => 'Enable email alerts when a plugin is installed',
-        'sucuriscan_notify_plugin_deleted' => 'Enable email alerts when a plugin is deleted',
+        'sucuriscan_notify_user_registration' => 'user:Receive email alerts for new user registration',
+        'sucuriscan_notify_success_login' => 'user:Receive email alerts for successful login attempts',
+        'sucuriscan_notify_failed_login' => 'user:Receive email alerts for failed login attempts',
+        'sucuriscan_notify_bruteforce_attack' => 'user:Receive email alerts for password guessing brute force attacks',
+        'sucuriscan_notify_post_publication' => 'Receive email alerts for new content <em>(posts, attachments, forms, etc)</em>',
+        'sucuriscan_notify_website_updated' => 'Receive email alerts when the WordPress version is updated',
+        'sucuriscan_notify_settings_updated' => 'Receive email alerts when your website settings are updated',
+        'sucuriscan_notify_theme_editor' => 'Receive email alerts when a file is modified with theme/plugin editor',
+        'sucuriscan_notify_plugin_installed' => 'plugin:Receive email alerts when a plugin is installed',
+        'sucuriscan_notify_plugin_activated' => 'plugin:Receive email alerts when a plugin is activated',
+        'sucuriscan_notify_plugin_deactivated' => 'plugin:Receive email alerts when a plugin is deactivated',
+        'sucuriscan_notify_plugin_updated' => 'plugin:Receive email alerts when a plugin is updated',
+        'sucuriscan_notify_plugin_deleted' => 'plugin:Receive email alerts when a plugin is deleted',
+        'sucuriscan_notify_widget_added' => 'widget:Receive email alerts when a widget is added to a sidebar',
+        'sucuriscan_notify_widget_deleted' => 'widget:Receive email alerts when a widget is deleted from a sidebar',
+        'sucuriscan_notify_theme_installed' => 'theme:Receive email alerts when a theme is installed',
+        'sucuriscan_notify_theme_activated' => 'theme:Receive email alerts when a theme is activated',
+        'sucuriscan_notify_theme_updated' => 'theme:Receive email alerts when a theme is updated',
+        'sucuriscan_notify_theme_deleted' => 'theme:Receive email alerts when a theme is deleted',
     );
 
     $sucuriscan_schedule_allowed = array(
@@ -3369,9 +3371,9 @@ class SucuriScanHook extends SucuriScanEvent {
     public static function hook_switch_theme( $title='' ){
         if ( empty($title) ) { $title = 'unknown'; }
 
-        $message = 'Theme switched to: ' . $title;
+        $message = 'Theme activated: ' . $title;
         self::report_warning_event($message);
-        self::notify_event( 'theme_switched', $message );
+        self::notify_event( 'theme_activated', $message );
     }
 
     /**
@@ -3488,22 +3490,30 @@ class SucuriScanHook extends SucuriScanEvent {
      */
     public static function hook_undefined_actions(){
 
+        $plugin_activate_actions = '(activate|deactivate)(\-selected)?';
+        $plugin_update_actions = '(upgrade-plugin|do-plugin-upgrade|update-selected)';
+
         // Plugin activation and/or deactivation.
         if(
             current_user_can('activate_plugins')
             && (
-                SucuriScanRequest::get('action', '(activate|deactivate)') ||
-                SucuriScanRequest::post('action', '(activate|deactivate)-selected')
+                SucuriScanRequest::get_or_post('action', $plugin_activate_actions)
+                || SucuriScanRequest::get_or_post('action2', $plugin_activate_actions)
             )
         ){
             $plugin_list = array();
+            $items_affected = array();
+
+            // Get the action performed through action or action2 params.
+            $action_d = SucuriScanRequest::get_or_post('action');
+            if ( $action_d == '-1' ) { $action_d = SucuriScanRequest::get_or_post('action2'); }
+            $action_d .= 'd';
 
             if(
                 SucuriScanRequest::get('plugin', '.+')
                 && strpos($_SERVER['REQUEST_URI'], 'plugins.php') !== FALSE
             ){
-                $action_d = $_GET['action'] . 'd';
-                $plugin_list[] = $_GET['plugin'];
+                $plugin_list[] = SucuriScanRequest::get('plugin');
             }
 
             elseif(
@@ -3511,8 +3521,8 @@ class SucuriScanHook extends SucuriScanEvent {
                 && is_array($_POST['checked'])
                 && !empty($_POST['checked'])
             ){
-                $action_d = str_replace('-selected', 'd', $_POST['action']);
-                $plugin_list = $_POST['checked'];
+                $plugin_list = SucuriScanRequest::post('checked', '_array');
+                $action_d = str_replace('-selected', '', $action_d);
             }
 
             foreach( $plugin_list as $plugin ){
@@ -3522,17 +3532,27 @@ class SucuriScanHook extends SucuriScanEvent {
                     !empty($plugin_info['Name'])
                     && !empty($plugin_info['Version'])
                 ){
-                    $message = sprintf(
-                        'Plugin %s: %s (v%s; %s)',
-                        $action_d,
+                    $items_affected[] = sprintf(
+                        '%s (v%s; %s)',
                         self::escape($plugin_info['Name']),
                         self::escape($plugin_info['Version']),
                         self::escape($plugin)
                     );
-
-                    self::report_warning_event($message);
-                    self::notify_event( 'plugin_' . $action_d, $message );
                 }
+            }
+
+            // Report activated/deactivated plugins at once.
+            if ( !empty($items_affected) ) {
+                $message_tpl = ( count($items_affected) > 1 )
+                    ? 'Plugins %s: (multiple entries): %s'
+                    : 'Plugin %s: %s';
+                $message = sprintf(
+                    $message_tpl,
+                    $action_d,
+                    @implode(',', $items_affected)
+                );
+                self::report_warning_event($message);
+                self::notify_event( 'plugin_' . $action_d, $message );
             }
         }
 
@@ -3540,11 +3560,12 @@ class SucuriScanHook extends SucuriScanEvent {
         elseif(
             current_user_can('update_plugins')
             && (
-                SucuriScanRequest::get('action', '(upgrade-plugin|do-plugin-upgrade)')
-                || SucuriScanRequest::post('action', 'update-selected')
+                SucuriScanRequest::get_or_post('action', $plugin_update_actions)
+                || SucuriScanRequest::get_or_post('action2', $plugin_update_actions)
             )
         ){
             $plugin_list = array();
+            $items_affected = array();
 
             if(
                 SucuriScanRequest::get('plugin', '.+')
@@ -3558,7 +3579,7 @@ class SucuriScanHook extends SucuriScanEvent {
                 && is_array($_POST['checked'])
                 && !empty($_POST['checked'])
             ){
-                $plugin_list = $_POST['checked'];
+                $plugin_list = SucuriScanRequest::post('checked', '_array');
             }
 
             foreach( $plugin_list as $plugin ){
@@ -3568,16 +3589,26 @@ class SucuriScanHook extends SucuriScanEvent {
                     !empty($plugin_info['Name'])
                     && !empty($plugin_info['Version'])
                 ){
-                    $message = sprintf(
-                        'Plugin updated: %s (v%s; %s)',
+                    $items_affected[] = sprintf(
+                        '%s (v%s; %s)',
                         self::escape($plugin_info['Name']),
                         self::escape($plugin_info['Version']),
                         self::escape($plugin)
                     );
-
-                    self::report_warning_event($message);
-                    self::notify_event( 'plugin_updated', $message );
                 }
+            }
+
+            // Report updated plugins at once.
+            if ( !empty($items_affected) ) {
+                $message_tpl = ( count($items_affected) > 1 )
+                    ? 'Plugins updated: (multiple entries): %s'
+                    : 'Plugin updated: %s';
+                $message = sprintf(
+                    $message_tpl,
+                    @implode(',', $items_affected)
+                );
+                self::report_warning_event($message);
+                self::notify_event( 'plugin_updated', $message );
             }
         }
 
@@ -3605,25 +3636,36 @@ class SucuriScanHook extends SucuriScanEvent {
             && SucuriScanRequest::post('action', 'delete-selected')
             && SucuriScanRequest::post('verify-delete', '1')
         ){
-            $plugin_list = (array) $_POST['checked'];
+            $plugin_list = SucuriScanRequest::post('checked', '_array');
+            $items_affected = array();
 
-            foreach( $plugin_list as $plugin ){
+            foreach( (array) $plugin_list as $plugin ){
                 $plugin_info = get_plugin_data( WP_PLUGIN_DIR . '/' . $plugin );
 
                 if(
                     !empty($plugin_info['Name'])
                     && !empty($plugin_info['Version'])
                 ){
-                    $message = sprintf(
-                        'Plugin deleted: %s (v%s; %s)',
+                    $items_affected[] = sprintf(
+                        '%s (v%s; %s)',
                         self::escape($plugin_info['Name']),
                         self::escape($plugin_info['Version']),
                         self::escape($plugin)
                     );
-
-                    self::report_warning_event($message);
-                    self::notify_event( 'plugin_deleted', $message );
                 }
+            }
+
+            // Report deleted plugins at once.
+            if ( !empty($items_affected) ) {
+                $message_tpl = ( count($items_affected) > 1 )
+                    ? 'Plugins deleted: (multiple entries): %s'
+                    : 'Plugin deleted: %s';
+                $message = sprintf(
+                    $message_tpl,
+                    @implode(',', $items_affected)
+                );
+                self::report_warning_event($message);
+                self::notify_event( 'plugin_deleted', $message );
             }
         }
 
@@ -3656,9 +3698,34 @@ class SucuriScanHook extends SucuriScanEvent {
             self::notify_event( 'theme_editor', $message );
         }
 
-        // Theme activation and/or deactivation (same hook for switch_theme).
-        // Theme installation request (hook not available).
-        // Theme deletion request (hook not available).
+        // Theme installation request.
+        elseif(
+            current_user_can('install_themes')
+            && SucuriScanRequest::get('action', 'install-theme')
+        ){
+            $theme = SucuriScanRequest::get('theme', '.+');
+
+            if( !$theme ){ $theme = 'Unknown'; }
+
+            $message = 'Theme installed: ' . self::escape($theme);
+            SucuriScanEvent::report_warning_event($message);
+            self::notify_event( 'theme_installed', $message );
+        }
+
+        // Theme deletion request.
+        elseif(
+            current_user_can('delete_themes')
+            && SucuriScanRequest::get_or_post('action', 'delete')
+            && SucuriScanRequest::get_or_post('stylesheet', '.+')
+        ){
+            $theme = SucuriScanRequest::get('stylesheet', '.+');
+
+            if( !$theme ){ $theme = 'Unknown'; }
+
+            $message = 'Theme deleted: ' . self::escape($theme);
+            SucuriScanEvent::report_warning_event($message);
+            self::notify_event( 'theme_deleted', $message );
+        }
 
         // Theme update request.
         elseif(
@@ -3667,8 +3734,9 @@ class SucuriScanHook extends SucuriScanEvent {
             && SucuriScanRequest::post('checked', '_array')
         ){
             $themes = SucuriScanRequest::post('checked', '_array');
+            $items_affected = array();
 
-            foreach( $themes as $theme ){
+            foreach( (array) $themes as $theme ){
                 $theme_info = wp_get_theme($theme);
                 $theme_name = ucwords($theme);
                 $theme_version = '0.0';
@@ -3678,13 +3746,23 @@ class SucuriScanHook extends SucuriScanEvent {
                     $theme_version = $theme_info->get('Version');
                 }
 
-                $message = sprintf(
-                    'Theme updated: %s (v%s; %s)',
+                $items_affected[] = sprintf(
+                    '%s (v%s; %s)',
                     self::escape($theme_name),
                     self::escape($theme_version),
                     self::escape($theme)
                 );
+            }
 
+            // Report updated themes at once.
+            if ( !empty($items_affected) ) {
+                $message_tpl = ( count($items_affected) > 1 )
+                    ? 'Themes updated: (multiple entries): %s'
+                    : 'Theme updated: %s';
+                $message = sprintf(
+                    $message_tpl,
+                    @implode(',', $items_affected)
+                );
                 self::report_warning_event($message);
                 self::notify_event( 'theme_updated', $message );
             }
@@ -4296,6 +4374,23 @@ class SucuriScanAPI extends SucuriScanOption {
         );
 
         return $event_types;
+    }
+
+    /**
+     * Parse the event logs with multiple entries.
+     *
+     * @param  string $event_log Event log that will be processed.
+     * @return array             List of parts of the event log.
+     */
+    public static function parse_multiple_entries( $event_log='' ){
+        if ( preg_match('/^(.*:\s)\(multiple entries\):\s(.+)/', $event_log, $match) ) {
+            $event_log = array();
+            $event_log[] = trim($match[1]);
+            $grouped_items = @explode(',', $match[2]);
+            $event_log = array_merge($event_log, $grouped_items);
+        }
+
+        return $event_log;
     }
 
     /**
@@ -4934,6 +5029,26 @@ class SucuriScanMail extends SucuriScanOption {
             && !empty($user->user_login)
         ){
             $display_name = sprintf( 'User: %s (%s)', $user->display_name, $user->user_login );
+        }
+
+        // Format list of items when the event has multiple entries.
+        if ( strpos($message, 'multiple') !== false ) {
+            $message_parts = SucuriScanAPI::parse_multiple_entries($message);
+
+            if ( is_array($message_parts) ) {
+                $message = ( $prettify_type == 'pretty' ) ? $message_parts[0] . '<ul>' : $message_parts[0];
+                unset($message_parts[0]);
+
+                foreach ( $message_parts as $msg_part ) {
+                    if ( $prettify_type == 'pretty' ) {
+                        $message .= sprintf( "<li>%s</li>\n", $msg_part );
+                    } else {
+                        $message .= sprintf( "- %s\n", $msg_part );
+                    }
+                }
+
+                $message .= ( $prettify_type == 'pretty' ) ? '</ul>' : '';
+            }
         }
 
         $mail_variables = array(
@@ -10667,17 +10782,31 @@ function sucuriscan_settings_notifications(){
     }
 
     $counter = 0;
+    $alert_pattern = '/^([a-z]+:)?(.+)/';
 
     foreach( $sucuriscan_notify_options as $alert_type => $alert_label ){
         $alert_value = SucuriScanOption::get_option($alert_type);
         $checked = ( $alert_value == 'enabled' ? 'checked="checked"' : '' );
         $css_class = ( $counter % 2 == 0 ) ? 'alternate' : '';
+        $alert_icon = '';
+
+        if ( preg_match($alert_pattern, $alert_label, $match) ) {
+            $alert_group = str_replace(':', '', $match[1]);
+            $alert_label = $match[2];
+
+            switch ( $alert_group ) {
+                case 'user': $alert_icon = 'dashicons-before dashicons-admin-users'; break;
+                case 'plugin': $alert_icon = 'dashicons-before dashicons-admin-plugins'; break;
+                case 'theme': $alert_icon = 'dashicons-before dashicons-admin-appearance'; break;
+            }
+        }
 
         $template_variables['NotificationOptions'] .= SucuriScanTemplate::get_snippet('settings-notifications', array(
             'Notification.CssClass' => $css_class,
             'Notification.Name' => $alert_type,
             'Notification.Checked' => $checked,
             'Notification.Label' => $alert_label,
+            'Notification.LabelIcon' => $alert_icon,
         ));
         $counter += 1;
     }
