@@ -1268,8 +1268,8 @@ class SucuriScanFileInfo extends SucuriScan {
                         'filepath' => $filepath,
                         'checksum' => $file_checksum,
                         'filesize' => $filesize,
-                        'created_at' => filectime($filepath),
-                        'modified_at' => filemtime($filepath),
+                        'created_at' => @filectime($filepath),
+                        'modified_at' => @filemtime($filepath),
                     );
                 } else {
                     $filepath = str_replace( $abs_path, $abs_path . '/', $filepath );
@@ -5928,9 +5928,12 @@ class SucuriScanInterface {
         wp_enqueue_style('sucuriscan');
         wp_enqueue_script('sucuriscan');
 
-        if ( SucuriScanRequest::get('page', 'sucuriscan') !== false ) {
-            wp_register_script( 'sucuriscan2', SUCURISCAN_URL . '/inc/js/highcharts.min.js', array(), $asset_version );
-            wp_register_script( 'sucuriscan3', SUCURISCAN_URL . '/inc/js/exporting.min.js', array(), $asset_version );
+        if (
+            SucuriScanRequest::get('page', 'sucuriscan') !== false
+            && SucuriScanOption::get_option(':audit_report') !== 'disabled'
+        ) {
+            wp_register_script( 'sucuriscan2', SUCURISCAN_URL . '/inc/js/d3.v3.min.js', array(), $asset_version );
+            wp_register_script( 'sucuriscan3', SUCURISCAN_URL . '/inc/js/c3.min.js', array(), $asset_version );
             wp_enqueue_script('sucuriscan2');
             wp_enqueue_script('sucuriscan3');
         }
@@ -8219,9 +8222,10 @@ function sucuriscan_auditreport(){
         'AuditReport.EventColors' => '',
         'AuditReport.EventsPerType' => '',
         'AuditReport.EventsPerLogin' => '',
-        'AuditReport.EventsPerCategory' => '',
-        'AuditReport.EventsPerUserSeries' => '',
         'AuditReport.EventsPerUserCategories' => '',
+        'AuditReport.EventsPerUserSeries' => '',
+        'AuditReport.EventsPerIPAddressCategories' => '',
+        'AuditReport.EventsPerIPAddressSeries' => '',
         'AuditReport.Logs4Report' => $logs4report,
     );
 
@@ -8247,19 +8251,15 @@ function sucuriscan_auditreport(){
         }
 
         // Generate report chart data for the events per user.
-        if ( $audit_report['events_per_user'] ) {
-            $data_series = array_values($audit_report['events_per_user']);
-            $data_categories = array_keys($audit_report['events_per_user']);
-            $template_variables['AuditReport.EventsPerUserSeries'] = implode(',', $data_series);
-            $template_variables['AuditReport.EventsPerUserCategories'] = sprintf( '"%s"', implode('","', $data_categories) );
+        foreach ( $audit_report['events_per_user'] as $event => $times ) {
+            $template_variables['AuditReport.EventsPerUserCategories'] .= sprintf( '"%s",', $event );
+            $template_variables['AuditReport.EventsPerUserSeries'] .= sprintf( '%d,', $times );
         }
 
-        // Generate report chart data for the events per user.
-        if ( $audit_report['events_per_ipaddress'] ) {
-            $data_series = array_values($audit_report['events_per_ipaddress']);
-            $data_categories = array_keys($audit_report['events_per_ipaddress']);
-            $template_variables['AuditReport.EventsPerIPAddressSeries'] = implode(',', $data_series);
-            $template_variables['AuditReport.EventsPerIPAddressCategories'] = sprintf( '"%s"', implode('","', $data_categories) );
+        // Generate report chart data for the events per remote address.
+        foreach ( $audit_report['events_per_ipaddress'] as $event => $times ) {
+            $template_variables['AuditReport.EventsPerIPAddressCategories'] .= sprintf( '"%s",', $event );
+            $template_variables['AuditReport.EventsPerIPAddressSeries'] .= sprintf( '%d,', $times );
         }
 
         return SucuriScanTemplate::get_section('integrity-auditreport', $template_variables);

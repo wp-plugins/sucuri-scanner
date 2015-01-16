@@ -19,10 +19,14 @@
         <div class="sucuriscan-clearfix sucuriscan-report-row">
 
             <div class="sucuriscan-pull-left sucuriscan-report-chart">
+                <h4>Audit Logs per Event</h4>
+                <h5>source http://sucuri.net/</h5>
                 <div id="sucuriscan-report-events-per-type"></div>
             </div>
 
             <div class="sucuriscan-pull-right sucuriscan-report-chart">
+                <h4>Successful/Failed Logins</h4>
+                <h5>source http://sucuri.net/</h5>
                 <div id="sucuriscan-report-events-per-login"></div>
             </div>
 
@@ -31,134 +35,78 @@
         <div class="sucuriscan-clearfix sucuriscan-report-row">
 
             <div class="sucuriscan-pull-left sucuriscan-report-chart">
+                <h4>Audit Logs per User</h4>
+                <h5>source http://sucuri.net/</h5>
                 <div id="sucuriscan-report-events-per-user"></div>
             </div>
 
             <div class="sucuriscan-pull-right sucuriscan-report-chart">
+                <h4>Audit Logs per IP Address</h4>
+                <h5>source http://sucuri.net/</h5>
                 <div id="sucuriscan-report-events-per-ipaddress"></div>
             </div>
 
         </div>
+
     </div>
 </div>
 
 <script type="text/javascript">
 jQuery(document).ready(function($){
 
+    var sucuriscan_pie_chart = function( element, series, colors ){
+        c3.generate({
+            bindto: element,
+            size: { height: 250 },
+            padding: { top: 10, bottom: 10 },
+            color: { pattern: colors },
+            legend: { position: 'right' },
+            data: { type: 'pie', labels: true, columns: series },
+        });
+    };
+
+    var sucuriscan_bar_chart = function( element, categories, series ){
+        c3.generate({
+            bindto: element,
+            size: { height: 320 },
+            padding: { top: 10, bottom: 0 },
+            tooltip: { show: false },
+            legend: { show: false },
+            data: { type: 'bar', labels: true, columns: [ series ] },
+            axis: {
+                rotated: true,
+                x: { type: 'category', categories: categories },
+            },
+        });
+    };
+
     /* Pie-chart with number of audit logs per event type. */
-    $('#sucuriscan-report-events-per-type').highcharts({
-        title: { text: 'Audit Logs per Event' },
-        subtitle: { text: 'Source: http://sucuri.net/' },
-        chart: { height: 300 },
-        credits: { enabled: true },
-        colors: [ %%SUCURI.AuditReport.EventColors%% ],
-        plotOptions: {
-            pie: {
-                cursor: 'pointer',
-                allowPointSelect: true,
-                dataLabels: { enabled: false },
-                showInLegend: true,
-            }
-        },
-        legend: {
-            enabled: true,
-            align: 'right',
-            layout: 'vertical',
-            verticalAlign: 'middle',
-        },
-        series: [{
-            type: 'pie',
-            name: 'Events per Type',
-            data: [ %%SUCURI.AuditReport.EventsPerType%% ]
-        }]
-    });
+    sucuriscan_pie_chart(
+        '#sucuriscan-report-events-per-type',
+        [ %%SUCURI.AuditReport.EventsPerType%% ],
+        [ %%SUCURI.AuditReport.EventColors%% ]
+    );
 
     /* Column-chart with number of audit logs per event login. */
-    $('#sucuriscan-report-events-per-login').highcharts({
-        title: { text: 'Successful/Failed Logins' },
-        subtitle: { text: 'Source: http://sucuri.net/' },
-        chart: { height: 300 },
-        credits: { enabled: true },
-        plotOptions: {
-            pie: {
-                cursor: 'pointer',
-                allowPointSelect: true,
-                dataLabels: { enabled: false },
-                showInLegend: true,
-            }
-        },
-        legend: {
-            enabled: true,
-            align: 'right',
-            layout: 'vertical',
-            verticalAlign: 'middle',
-        },
-        series: [{
-            type: 'pie',
-            name: 'Events per Login',
-            data: [ %%SUCURI.AuditReport.EventsPerLogin%% ]
-        }]
-    });
+    sucuriscan_pie_chart(
+        '#sucuriscan-report-events-per-login',
+        [ %%SUCURI.AuditReport.EventsPerLogin%% ],
+        [ '#5cb85c', '#f27d7d' ]
+    );
 
     /* Bar-chart with number of audit logs per user account. */
-    $('#sucuriscan-report-events-per-user').highcharts({
-        title: { text: 'Audit Logs per User' },
-        subtitle: { text: 'Source: http://sucuri.net/' },
-        chart: { type: 'bar' },
-        credits: { enabled: true },
-        xAxis: {
-            title: { text: 'User Accounts' },
-            categories: [ %%SUCURI.AuditReport.EventsPerUserCategories%% ],
-        },
-        yAxis: {
-            min: 0,
-            labels: { overflow: 'justify' },
-            title: {
-                text: 'Events per User',
-                align: 'high',
-            },
-        },
-        legend: { enabled: false },
-        plotOptions: {
-            bar: {
-                dataLabels: { enabled: true }
-            }
-        },
-        series: [{
-            name: 'Events per User',
-            data: [ %%SUCURI.AuditReport.EventsPerUserSeries%% ]
-        }]
-    });
+    sucuriscan_bar_chart(
+        '#sucuriscan-report-events-per-user',
+        [ %%SUCURI.AuditReport.EventsPerUserCategories%% ],
+        [ 'data', %%SUCURI.AuditReport.EventsPerUserSeries%% ]
+    );
 
     /* Bar-chart with number of audit logs per remote address. */
-    $('#sucuriscan-report-events-per-ipaddress').highcharts({
-        title: { text: 'Audit Logs per IP Address' },
-        subtitle: { text: 'Source: http://sucuri.net/' },
-        chart: { type: 'bar' },
-        credits: { enabled: true },
-        xAxis: {
-            title: { text: 'IP Addresses' },
-            categories: [ %%SUCURI.AuditReport.EventsPerIPAddressCategories%% ],
-        },
-        yAxis: {
-            min: 0,
-            labels: { overflow: 'justify' },
-            title: {
-                text: 'Events per IP Address',
-                align: 'high',
-            },
-        },
-        legend: { enabled: false },
-        plotOptions: {
-            bar: {
-                dataLabels: { enabled: true }
-            }
-        },
-        series: [{
-            name: 'Events per IP Address',
-            data: [ %%SUCURI.AuditReport.EventsPerIPAddressSeries%% ]
-        }]
-    });
+    sucuriscan_bar_chart(
+        '#sucuriscan-report-events-per-ipaddress',
+        [ %%SUCURI.AuditReport.EventsPerIPAddressCategories%% ],
+        [ 'data', %%SUCURI.AuditReport.EventsPerIPAddressSeries%% ]
+    );
 
 });
 </script>
