@@ -476,10 +476,23 @@ class SucuriScan {
 
         // Use the uploads folder by default.
         if ( empty($datastore_path) ) {
-            if ( defined('WP_CONTENT_DIR') ) {
-                $uploads_path = rtrim(WP_CONTENT_DIR, '/') . '/uploads';
-            } else {
-                $uploads_path = rtrim(ABSPATH, '/') . '/wp-content/uploads';
+            $uploads_path = false;
+
+            // Multisite installations may have different paths.
+            if ( function_exists('wp_upload_dir') ) {
+                $upload_dir = wp_upload_dir();
+
+                if ( isset($upload_dir['basedir']) ) {
+                    $uploads_path = rtrim($upload_dir['basedir'], '/');
+                }
+            }
+
+            if ( $uploads_path === false ) {
+                if ( defined('WP_CONTENT_DIR') ) {
+                    $uploads_path = rtrim(WP_CONTENT_DIR, '/') . '/uploads';
+                } else {
+                    $uploads_path = rtrim(ABSPATH, '/') . '/wp-content/uploads';
+                }
             }
 
             $datastore_path = $uploads_path . '/' . $datastore_dirname;
@@ -2364,7 +2377,7 @@ class SucuriScanOption extends SucuriScanRequest {
         if( function_exists('update_option') ){
             $option_name = self::variable_prefix($option_name);
 
-            return update_option( $option_name, $option_value );
+            return update_site_option( $option_name, $option_value );
         }
 
         return FALSE;
