@@ -4306,7 +4306,8 @@ class SucuriScanAPI extends SucuriScanOption {
             $response['body']->output_data = array();
             $log_pattern = '/^([0-9-: ]+) (.*) : (.*)/';
             $extra_pattern = '/(.+ \(multiple entries\):) (.+)/';
-            $generic_pattern = '/^([A-Z][a-z]{3,7}): ([0-9a-zA-Z\s\-\(\)]+, )?(\S+; )?(.+)/';
+            $generic_pattern = '/^([A-Z][a-z]{3,7}): ([0-9a-zA-Z@\s\.\-\(\)]+, )?(\S+; )?(.+)/';
+            $auth_pattern = '/^User authentication (succeeded|failed): ([^<;]+)/';
 
             foreach( $response['body']->output as $log ){
                 if( preg_match($log_pattern, $log, $log_match) ){
@@ -4323,6 +4324,7 @@ class SucuriScanAPI extends SucuriScanOption {
                     );
 
                     $log_data['message'] = str_replace( ', new size', '; new size', $log_data['message'] );
+                    $log_data['message'] = str_replace( '<br>', '; ', $log_data['message'] );
 
                     // Extract more information from the generic audit logs.
                     if( preg_match($generic_pattern, $log_data['message'], $log_extra) ){
@@ -4338,6 +4340,13 @@ class SucuriScanAPI extends SucuriScanOption {
                         if ( !empty($log_extra[2]) ) {
                             $log_data['username'] = preg_replace( '/.*\((\S+)\),\s$/', '$1', $log_extra[2] );
                             $log_data['username'] = str_replace(",\x20", '', $log_data['username']);
+                        }
+
+                        // Match old user authentication logs.
+                        $log_data['message'] = str_replace( 'logged in', 'authentication succeeded', $log_data['message'] );
+
+                        if ( preg_match($auth_pattern, $log_data['message'], $user_match) ) {
+                            $log_data['username'] = $user_match[2];
                         }
                     }
 
