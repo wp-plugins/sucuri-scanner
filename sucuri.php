@@ -2387,10 +2387,14 @@ class SucuriScanOption extends SucuriScanRequest {
      * @return boolean               True if option value has changed, false if not or if update failed.
      */
     public static function update_option( $option_name='', $option_value='' ){
-        if( function_exists('update_option') ){
-            $option_name = self::variable_prefix($option_name);
+        $option_name = self::variable_prefix($option_name);
 
+        if( function_exists('update_site_option') ){
             return update_site_option( $option_name, $option_value );
+        }
+
+        elseif( function_exists('update_option') ){
+            return update_option( $option_name, $option_value );
         }
 
         return FALSE;
