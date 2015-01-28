@@ -187,5 +187,17 @@
             </td>
         </tr>
 
+        <tr>
+            <td>Support reverse proxy</td>
+            <td>%%SUCURI.ReverseProxyStatus%%</td>
+            <td class="td-with-button">
+                <form action="%%SUCURI.URL.Settings%%" method="post">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <input type="hidden" name="sucuriscan_revproxy" value="%%SUCURI.ReverseProxySwitchValue%%" />
+                    <button type="submit" class="button-primary %%SUCURI.ReverseProxySwitchCssClass%%">%%SUCURI.ReverseProxySwitchText%%</button>
+                </form>
+            </td>
+        </tr>
+
     </tbody>
 </table>

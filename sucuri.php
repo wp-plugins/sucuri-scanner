@@ -614,7 +614,10 @@ class SucuriScan {
         $remote_addr = '';
         $header_used = 'unknown';
 
-        if( self::is_behind_cloudproxy() ){
+        if (
+            self::support_reverse_proxy()
+            || self::is_behind_cloudproxy()
+        ) {
             $alternatives = array(
                 'HTTP_X_SUCURI_CLIENTIP',
                 'HTTP_X_REAL_IP',
@@ -697,6 +700,15 @@ class SucuriScan {
         $domain_name =  preg_replace( $pattern, '$2', $site_url );
 
         return $domain_name;
+    }
+
+    /**
+     * Check whether reverse proxy servers must be supported.
+     *
+     * @return boolean TRUE if reverse proxies must be supported, FALSE otherwise.
+     */
+    public static function support_reverse_proxy(){
+        return (bool) ( SucuriScanOption::get_option(':revproxy') === 'enabled' );
     }
 
     /**
@@ -2255,6 +2267,7 @@ class SucuriScanOption extends SucuriScanRequest {
             'sucuriscan_ads_visibility' => 'enabled',
             'sucuriscan_audit_report' => 'disabled',
             'sucuriscan_logs4report' => 500,
+            'sucuriscan_revproxy' => 'disabled',
         );
 
         return $defaults;
@@ -6784,9 +6797,11 @@ function sucuriscan_monitoring_form_submissions(){
         if( $api_key !== FALSE ){
             if( SucuriScanAPI::is_valid_cloudproxy_key($api_key) ){
                 SucuriScanOption::update_option($option_name, $api_key);
+                SucuriScanOption::update_option(':revproxy', 'enabled');
                 SucuriScanInterface::info( 'CloudProxy API key saved successfully' );
             } elseif( empty($api_key) ){
                 SucuriScanOption::delete_option($option_name);
+                SucuriScanOption::update_option(':revproxy', 'disabled');
                 SucuriScanInterface::info( 'CloudProxy API key removed successfully' );
             } else {
                 SucuriScanInterface::error( 'Invalid CloudProxy API key, check your settings and try again.' );
@@ -10168,6 +10183,17 @@ function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
             SucuriScanInterface::info($message);
         }
 
+        // Enable or disable the reverse proxy support.
+        if( $revproxy = SucuriScanRequest::post(':revproxy', '(en|dis)able') ){
+            $action_d = $revproxy . 'd';
+            $message = 'Reverse proxy support was <code>' . $action_d . '</code>';
+
+            SucuriScanOption::update_option(':revproxy', $action_d);
+            SucuriScanEvent::report_info_event($message);
+            SucuriScanEvent::notify_event( 'plugin_change', $message );
+            SucuriScanInterface::info($message);
+        }
+
         // Update the limit for audit logs report.
         if( $logs4report = SucuriScanRequest::post(':logs4report', '[0-9]{1,4}') ){
             $message = 'Limit for audit logs report set to <code>' . $logs4report . '</code>';
@@ -10549,6 +10575,7 @@ function sucuriscan_settings_general(){
     $verify_ssl_cert = SucuriScanOption::get_option(':verify_ssl_cert');
     $audit_report = SucuriScanOption::get_option(':audit_report');
     $logs4report = SucuriScanOption::get_option(':logs4report');
+    $revproxy = SucuriScanOption::get_option(':revproxy');
     $invalid_domain = false;
 
     // Check whether the domain name is valid or not.
@@ -10586,6 +10613,11 @@ function sucuriscan_settings_general(){
         'AuditReportSwitchValue' => 'disable',
         'AuditReportSwitchCssClass' => 'button-danger',
         'AuditReportLimit' => $logs4report,
+        /* Support Reverse Proxy */
+        'ReverseProxyStatus' => 'Enabled',
+        'ReverseProxySwitchText' => 'Disable',
+        'ReverseProxySwitchValue' => 'disable',
+        'ReverseProxySwitchCssClass' => 'button-danger',
     );
 
     if( array_key_exists($emails_per_hour, $sucuriscan_emails_per_hour) ){
@@ -10605,6 +10637,13 @@ function sucuriscan_settings_general(){
         $template_variables['AuditReportSwitchText'] = 'Enable';
         $template_variables['AuditReportSwitchValue'] = 'enable';
         $template_variables['AuditReportSwitchCssClass'] = 'button-success';
+    }
+
+    if( $revproxy == 'disabled' ){
+        $template_variables['ReverseProxyStatus'] = 'Disabled';
+        $template_variables['ReverseProxySwitchText'] = 'Enable';
+        $template_variables['ReverseProxySwitchValue'] = 'enable';
+        $template_variables['ReverseProxySwitchCssClass'] = 'button-success';
     }
 
     if ( sucuriscan_collect_wrong_passwords() === true ) {
@@ -11485,6 +11524,7 @@ function sucuriscan_server_info(){
         'Plugin_checksum' => SUCURISCAN_PLUGIN_CHECKSUM,
         'Last_filesystem_scan' => SucuriScanFSScanner::get_filesystem_runtime(TRUE),
         'Using_CloudProxy' => 'Unknown',
+        'Support_Reverse_Proxy' => 'Unknown',
         'HTTP_Host' => 'Unknown',
         'Host_Name' => 'Unknown',
         'Host_Address' => 'Unknown',
@@ -11500,10 +11540,13 @@ function sucuriscan_server_info(){
     );
 
     $proxy_info = SucuriScan::is_behind_cloudproxy(TRUE);
+    $reverse_proxy = SucuriScan::support_reverse_proxy();
+
     $info_vars['HTTP_Host'] = $proxy_info['http_host'];
     $info_vars['Host_Name'] = $proxy_info['host_name'];
     $info_vars['Host_Address'] = $proxy_info['host_addr'];
     $info_vars['Using_CloudProxy'] = $proxy_info['status'] ? 'Yes' : 'No';
+    $info_vars['Support_Reverse_Proxy'] = $reverse_proxy ? 'Yes' : 'No';
 
     if( defined('WP_DEBUG') && WP_DEBUG ){
         $info_vars['Developer_mode'] = 'ON';
