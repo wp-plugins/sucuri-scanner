@@ -25,10 +25,9 @@
                     <div>
                         <p>
                             Changes in the integrity of your core files were detected. There are files that
-                            were added, modified, and/or removed in the core directories
-                            <code>/&lt;root&gt;</code>, <code>/wp-admin</code> and/or <code>/wp-
-                            includes</code>. You may want to check each file to determine if they were
-                            infected with malicious code.
+                            were added, modified, and/or removed in the core directories <code>/&lt;root&gt;</code>,
+                            <code>/wp-admin</code> and/or <code>/wp-includes</code>. You may want to check
+                            each file to determine if they were infected with malicious code.
                         </p>
                     </div>
                 </td>

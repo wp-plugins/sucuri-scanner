@@ -685,21 +685,26 @@ class SucuriScan {
      *
      * @return string The domain of the current site.
      */
-    public static function get_domain(){
-        if( function_exists('get_site_url') ){
+    public static function get_domain( $return_tld=false ){
+        if ( function_exists('get_site_url') ) {
             $site_url = get_site_url();
-        } else {
-            if( !isset($_SERVER['HTTP_HOST']) ){
-                $_SERVER['HTTP_HOST'] = 'localhost';
-            }
+            $pattern = '/([fhtps]+:\/\/)?([^:\/]+)(:[0-9:]+)?(\/.*)?/';
+            $replacement = ( $return_tld === true ) ? '$2' : '$2$3$4';
+            $domain_name = @preg_replace( $pattern, $replacement, $site_url );
 
-            $site_url = $_SERVER['HTTP_HOST'];
+            return $domain_name;
         }
 
-        $pattern = '/([fhtps]+:\/\/)?([^:\/]+)(:[0-9:]+)?(\/.*)?/';
-        $domain_name =  preg_replace( $pattern, '$2', $site_url );
+        return false;
+    }
 
-        return $domain_name;
+    /**
+     * Get top-level domain (TLD) of the website.
+     *
+     * @return string Top-level domain (TLD) of the website.
+     */
+    public static function get_top_level_domain(){
+        return self::get_domain(true);
     }
 
     /**
@@ -718,7 +723,7 @@ class SucuriScan {
      * @return boolean          Either TRUE or FALSE if the site is behind CloudProxy.
      */
     public static function is_behind_cloudproxy( $verbose=FALSE ){
-        $http_host = self::get_domain();
+        $http_host = self::get_top_level_domain();
         $host_by_addr = @gethostbyname($http_host);
         $host_by_name = @gethostbyaddr($host_by_addr);
         $status = (bool) preg_match('/^cloudproxy[0-9]+\.sucuri\.net$/', $host_by_name);
@@ -1101,6 +1106,15 @@ class SucuriScan {
      */
     public static function is_nginx_server(){
         return (bool) preg_match( '/^nginx(\/[0-9\.]+)?$/', @$_SERVER['SERVER_SOFTWARE'] );
+    }
+
+    /**
+     * Check whether the site is running over the Nginx web server.
+     *
+     * @return boolean TRUE if the site is running over Nginx, FALSE otherwise.
+     */
+    public static function is_iis_server(){
+        return (bool) preg_match( '/Microsoft-IIS/i', @$_SERVER['SERVER_SOFTWARE'] );
     }
 
 }
@@ -2283,14 +2297,14 @@ class SucuriScanOption extends SucuriScanRequest {
         $default_options = self::get_default_option_values();
 
         // Use framework built-in function.
-        if( function_exists('get_option') ){
+        if ( function_exists('get_option') ) {
             $admin_email = get_option('admin_email');
             $default_options['sucuriscan_account'] = $admin_email;
             $default_options['sucuriscan_notify_to'] = $admin_email;
         }
 
-        if( is_array($settings) ){
-            foreach( $default_options as $option_name => $option_value ){
+        if ( is_array($settings) ) {
+            foreach ( $default_options as $option_name => $option_value ) {
                 if( !isset($settings[$option_name]) ){
                     $settings[$option_name] = $option_value;
                 }
@@ -2299,54 +2313,15 @@ class SucuriScanOption extends SucuriScanRequest {
             return $settings;
         }
 
-        if( is_string($settings) ){
-            if( isset($default_options[$settings]) ){
-                return $default_options[$settings];
-            }
+        if (
+            is_string($settings)
+            && !empty($settings)
+            && array_key_exists($settings, $default_options)
+        ) {
+            return $default_options[$settings];
         }
 
         return FALSE;
-    }
-
-    /**
-     * Retrieve specific options from the database.
-     *
-     * Considering the case in which this plugin is installed in a multisite instance
-     * of Wordpress, the allowed values for the first parameter of this function will
-     * be treated like this:
-     *
-     * <ul>
-     *   <li>all_plugin_options: Will retrieve all the option values created by this plugin in the main site (aka. network),</li>
-     *   <li>site_options: Will retrieve all the option values stored in the current site visited by the user (aka. sub-site) excluding the transient options,</li>
-     *   <li>plugin_option: Will retrieve one specific option from the network site only if the option starts with the prefix <i>sucuri_<i>.</li>
-     * </ul>
-     *
-     * @param  string $filter_by   Criteria to filter the results, valid values: all_plugin_options, site_options, sucuri_option.
-     * @param  string $option_name Optional parameter with the name of the option that will be filtered.
-     * @return array               List of options retrieved from the query in the database.
-     */
-    public static function get_options_from_db( $filter_by='', $option_name='' ){
-        global $wpdb;
-
-        $output = FALSE;
-
-        switch($filter_by){
-            case 'all_plugin_options':
-                $output = $wpdb->get_results("SELECT * FROM {$wpdb->options} WHERE option_name LIKE 'sucuriscan%' ORDER BY option_id ASC");
-                break;
-            case 'site_options':
-                $output = $wpdb->get_results("SELECT * FROM {$wpdb->options} WHERE option_name NOT LIKE '%_transient_%' ORDER BY option_id ASC");
-                break;
-            case 'plugin_option':
-                $sql_statement = $wpdb->prepare("SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1", $option_name);
-                $result = $wpdb->get_row($sql_statement);
-                if (  $result && $result instanceof stdClass  ) {
-                    $output = $result->option_value;
-                }
-                break;
-        }
-
-        return $output;
     }
 
     /**
@@ -2367,9 +2342,18 @@ class SucuriScanOption extends SucuriScanRequest {
      * @return string              The value (or default value) of the option specified.
      */
     public static function get_option( $option_name='' ){
-        $option_name = self::variable_prefix($option_name);
+        if ( function_exists('update_option') ) {
+            $option_name = self::variable_prefix($option_name);
+            $option_value = get_option($option_name);
 
-        return self::get_options($option_name);
+            if ( $option_value === false && preg_match('/^sucuriscan_/', $option_name) ){
+                $option_value = self::get_default_options($option_name);
+            }
+
+            return $option_value;
+        }
+
+        return FALSE;
     }
 
     /**
@@ -2387,13 +2371,9 @@ class SucuriScanOption extends SucuriScanRequest {
      * @return boolean               True if option value has changed, false if not or if update failed.
      */
     public static function update_option( $option_name='', $option_value='' ){
-        $option_name = self::variable_prefix($option_name);
+        if ( function_exists('update_option') ) {
+            $option_name = self::variable_prefix($option_name);
 
-        if( function_exists('update_site_option') ){
-            return update_site_option( $option_name, $option_value );
-        }
-
-        elseif( function_exists('update_option') ){
             return update_option( $option_name, $option_value );
         }
 
@@ -2411,7 +2391,7 @@ class SucuriScanOption extends SucuriScanRequest {
      * @return boolean              True, if option is successfully deleted. False on failure, or option does not exist.
      */
     public static function delete_option( $option_name='' ){
-        if( function_exists('delete_option') ){
+        if ( function_exists('delete_option') ) {
             $option_name = self::variable_prefix($option_name);
 
             return delete_option( $option_name );
@@ -2421,46 +2401,20 @@ class SucuriScanOption extends SucuriScanRequest {
     }
 
     /**
-     * Retrieve all the options created by this Plugin from the Wordpress database.
+     * Delete all the plugin options from the database.
      *
-     * The function acts as an alias of WP::get_option() and if the returned value
-     * is FALSE it tries to search for a default value to complement the information.
-     *
-     * @param  string $option_name Optional parameter that you can use to filter the results to one option.
-     * @return array               Either FALSE or an Array containing all the sucuri options in the database.
+     * @return void
      */
-    private static function get_options( $option_name='' ){
-        if( !empty($option_name) ){
-            return self::get_single_option($option_name);
+    public static function delete_plugin_options(){
+        $options = $wpdb->get_results(
+            "SELECT * FROM {$wpdb->options}
+            WHERE option_name LIKE 'sucuriscan%'
+            ORDER BY option_id ASC"
+        );
+
+        foreach ( $options as $option ) {
+            self::delete_option( $option->option_name );
         }
-
-        $settings = array();
-        $results = self::get_options_from_db('all_plugin_options');
-
-        foreach( $results as $row ){
-            $settings[$row->option_name] = $row->option_value;
-        }
-
-        return self::get_default_options($settings);
-    }
-
-    /**
-     * Retrieve a single option from the database.
-     *
-     * @param  string $option_name Name of the option that will be retrieved.
-     * @return string              Value of the option stored in the database, FALSE if not found.
-     */
-    private static function get_single_option( $option_name='' ){
-        $option_value = self::get_options_from_db('plugin_option', $option_name);
-
-        if (
-            $option_value === FALSE
-            && preg_match('/^sucuriscan_/', $option_name)
-        ){
-            $option_value = self::get_default_options($option_name);
-        }
-
-        return $option_value;
     }
 
     /**
@@ -2472,9 +2426,13 @@ class SucuriScanOption extends SucuriScanRequest {
      */
     public static function get_site_options(){
         $settings = array();
-        $results = self::get_options_from_db('site_options');
+        $results = $wpdb->get_results(
+            "SELECT * FROM {$wpdb->options}
+            WHERE option_name NOT LIKE '%_transient_%'
+            ORDER BY option_id ASC"
+        );
 
-        foreach( $results as $row ){
+        foreach ( $results as $row ) {
             $settings[$row->option_name] = $row->option_value;
         }
 
@@ -3456,6 +3414,7 @@ class SucuriScanHook extends SucuriScanEvent {
     public static function hook_wp_login_failed( $title='' ){
         if( empty($title) ){ $title = 'Unknown'; }
 
+        $title = sanitize_user($title, true);
         $password = SucuriScanRequest::post('pwd');
         $message = 'User authentication failed: ' . $title;
 
@@ -3845,7 +3804,6 @@ class SucuriScanHook extends SucuriScanEvent {
             && SucuriScanOption::check_options_nonce()
         ){
             // Get the settings available in the database and compare them with the submission.
-            $all_options = SucuriScanOption::get_site_options();
             $options_changed = SucuriScanOption::what_options_were_changed($_POST);
             $options_changed_str = '';
             $options_changed_simple = '';
@@ -7251,6 +7209,8 @@ function sucuriscan_hardening_page(){
 
             if ( SucuriScan::is_nginx_server() === true ) {
                 sucuriscan_harden_nginx_phpfpm();
+            } elseif ( SucuriScan::is_iis_server() === true ) {
+                /* TODO: Include IIS (Internet Information Services) hardening options. */
             } else {
                 sucuriscan_harden_upload();
                 sucuriscan_harden_wpcontent();
@@ -10357,11 +10317,7 @@ function sucuriscan_settings_form_submissions( $page_nonce=NULL ){
             SucuriScanEvent::notify_event( 'plugin_change', $message );
 
             // Remove all plugin options from the database.
-            $options = SucuriScanOption::get_options_from_db('all_plugin_options');
-
-            foreach( $options as $option ){
-                SucuriScanOption::delete_option( $option->option_name );
-            }
+            SucuriScanOption::delete_plugin_options();
 
             // Remove the scheduled tasks.
             wp_clear_scheduled_hook('sucuriscan_scheduled_scan');
@@ -10584,7 +10540,7 @@ function sucuriscan_settings_general(){
 
     // Check whether the domain name is valid or not.
     if( !$api_key ){
-        $clean_domain = SucuriScan::get_domain();
+        $clean_domain = SucuriScan::get_top_level_domain();
         $domain_address = @gethostbyname($clean_domain);
         $invalid_domain = ( $domain_address == $clean_domain ) ? TRUE : FALSE;
     }
@@ -11529,9 +11485,11 @@ function sucuriscan_server_info(){
         'Last_filesystem_scan' => SucuriScanFSScanner::get_filesystem_runtime(TRUE),
         'Using_CloudProxy' => 'Unknown',
         'Support_Reverse_Proxy' => 'Unknown',
+        'Host_Address' => 'Unknown',
         'HTTP_Host' => 'Unknown',
         'Host_Name' => 'Unknown',
-        'Host_Address' => 'Unknown',
+        'Site_URL' => 'Unknown',
+        'Top_Level_Domain' => 'Unknown',
         'Remote_Address' => SucuriScan::get_remote_addr(),
         'Remote_Address_Header' => SucuriScan::get_remote_addr_header(),
         'Operating_system' => sprintf('%s (%d Bit)', PHP_OS, PHP_INT_SIZE*8),
@@ -11549,6 +11507,8 @@ function sucuriscan_server_info(){
     $info_vars['HTTP_Host'] = $proxy_info['http_host'];
     $info_vars['Host_Name'] = $proxy_info['host_name'];
     $info_vars['Host_Address'] = $proxy_info['host_addr'];
+    $info_vars['Site_URL'] = SucuriScan::get_domain();
+    $info_vars['Top_Level_Domain'] = SucuriScan::get_domain(true);
     $info_vars['Using_CloudProxy'] = $proxy_info['status'] ? 'Yes' : 'No';
     $info_vars['Support_Reverse_Proxy'] = $reverse_proxy ? 'Yes' : 'No';
 

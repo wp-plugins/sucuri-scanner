@@ -38,7 +38,7 @@
         </tr>
 
         <tr class="alternate">
-            <td width="200">API Key</td>
+            <td width="200">Sucuri API key</td>
             <td>
                 <span class="sucuriscan-monospace">%%SUCURI.APIKey%%</span>
             </td>
@@ -62,19 +62,31 @@
         </tr>
 
         <tr>
-            <td>Send alerts to</td>
-            <td>%%SUCURI.NotifyTo%%</td>
+            <td>Log storage path</td>
+            <td class="sucuriscan-wraptext"><span class="sucuriscan-monospace" title="%%SUCURI.DatastorePath%%">%%SUCURI.DatastorePath%%</span></td>
             <td class="td-with-button">
                 <form action="%%SUCURI.URL.Settings%%" method="post">
                     <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
-                    <input type="text" name="sucuriscan_notify_to" class="input-text" placeholder="Send notifications to..." />
+                    <input type="text" name="sucuriscan_datastore_path" class="input-text" placeholder="Directory to save logs..." />
                     <button type="submit" class="button-primary">Change</button>
                 </form>
             </td>
         </tr>
 
         <tr class="alternate">
-            <td>Alerts per hour</td>
+            <td>Send plugin alerts to</td>
+            <td>%%SUCURI.NotifyTo%%</td>
+            <td class="td-with-button">
+                <form action="%%SUCURI.URL.Settings%%" method="post">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <input type="text" name="sucuriscan_notify_to" class="input-text" placeholder="Separated by commas" />
+                    <button type="submit" class="button-primary">Change</button>
+                </form>
+            </td>
+        </tr>
+
+        <tr>
+            <td>Maximum alerts per hour</td>
             <td>%%SUCURI.EmailsPerHour%%</td>
             <td class="td-with-button">
                 <form action="%%SUCURI.URL.Settings%%" method="post">
@@ -87,7 +99,7 @@
             </td>
         </tr>
 
-        <tr>
+        <tr class="alternate">
             <td>Consider brute-force after</td>
             <td>%%SUCURI.MaximumFailedLogins%%</td>
             <td class="td-with-button">
@@ -101,8 +113,8 @@
             </td>
         </tr>
 
-        <tr class="alternate">
-            <td>Verify SSL Cert</td>
+        <tr>
+            <td>API request with SSL</td>
             <td>%%SUCURI.VerifySSLCert%%</td>
             <td class="td-with-button">
                 <form action="%%SUCURI.URL.Settings%%" method="post">
@@ -115,7 +127,7 @@
             </td>
         </tr>
 
-        <tr>
+        <tr class="alternate">
             <td>API request timeout</td>
             <td>%%SUCURI.RequestTimeout%%</td>
             <td class="td-with-button">
@@ -127,7 +139,7 @@
             </td>
         </tr>
 
-        <tr class="alternate">
+        <tr>
             <td>Collect failed passwords</td>
             <td>%%SUCURI.CollectWrongPasswords%%</td>
             <td class="td-with-button">
@@ -139,20 +151,8 @@
             </td>
         </tr>
 
-        <tr>
-            <td>Log storage path</td>
-            <td class="sucuriscan-wraptext"><span class="sucuriscan-monospace" title="%%SUCURI.DatastorePath%%">%%SUCURI.DatastorePath%%</span></td>
-            <td class="td-with-button">
-                <form action="%%SUCURI.URL.Settings%%" method="post">
-                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
-                    <input type="text" name="sucuriscan_datastore_path" class="input-text" placeholder="Directory to save logs..." />
-                    <button type="submit" class="button-primary">Change</button>
-                </form>
-            </td>
-        </tr>
-
         <tr class="alternate">
-            <td>Audit logs report</td>
+            <td>Display audit report</td>
             <td>%%SUCURI.AuditReportStatus%%</td>
             <td class="td-with-button">
                 <form action="%%SUCURI.URL.Settings%%" method="post">
