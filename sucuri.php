@@ -4294,7 +4294,7 @@ class SucuriScanAPI extends SucuriScanOption {
             $response['body']->output_data = array();
             $log_pattern = '/^([0-9-: ]+) (.*) : (.*)/';
             $extra_pattern = '/(.+ \(multiple entries\):) (.+)/';
-            $generic_pattern = '/^([A-Z][a-z]{3,7}): ([0-9a-zA-Z@\s\.\-\(\)]+, )?(\S+; )?(.+)/';
+            $generic_pattern = '/^([A-Z][a-z]{3,7}): ([0-9a-zA-Z@_\s\.\-\(\)]+, )?(\S+; )?(.+)/';
             $auth_pattern = '/^User authentication (succeeded|failed): ([^<;]+)/';
 
             foreach( $response['body']->output as $log ){
