@@ -2241,7 +2241,7 @@ class SucuriScanOption extends SucuriScanRequest {
      *
      * @return array Default plugin option values.
      */
-    private static function get_default_option_values(){
+    public static function get_default_option_values(){
         $defaults = array(
             'sucuriscan_api_key' => false,
             'sucuriscan_account' => '',
@@ -2293,7 +2293,7 @@ class SucuriScanOption extends SucuriScanRequest {
      * @param  string|array $settings Either an array that will be complemented or a string with the name of the option.
      * @return string|array           The default values for the specified options.
      */
-    private static function get_default_options( $settings = '' ){
+    public static function get_default_options( $settings = '' ){
         $default_options = self::get_default_option_values();
 
         // Use framework built-in function.
@@ -2406,6 +2406,8 @@ class SucuriScanOption extends SucuriScanRequest {
      * @return void
      */
     public static function delete_plugin_options(){
+        global $wpdb;
+
         $options = $wpdb->get_results(
             "SELECT * FROM {$wpdb->options}
             WHERE option_name LIKE 'sucuriscan%'
@@ -2425,6 +2427,8 @@ class SucuriScanOption extends SucuriScanRequest {
      * @return array All the options stored by Wordpress in the database, except the transient options.
      */
     public static function get_site_options(){
+        global $wpdb;
+
         $settings = array();
         $results = $wpdb->get_results(
             "SELECT * FROM {$wpdb->options}
