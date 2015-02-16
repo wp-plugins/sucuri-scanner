@@ -15,7 +15,7 @@ Author URI: http://sucuri.net
  * @package   Sucuri Security
  * @author    Yorman Arias <yorman.arias@sucuri.net>
  * @author    Daniel Cid   <dcid@sucuri.net>
- * @copyright Since 2010-2014 Sucuri Inc.
+ * @copyright Since 2010-2015 Sucuri Inc.
  * @license   Released under the GPL - see LICENSE file for details.
  * @link      https://wordpress.sucuri.net/
  * @since     File available since Release 0.1
@@ -561,7 +561,7 @@ class SucuriScan {
             }
 
             // Remove duplicated double slashes.
-            $file_path = realpath( $file_path );
+            $file_path = @realpath( $file_path );
 
             if ( $file_path ){
                 return $file_path;
@@ -1432,7 +1432,7 @@ class SucuriScanFileInfo extends SucuriScan {
      */
     private function get_directory_tree_with_spl( $directory = '' ){
         $files = array();
-        $filepath = realpath( $directory );
+        $filepath = @realpath( $directory );
 
         if ( ! class_exists( 'FilesystemIterator' ) ){
             return $this->get_directory_tree( $directory, 'opendir' );
@@ -1489,7 +1489,7 @@ class SucuriScanFileInfo extends SucuriScan {
 
         if ( is_array( $files_found ) ){
             foreach ( $files_found as $filepath ){
-                $filepath = realpath( $filepath );
+                $filepath = @realpath( $filepath );
                 $directory = dirname( $filepath );
                 $filepath_parts = explode( '/', $filepath );
                 $filename = array_pop( $filepath_parts );
@@ -1528,7 +1528,7 @@ class SucuriScanFileInfo extends SucuriScan {
 
         $files = array();
         while ( ($filename = readdir( $dh )) !== false ){
-            $filepath = realpath( $directory.'/'.$filename );
+            $filepath = @realpath( $directory . '/' . $filename );
 
             if ( is_dir( $filepath ) ){
                 if ( $this->ignore_folderpath( $directory, $filename ) ){ continue; }
@@ -1563,7 +1563,7 @@ class SucuriScanFileInfo extends SucuriScan {
 
         if ( $this->ignore_directories ){
             // Ignore directories based on a common regular expression.
-            $filepath = realpath( $directory . '/' . $filename );
+            $filepath = @realpath( $directory . '/' . $filename );
             $pattern = '/\/wp-content\/(uploads|cache|backup|w3tc)/';
 
             if ( preg_match( $pattern, $filepath ) ){
@@ -11428,7 +11428,7 @@ function sucuriscan_infosys_errorlogs(){
         'ErrorLog.List' => '',
     );
 
-    $error_log_path = realpath( ABSPATH . '/error_log' );
+    $error_log_path = @realpath( ABSPATH . '/error_log' );
     $errorlogs_limit = SucuriScanOption::get_option( ':errorlogs_limit' );
     $template_variables['ErrorLog.LogsLimit'] = $errorlogs_limit;
     $errorlogs_counter = 0;

@@ -1,6 +1,6 @@
 /**
  * Sucuri Security - SiteCheck Malware Scanner
- * Copyright (C) 2010-2014 Sucuri Security - http://sucuri.net
+ * Copyright (C) 2010-2015 Sucuri Security - http://sucuri.net
  * Released under the GPL - see LICENSE file for details.
  */
 
