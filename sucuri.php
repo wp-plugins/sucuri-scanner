@@ -8086,62 +8086,64 @@ function sucuriscan_integrity_form_submissions(){
                 'fixed' => 'Core file marked as fixed',
             );
 
-            foreach ( $integrity_files as $i => $file_path ){
-                $full_path = ABSPATH . $file_path;
-                $status_type = $integrity_types[ $i ];
+            if ( $integrity_files ) {
+                foreach ( (array) $integrity_files as $i => $file_path ){
+                    $full_path = ABSPATH . $file_path;
+                    $status_type = $integrity_types[ $i ];
 
-                switch ( $integrity_action ){
-                    case 'restore':
-                        $file_content = SucuriScanAPI::get_original_core_file( $file_path );
-                        if ( $file_content ){
-                            $restored = @file_put_contents( $full_path, $file_content, LOCK_EX );
-                            $files_processed += ( $restored ? 1 : 0 );
+                    switch ( $integrity_action ){
+                        case 'restore':
+                            $file_content = SucuriScanAPI::get_original_core_file( $file_path );
+                            if ( $file_content ){
+                                $restored = @file_put_contents( $full_path, $file_content, LOCK_EX );
+                                $files_processed += ( $restored ? 1 : 0 );
+                                $files_affected[] = $full_path;
+                            }
+                            break;
+                        case 'delete':
+                            if ( @unlink( $full_path ) ){
+                                $files_processed += 1;
+                                $files_affected[] = $full_path;
+                            }
+                            break;
+                        case 'fixed':
+                            $cache_key = md5( $file_path );
+                            $cache_value = array(
+                                'file_path' => $file_path,
+                                'file_status' => $status_type,
+                                'ignored_at' => time(),
+                            );
+                            $cached = $cache->add( $cache_key, $cache_value );
+                            $files_processed += ( $cached ? 1 : 0 );
                             $files_affected[] = $full_path;
-                        }
-                        break;
-                    case 'delete':
-                        if ( @unlink( $full_path ) ){
-                            $files_processed += 1;
-                            $files_affected[] = $full_path;
-                        }
-                        break;
-                    case 'fixed':
-                        $cache_key = md5( $file_path );
-                        $cache_value = array(
-                            'file_path' => $file_path,
-                            'file_status' => $status_type,
-                            'ignored_at' => time(),
-                        );
-                        $cached = $cache->add( $cache_key, $cache_value );
-                        $files_processed += ( $cached ? 1 : 0 );
-                        $files_affected[] = $full_path;
-                        break;
+                            break;
+                    }
                 }
-            }
 
-            // Report files affected as a single event.
-            if ( ! empty($files_affected) ) {
-                $message_tpl = ( count( $files_affected ) > 1 )
-                    ? '%s: (multiple entries): %s'
-                    : '%s: %s';
-                $message = sprintf(
-                    $message_tpl,
-                    $action_titles[ $integrity_action ],
-                    @implode( ',', $files_affected )
-                );
+                // Report files affected as a single event.
+                if ( ! empty($files_affected) ) {
+                    $message_tpl = ( count( $files_affected ) > 1 )
+                        ? '%s: (multiple entries): %s'
+                        : '%s: %s';
+                    $message = sprintf(
+                        $message_tpl,
+                        $action_titles[ $integrity_action ],
+                        @implode( ',', $files_affected )
+                    );
 
-                switch ( $integrity_action ){
-                    case 'restore': SucuriScanEvent::report_info_event( $message ); break;
-                    case 'delete': SucuriScanEvent::report_notice_event( $message ); break;
-                    case 'fixed': SucuriScanEvent::report_warning_event( $message ); break;
+                    switch ( $integrity_action ){
+                        case 'restore': SucuriScanEvent::report_info_event( $message ); break;
+                        case 'delete': SucuriScanEvent::report_notice_event( $message ); break;
+                        case 'fixed': SucuriScanEvent::report_warning_event( $message ); break;
+                    }
                 }
-            }
 
-            SucuriScanInterface::info(sprintf(
-                '<code>%d</code> out of <code>%d</code> files were successfully processed.',
-                $files_selected,
-                $files_processed
-            ));
+                SucuriScanInterface::info(sprintf(
+                    '<code>%d</code> out of <code>%d</code> files were successfully processed.',
+                    $files_selected,
+                    $files_processed
+                ));
+            }
         }
     }
 }
