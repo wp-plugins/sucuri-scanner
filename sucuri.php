@@ -543,6 +543,8 @@ class SucuriScan {
             }
         }
 
+        $wp_version = self::escape( $wp_version );
+
         return $wp_version;
     }
 
