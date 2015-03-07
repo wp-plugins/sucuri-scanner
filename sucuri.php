@@ -994,6 +994,8 @@ class SucuriScan {
         }
 
         if ( ! empty($valid_emails) ){
+            $valid_emails = array_unique( $valid_emails );
+
             if ( $as_array === true ){
                 return $valid_emails;
             }
