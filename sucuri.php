@@ -2241,54 +2241,97 @@ class SucuriScanCache extends SucuriScan {
 class SucuriScanOption extends SucuriScanRequest {
 
     /**
-     * Default values for the plugin options.
+     * Default values for all the plugin's options.
      *
-     * @return array Default plugin option values.
+     * @return array Default values for all the plugin's options.
      */
     public static function get_default_option_values(){
         $defaults = array(
-            'sucuriscan_api_key' => false,
             'sucuriscan_account' => '',
+            'sucuriscan_ads_visibility' => 'enabled',
+            'sucuriscan_api_key' => false,
+            'sucuriscan_audit_report' => 'disabled',
+            'sucuriscan_cloudproxy_apikey' => '',
+            'sucuriscan_collect_wrong_passwords' => 'disabled',
             'sucuriscan_datastore_path' => '',
+            'sucuriscan_email_subject' => 'Sucuri Alert, :domain, :event',
+            'sucuriscan_emails_per_hour' => 5,
+            'sucuriscan_emails_sent' => 0,
+            'sucuriscan_errorlogs_limit' => 30,
             'sucuriscan_fs_scanner' => 'enabled',
+            'sucuriscan_heartbeat' => 'enabled',
+            'sucuriscan_heartbeat_autostart' => 'enabled',
+            'sucuriscan_heartbeat_interval' => 'standard',
+            'sucuriscan_heartbeat_pulse' => 15,
+            'sucuriscan_ignore_scanning' => 'disabled',
+            'sucuriscan_ignored_events' => '',
+            'sucuriscan_last_email_at' => time(),
+            'sucuriscan_lastlogin_redirection' => 'enabled',
+            'sucuriscan_logs4report' => 500,
+            'sucuriscan_maximum_failed_logins' => 30,
+            'sucuriscan_notify_bruteforce_attack' => 'disabled',
+            'sucuriscan_notify_failed_login' => 'enabled',
+            'sucuriscan_notify_plugin_activated' => 'disabled',
+            'sucuriscan_notify_plugin_change' => 'disabled',
+            'sucuriscan_notify_plugin_deactivated' => 'disabled',
+            'sucuriscan_notify_plugin_deleted' => 'disabled',
+            'sucuriscan_notify_plugin_installed' => 'disabled',
+            'sucuriscan_notify_plugin_updated' => 'disabled',
+            'sucuriscan_notify_post_publication' => 'enabled',
+            'sucuriscan_notify_settings_updated' => 'disabled',
+            'sucuriscan_notify_success_login' => 'enabled',
+            'sucuriscan_notify_theme_activated' => 'disabled',
+            'sucuriscan_notify_theme_deleted' => 'disabled',
+            'sucuriscan_notify_theme_editor' => 'enabled',
+            'sucuriscan_notify_theme_installed' => 'disabled',
+            'sucuriscan_notify_theme_updated' => 'disabled',
+            'sucuriscan_notify_to' => '',
+            'sucuriscan_notify_user_registration' => 'disabled',
+            'sucuriscan_notify_website_updated' => 'disabled',
+            'sucuriscan_notify_widget_added' => 'disabled',
+            'sucuriscan_notify_widget_deleted' => 'disabled',
+            'sucuriscan_parse_errorlogs' => 'enabled',
+            'sucuriscan_prettify_mails' => 'disabled',
+            'sucuriscan_request_timeout' => 90,
+            'sucuriscan_revproxy' => 'disabled',
+            'sucuriscan_runtime' => 0,
+            'sucuriscan_scan_checksums' => 'enabled',
+            'sucuriscan_scan_errorlogs' => 'disabled',
             'sucuriscan_scan_frequency' => 'hourly',
             'sucuriscan_scan_interface' => 'spl',
             'sucuriscan_scan_modfiles' => 'disabled',
-            'sucuriscan_scan_checksums' => 'enabled',
-            'sucuriscan_scan_errorlogs' => 'disabled',
-            'sucuriscan_sitecheck_scanner' => 'enabled',
+            'sucuriscan_site_version' => '0.0',
             'sucuriscan_sitecheck_counter' => 0,
-            'sucuriscan_parse_errorlogs' => 'enabled',
-            'sucuriscan_errorlogs_limit' => 30,
-            'sucuriscan_ignore_scanning' => 'disabled',
-            'sucuriscan_runtime' => 0,
-            'sucuriscan_lastlogin_redirection' => 'enabled',
-            'sucuriscan_notify_to' => '',
-            'sucuriscan_emails_sent' => 0,
-            'sucuriscan_emails_per_hour' => 5,
-            'sucuriscan_last_email_at' => time(),
-            'sucuriscan_email_subject' => 'Sucuri Alert, :domain, :event',
-            'sucuriscan_prettify_mails' => 'disabled',
-            'sucuriscan_notify_success_login' => 'enabled',
-            'sucuriscan_notify_failed_login' => 'enabled',
-            'sucuriscan_notify_post_publication' => 'enabled',
-            'sucuriscan_notify_theme_editor' => 'enabled',
-            'sucuriscan_maximum_failed_logins' => 30,
-            'sucuriscan_collect_wrong_passwords' => 'disabled',
-            'sucuriscan_ignored_events' => '',
+            'sucuriscan_sitecheck_scanner' => 'enabled',
             'sucuriscan_verify_ssl_cert' => 'true',
-            'sucuriscan_request_timeout' => 90,
-            'sucuriscan_heartbeat' => 'enabled',
-            'sucuriscan_heartbeat_pulse' => 15,
-            'sucuriscan_heartbeat_interval' => 'standard',
-            'sucuriscan_heartbeat_autostart' => 'enabled',
-            'sucuriscan_ads_visibility' => 'enabled',
-            'sucuriscan_audit_report' => 'disabled',
-            'sucuriscan_logs4report' => 500,
-            'sucuriscan_revproxy' => 'disabled',
         );
 
         return $defaults;
+    }
+
+    /**
+     * Name of all valid plugin's options.
+     *
+     * @return array Name of all valid plugin's options.
+     */
+    public static function get_default_option_names() {
+        $options = self::get_default_option_values();
+        $names = array_keys( $options );
+
+        return $names;
+    }
+
+    /**
+     * Check whether an option is used in the plugin or not.
+     *
+     * @param  string  $option_name Name of the option that will be checked.
+     * @return boolean              True if the option is part of the plugin, False otherwise.
+     */
+    public static function is_valid_plugin_option( $option_name = '' ) {
+        $valid_options = self::get_default_option_names();
+        $is_valid_option = (bool) array_key_exists( $option_name, $valid_options );
+
+        return $is_valid_option;
     }
 
     /**
