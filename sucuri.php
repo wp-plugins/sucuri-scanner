@@ -1527,14 +1527,17 @@ class SucuriScanFileInfo extends SucuriScan {
      * @return array             List of files in the main and subdirectories of the folder specified.
      */
     private function get_directory_tree_with_opendir( $directory = '' ){
-        $dh = @opendir( $directory );
-        if ( ! $dh ){ return false; }
-
         $files = array();
+        $dh = @opendir( $directory );
+
+        if ( ! $dh ) { return false; }
+
         while ( ($filename = readdir( $dh )) !== false ){
             $filepath = @realpath( $directory . '/' . $filename );
 
-            if ( is_dir( $filepath ) ){
+            if ( $filepath === false ) {
+                continue;
+            } elseif ( is_dir( $filepath ) ){
                 if ( $this->ignore_folderpath( $directory, $filename ) ){ continue; }
 
                 if ( $this->run_recursively ){
