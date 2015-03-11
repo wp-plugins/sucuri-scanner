@@ -411,6 +411,10 @@ class SucuriScan {
             }
         }
 
+        if ( $property == 'error_log' ) {
+            $ini_value = basename( $ini_value );
+        }
+
         return $ini_value;
     }
 
@@ -7977,7 +7981,7 @@ function sucuriscan_harden_errorlog(){
         $sucuri_fileinfo = new SucuriScanFileInfo();
         $sucuri_fileinfo->ignore_files = false;
         $sucuri_fileinfo->ignore_directories = false;
-        $error_logs = $sucuri_fileinfo->find_file( 'error_log' );
+        $error_logs = $sucuri_fileinfo->find_file( $log_filename );
         $total_log_files = count( $error_logs );
     } else {
         $error_logs = array();
@@ -11480,10 +11484,15 @@ function sucuriscan_infosys_errorlogs(){
         'ErrorLog.List' => '',
     );
 
-    $error_log_path = @realpath( ABSPATH . '/error_log' );
+    $error_log_path = false;
+    $log_filename = SucuriScan::ini_get( 'error_log' );
     $errorlogs_limit = SucuriScanOption::get_option( ':errorlogs_limit' );
     $template_variables['ErrorLog.LogsLimit'] = $errorlogs_limit;
     $errorlogs_counter = 0;
+
+    if ( $log_filename ) {
+        $error_log_path = @realpath( ABSPATH . '/' . $log_filename );
+    }
 
     if ( SucuriScanOption::get_option( ':parse_errorlogs' ) === 'disabled' ) {
         $template_variables['ErrorLog.DisabledVisibility'] = 'visible';
