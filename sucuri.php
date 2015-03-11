@@ -2300,7 +2300,7 @@ class SucuriScanOption extends SucuriScanRequest {
             'sucuriscan_runtime' => 0,
             'sucuriscan_scan_checksums' => 'enabled',
             'sucuriscan_scan_errorlogs' => 'disabled',
-            'sucuriscan_scan_frequency' => 'hourly',
+            'sucuriscan_scan_frequency' => 'twicedaily',
             'sucuriscan_scan_interface' => 'spl',
             'sucuriscan_scan_modfiles' => 'disabled',
             'sucuriscan_site_version' => '0.0',
