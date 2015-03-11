@@ -2257,7 +2257,7 @@ class SucuriScanOption extends SucuriScanRequest {
             'sucuriscan_account' => '',
             'sucuriscan_ads_visibility' => 'enabled',
             'sucuriscan_api_key' => false,
-            'sucuriscan_audit_report' => 'disabled',
+            'sucuriscan_audit_report' => 'enabled',
             'sucuriscan_cloudproxy_apikey' => '',
             'sucuriscan_collect_wrong_passwords' => 'disabled',
             'sucuriscan_datastore_path' => '',
