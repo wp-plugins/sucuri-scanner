@@ -8018,6 +8018,7 @@ function sucuriscan_harden_errorlog(){
         $description .= '</p><ul class="sucuriscan-list-as-table">';
 
         foreach ( $error_logs as $error_log_path ){
+            $error_log_path = str_replace( ABSPATH, '/', $error_log_path );
             $description .= '<li>' . $error_log_path . '</li>';
         }
 
