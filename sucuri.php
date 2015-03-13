@@ -10617,7 +10617,7 @@ function sucuriscan_settings_general(){
         'APIKey' => ( ! $api_key ? '<em>(not set)</em>' : $api_key ),
         'APIKey.RecoverVisibility' => SucuriScanTemplate::visibility( ! $api_key && ! $display_manual_key_form ),
         'APIKey.ManualKeyFormVisibility' => SucuriScanTemplate::visibility( $display_manual_key_form ),
-        'APIKey.RemoveVisibility' => SucuriScanTemplate::visibility( $api_key ),
+        'APIKey.RemoveVisibility' => SucuriScanTemplate::visibility( (bool) $api_key ),
         'InvalidDomainVisibility' => SucuriScanTemplate::visibility( $invalid_domain ),
         'NotifyTo' => SucuriScanOption::get_option( ':notify_to' ),
         'EmailsPerHour' => 'Undefined',
