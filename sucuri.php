@@ -608,7 +608,7 @@ class SucuriScan {
      * @return string Secret key definition pattern.
      */
     public static function secret_key_pattern(){
-        return '/define\(\'([A-Z_]+)\',(\s+)?\'(.*)\'\);/';
+        return '/define\((\s+)?\'([A-Z_]+)\',(\s+)?\'(.*)\'(\s+)?\);/';
     }
 
     /**
@@ -840,8 +840,8 @@ class SucuriScan {
 
         $intervals = array(
             1                => array( 'year',   31556926, ),
-            $diff < 31556926 => array( 'month',  2628000,  ),
-            $diff < 2629744  => array( 'week',   604800,   ),
+            $diff < 31556926 => array( 'month',  2592000,  ),
+            $diff < 2592000  => array( 'week',   604800,   ),
             $diff < 604800   => array( 'day',    86400,    ),
             $diff < 86400    => array( 'hour',   3600,     ),
             $diff < 3600     => array( 'minute', 60,       ),
@@ -938,13 +938,19 @@ class SucuriScan {
      */
     public static function get_ip_info( $remote_addr = '' ){
         if ( $remote_addr ) {
-            $addr_info = array();
             $ip_parts = explode( '/', $remote_addr );
-            $addr_info['remote_addr'] = $ip_parts[0];
-            $addr_info['cidr_range'] = isset($ip_parts[1]) ? $ip_parts[1] : '32';
-            $addr_info['cidr_format'] = $addr_info['remote_addr'] . '/' . $addr_info['cidr_range'];
 
-            return $addr_info;
+            if (
+                array_key_exists( 0, $ip_parts )
+                && self::is_valid_ip( $ip_parts[0] )
+            ) {
+                $addr_info = array();
+                $addr_info['remote_addr'] = $ip_parts[0];
+                $addr_info['cidr_range'] = isset($ip_parts[1]) ? $ip_parts[1] : '32';
+                $addr_info['cidr_format'] = $addr_info['remote_addr'] . '/' . $addr_info['cidr_range'];
+
+                return $addr_info;
+            }
         }
 
         return false;
@@ -980,8 +986,12 @@ class SucuriScan {
      */
     public static function get_valid_email( $email = '', $as_array = false ){
         $valid_emails = array();
+        $is_valid_string = (bool) ( is_string( $email ) && ! empty($email) );
 
-        if ( strpos( $email, ',' ) !== false ){
+        if (
+            $is_valid_string === true
+            && strpos( $email, ',' ) !== false
+        ) {
             $addresses = explode( ',', $email );
 
             foreach ( $addresses as $address ){
@@ -993,14 +1003,17 @@ class SucuriScan {
             }
         }
 
-        elseif ( self::is_valid_email( $email ) ){
+        elseif (
+            $is_valid_string === true
+            && self::is_valid_email( $email )
+        ) {
             $valid_emails[] = $email;
         }
 
-        if ( ! empty($valid_emails) ){
+        if ( ! empty($valid_emails) ) {
             $valid_emails = array_unique( $valid_emails );
 
-            if ( $as_array === true ){
+            if ( $as_array === true ) {
                 return $valid_emails;
             }
 
@@ -1050,8 +1063,8 @@ class SucuriScan {
      */
     public static function is_multi_list( $list = array() ){
         if ( ! empty($list) ){
-            foreach ( $list as $item ){
-                if ( is_array( $item ) ){
+            foreach ( (array) $list as $item ) {
+                if ( is_array( $item ) ) {
                     return true;
                 }
             }
