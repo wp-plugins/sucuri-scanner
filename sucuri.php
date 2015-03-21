@@ -2270,7 +2270,7 @@ class SucuriScanOption extends SucuriScanRequest {
             'sucuriscan_account' => '',
             'sucuriscan_ads_visibility' => 'enabled',
             'sucuriscan_api_key' => false,
-            'sucuriscan_audit_report' => 'enabled',
+            'sucuriscan_audit_report' => 'disabled',
             'sucuriscan_cloudproxy_apikey' => '',
             'sucuriscan_collect_wrong_passwords' => 'disabled',
             'sucuriscan_datastore_path' => '',
@@ -5996,10 +5996,7 @@ class SucuriScanInterface {
         wp_enqueue_style( 'sucuriscan' );
         wp_enqueue_script( 'sucuriscan' );
 
-        if (
-            SucuriScanRequest::get( 'page', 'sucuriscan' ) !== false
-            && SucuriScanOption::get_option( ':audit_report' ) !== 'disabled'
-        ) {
+        if ( SucuriScanRequest::get( 'page', 'sucuriscan' ) !== false ) {
             wp_register_script( 'sucuriscan2', SUCURISCAN_URL . '/inc/js/d3.v3.min.js', array(), $asset_version );
             wp_register_script( 'sucuriscan3', SUCURISCAN_URL . '/inc/js/c3.min.js', array(), $asset_version );
             wp_enqueue_script( 'sucuriscan2' );
@@ -8066,9 +8063,9 @@ function sucuriscan_page(){
 
     $template_variables = array(
         'WordpressVersion' => sucuriscan_wordpress_outdated(),
-        'AuditLogs' => sucuriscan_auditlogs(),
-        'AuditReports' => sucuriscan_auditreport(),
         'CoreFiles' => sucuriscan_core_files(),
+        'AuditReports' => sucuriscan_auditreport(),
+        'AuditLogs' => sucuriscan_auditlogs(),
     );
 
     echo SucuriScanTemplate::get_template( 'integrity', $template_variables );
@@ -8215,6 +8212,7 @@ function sucuriscan_auditlogs(){
         'AuditLogs.NoItemsVisibility' => 'visible',
         'AuditLogs.PaginationVisibility' => 'hidden',
         'AuditLogs.PaginationLinks' => '',
+        'AuditLogs.EnableAuditReportVisibility' => 'hidden',
     );
 
     if ( $audit_logs ){
@@ -8222,6 +8220,13 @@ function sucuriscan_auditlogs(){
         $total_items = count( $audit_logs->output_data );
         $iterator_start = ($page_number - 1) * $max_per_page;
         $iterator_end = $total_items;
+
+        if (
+            $audit_logs->total_entries >= $max_per_page
+            && SucuriScanOption::get_option( ':audit_report' ) !== 'enabled'
+        ) {
+            $template_variables['AuditLogs.EnableAuditReportVisibility'] = 'visible';
+        }
 
         for ( $i = $iterator_start; $i < $total_items; $i++ ){
             if ( $counter_i > $max_per_page ){ break; }

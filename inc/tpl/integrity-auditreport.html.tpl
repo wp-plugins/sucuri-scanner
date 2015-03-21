@@ -6,13 +6,9 @@
 
         <div class="sucuriscan-inline-alert-info">
             <p>
-                The data used to generate these charts come from the last <strong>%%SUCURI.AuditReport.Logs4Report%%
-                audit logs</strong> of your site, you can configure this number from the plugin
-                settings. The categorization of each event may change at anytime but will be
-                associated to the severity of the performed action, this means that an event
-                generated after an user interaction <em>(authentications, database modifications,
-                website options)</em> will always be more severe than a simple notification or a
-                change in the plugin settings.
+                The data used to generate these charts comes from the last <strong>%%SUCURI.AuditReport.Logs4Report%%
+                audit logs</strong>, you can configure this number from the plugin settings page,
+                you can also disable and enable this panel from there at any time.
             </p>
         </div>
 
