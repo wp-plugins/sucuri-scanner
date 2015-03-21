@@ -6113,11 +6113,14 @@ class SucuriScanInterface {
                     LOCK_EX
                 );
             } else {
+                SucuriScanOption::delete_option( ':datastore_path' );
                 SucuriScanInterface::error(
-                    'Data folder does not exists and could not be created. You will need to either
-                    change the location of the directory from the generanl settings panel located
-                    in the plugin settings page or create this directory manually and give it write
-                    permissions:<code>' . $plugin_upload_folder . '</code>'
+                    'Data folder does not exists and could not be created. Try to <a href="' .
+                    SucuriScanTemplate::get_url( 'settings' ) . '">click this link</a> to see
+                    if the plugin is able to fix this error automatically, if this message
+                    reappears you will need to either change the location of the directory from
+                    the plugin general settings page or create this directory manually and give it
+                    write permissions:<code>' . $plugin_upload_folder . '</code>.'
                 );
             }
         }
