@@ -10662,6 +10662,13 @@ function sucuriscan_settings_general(){
         'ReverseProxySwitchText' => 'Disable',
         'ReverseProxySwitchValue' => 'disable',
         'ReverseProxySwitchCssClass' => 'button-danger',
+        /* API Proxy Settings */
+        'APIProxy.Host' => 'n/a',
+        'APIProxy.Port' => 'n/a',
+        'APIProxy.Username' => 'n/a',
+        'APIProxy.Password' => 'n/a',
+        'APIProxy.PasswordType' => 'default',
+        'APIProxy.PasswordText' => 'empty',
     );
 
     if ( array_key_exists( $emails_per_hour, $sucuriscan_emails_per_hour ) ){
@@ -10692,6 +10699,26 @@ function sucuriscan_settings_general(){
 
     if ( sucuriscan_collect_wrong_passwords() === true ) {
         $template_variables['CollectWrongPasswords'] = '<span class="sucuriscan-label-error">Yes, collect passwords</span>';
+    }
+
+    // Determine if the API calls with pass through a proxy or not.
+    if ( class_exists( 'WP_HTTP_Proxy' ) ) {
+        $wp_http_proxy = new WP_HTTP_Proxy();
+
+        if ( $wp_http_proxy->is_enabled() ) {
+            $proxy_host = SucuriScan::escape( $wp_http_proxy->host() );
+            $proxy_port = SucuriScan::escape( $wp_http_proxy->port() );
+            $proxy_username = SucuriScan::escape( $wp_http_proxy->username() );
+            $proxy_password = SucuriScan::escape( $wp_http_proxy->password() );
+
+            $template_variables['APIProxy.Host'] = $proxy_host;
+            $template_variables['APIProxy.Port'] = $proxy_port;
+            $template_variables['APIProxy.Username'] = $proxy_username;
+            $template_variables['APIProxy.Password'] = $proxy_password;
+            $template_variables['APIProxy.PasswordType'] = 'info';
+            $template_variables['APIProxy.PasswordText'] = 'hidden';
+
+        }
     }
 
     return SucuriScanTemplate::get_section( 'settings-general', $template_variables );

@@ -26,6 +26,18 @@
                     monitoring tool forever even if you remove the API key and generate it again.
                 </p>
 
+                <div class="sucuriscan-inline-alert-info">
+                    <p>
+                        All the HTTP requests used to communicate with the API service are being sent
+                        using the WordPress built-in functions, so <em>(almost)</em> all its official
+                        features are inherited, this is useful if you need to pass these HTTP requests
+                        through a proxy. According to the <a href="http://codex.wordpress.org/HTTP_API"
+                        target="_blank">official documentation</a> you have to add some constants to the
+                        main configuration file: <em>WP_PROXY_HOST, WP_PROXY_PORT, WP_PROXY_USERNAME,
+                        WP_PROXY_PASSWORD</em>.
+                    </p>
+                </div>
+
                 <div class="sucuriscan-inline-alert-warning sucuriscan-%%SUCURI.InvalidDomainVisibility%%">
                     <p>
                         Your domain <code>%%SUCURI.CleanDomain%%</code> does not seems to have a DNS
@@ -140,18 +152,40 @@
         </tr>
 
         <tr>
-            <td>Collect failed passwords</td>
-            <td>%%SUCURI.CollectWrongPasswords%%</td>
+            <td>API proxy host:port</td>
+            <td><span class="sucuriscan-monospace">%%SUCURI.APIProxy.Host%%:%%SUCURI.APIProxy.Port%%</span></td>
+            <td>&nbsp;</td>
+        </tr>
+
+        <tr class="alternate">
+            <td>API proxy username</td>
+            <td><span class="sucuriscan-monospace">%%SUCURI.APIProxy.Username%%</span></td>
+            <td>&nbsp;</td>
+        </tr>
+
+        <tr>
+            <td>API proxy password</td>
+            <td>
+                <span class="sucuriscan-label-%%SUCURI.APIProxy.PasswordType%%">
+                    %%SUCURI.APIProxy.PasswordText%%
+                </span>
+            </td>
+            <td>&nbsp;</td>
+        </tr>
+
+        <tr class="alternate">
+            <td>Support reverse proxy</td>
+            <td>%%SUCURI.ReverseProxyStatus%%</td>
             <td class="td-with-button">
                 <form action="%%SUCURI.URL.Settings%%" method="post">
                     <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
-                    <input type="text" name="sucuriscan_collect_wrong_passwords" class="input-text" placeholder="Type: YES or NO" />
-                    <button type="submit" class="button-primary">Change</button>
+                    <input type="hidden" name="sucuriscan_revproxy" value="%%SUCURI.ReverseProxySwitchValue%%" />
+                    <button type="submit" class="button-primary %%SUCURI.ReverseProxySwitchCssClass%%">%%SUCURI.ReverseProxySwitchText%%</button>
                 </form>
             </td>
         </tr>
 
-        <tr class="alternate">
+        <tr>
             <td>Display audit report</td>
             <td>%%SUCURI.AuditReportStatus%%</td>
             <td class="td-with-button">
@@ -163,13 +197,25 @@
             </td>
         </tr>
 
-        <tr>
+        <tr class="alternate">
             <td>Audit report limit</td>
             <td>Process latest %%SUCURI.AuditReportLimit%% logs</td>
             <td class="td-with-button">
                 <form action="%%SUCURI.URL.Settings%%" method="post">
                     <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
                     <input type="text" name="sucuriscan_logs4report" class="input-text" placeholder="e.g. 500" />
+                    <button type="submit" class="button-primary">Change</button>
+                </form>
+            </td>
+        </tr>
+
+        <tr>
+            <td>Collect failed passwords</td>
+            <td>%%SUCURI.CollectWrongPasswords%%</td>
+            <td class="td-with-button">
+                <form action="%%SUCURI.URL.Settings%%" method="post">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <input type="text" name="sucuriscan_collect_wrong_passwords" class="input-text" placeholder="Type: YES or NO" />
                     <button type="submit" class="button-primary">Change</button>
                 </form>
             </td>
@@ -183,18 +229,6 @@
                     <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
                     <input type="text" name="sucuriscan_ads_visibility" class="input-text" placeholder="Type: SHOW or HIDE" />
                     <button type="submit" class="button-primary">Change</button>
-                </form>
-            </td>
-        </tr>
-
-        <tr>
-            <td>Support reverse proxy</td>
-            <td>%%SUCURI.ReverseProxyStatus%%</td>
-            <td class="td-with-button">
-                <form action="%%SUCURI.URL.Settings%%" method="post">
-                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
-                    <input type="hidden" name="sucuriscan_revproxy" value="%%SUCURI.ReverseProxySwitchValue%%" />
-                    <button type="submit" class="button-primary %%SUCURI.ReverseProxySwitchCssClass%%">%%SUCURI.ReverseProxySwitchText%%</button>
                 </form>
             </td>
         </tr>
