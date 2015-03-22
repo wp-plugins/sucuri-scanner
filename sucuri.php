@@ -2833,7 +2833,6 @@ class SucuriScanEvent extends SucuriScan {
                 $hashes_sent = SucuriScanAPI::send_hashes( $signatures );
 
                 if ( $hashes_sent ){
-                    SucuriScanInterface::info( 'Successful filesystem scan' );
                     SucuriScanOption::update_option( ':runtime', time() );
                     return true;
                 } else {
