@@ -1308,7 +1308,7 @@ class SucuriScanFileInfo extends SucuriScan {
      */
     public function get_directory_tree_md5( $directory = '', $as_array = false ){
         $project_signatures = '';
-        $abs_path = rtrim( ABSPATH, '/' );
+        $abs_path = rtrim( ABSPATH, DIRECTORY_SEPARATOR );
         $files = $this->get_directory_tree( $directory );
 
         if ( $as_array ){
@@ -1323,7 +1323,7 @@ class SucuriScanFileInfo extends SucuriScan {
                 $filesize = @filesize( $filepath );
 
                 if ( $as_array ){
-                    $basename = str_replace( $abs_path . '/', '', $filepath );
+                    $basename = str_replace( $abs_path . DIRECTORY_SEPARATOR, '', $filepath );
                     $project_signatures[ $basename ] = array(
                         'filepath' => $filepath,
                         'checksum' => $file_checksum,
@@ -1332,7 +1332,7 @@ class SucuriScanFileInfo extends SucuriScan {
                         'modified_at' => @filemtime( $filepath ),
                     );
                 } else {
-                    $filepath = str_replace( $abs_path, $abs_path . '/', $filepath );
+                    $filepath = str_replace( $abs_path, $abs_path . DIRECTORY_SEPARATOR, $filepath );
                     $project_signatures .= sprintf(
                         "%s%s%s%s\n",
                         $file_checksum,
@@ -1474,12 +1474,12 @@ class SucuriScanFileInfo extends SucuriScan {
         }
 
         foreach ( $objects as $filepath => $fileinfo ){
+            if ( $fileinfo->isDir() ) { continue; }
+
             if ( $this->run_recursively ){
                 $directory = dirname( $filepath );
                 $filename = $fileinfo->getFilename();
             } else {
-                if ( $fileinfo->isDot() || $fileinfo->isDir() ){ continue; }
-
                 $directory = $fileinfo->getPath();
                 $filename = $fileinfo->getFilename();
                 $filepath = $directory . '/' . $filename;
@@ -8183,7 +8183,7 @@ function sucuriscan_get_integrity_tree( $dir = './', $recursive = false ){
     $sucuri_fileinfo->ignore_files = false;
     $sucuri_fileinfo->ignore_directories = false;
     $sucuri_fileinfo->run_recursively = $recursive;
-    $sucuri_fileinfo->scan_interface = 'opendir';
+    $sucuri_fileinfo->scan_interface = SucuriScanOption::get_option( ':scan_interface' );
     $integrity_tree = $sucuri_fileinfo->get_directory_tree_md5( $dir, true );
 
     if ( ! $integrity_tree ){

@@ -105,6 +105,7 @@
 .sucuriscan-sidebar .sucuriscan-ad:nth-child(odd){background-color:#bbe8f5;border-color:#4393ac}
 .sucuriscan-sidebar .sucuriscan-ad:nth-child(even){background-color:#ececec;border-color:#999}
 .sucuriscan-scanner-video{width:100%;background:#fff;border:1px solid #ddd}
+.sucuriscan-sidebar .sucuriscan-supportbtn{width:100%;height:initial;text-align:center;line-height:32px;margin-top:15px;padding:0}
 /* WordPress Alerts */
 div.sucuriscan-alert{position:relative;margin:0 0 20px 0}
 div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:18px;font-weight:bold;text-decoration:none}

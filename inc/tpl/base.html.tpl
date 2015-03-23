@@ -50,6 +50,9 @@
 
             <iframe src="https://www.youtube-nocookie.com/embed/EVa9FY3nKuQ" height="250" class="sucuriscan-scanner-video" allowfullscreen></iframe>
 
+            <a href="https://wordpress.org/support/plugin/sucuri-scanner" target="_blank"
+            class="button button-primary sucuriscan-supportbtn">Visit Support Forum</a>
+
         </div>
 
     </div>
