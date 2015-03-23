@@ -28,24 +28,38 @@
         <div class="sucuriscan-sidebar sucuriscan-%%SUCURI.AdsVisibility%%">
 
             <div class="sucuriscan-ad">
-                <h2>Is your website infected with malware? Blacklisted by Google?</h2>
-                <p>Don't know where to start? Get cleared today by <a href="http://sucuri.net/signup" target="_blank">Sucuri Security</a>!</p>
-                <p><a href="http://sucuri.net/tour" target="_blank" class="button-primary">Read more</a></p>
+                <div class="sucuriscan-ad-content">
+                    <h2>Is your website infected with malware? Blacklisted by Google?</h2>
+                    <p>Don't know where to start? Get cleared today by <a href="http://sucuri.net/signup" target="_blank">Sucuri Security</a>!</p>
+                </div>
+
+                <div class="sucuriscan-ad-footer sucuriscan-clearfix">
+                    <a href="http://sucuri.net/website-antivirus/signup" target="_blank"
+                    class="button button-primary sucuriscan-pull-left">Sign up now</a>
+                    <a href="http://sucuri.net/website-antivirus/" target="_blank"
+                    class="button button-primary sucuriscan-pull-right">Read more</a>
+                </div>
             </div>
 
             <div class="sucuriscan-ad">
-                <h2>Preventive website security in the cloud!</h2>
-                <ul class="sucuriscan-list">
-                    <li>Web Application Firewall (WAF) Protection</li>
-                    <li>Virtual Website Patching</li>
-                    <li>Cloud Intrusion Prevention System (IPS)</li>
-                    <li>High Security Website Monitoring</li>
-                    <li>Malicious Traffic Filtering</li>
-                </ul>
-                <p>
-                    <a href="http://cloudproxy.sucuri.net/signup" target="_blank" class="button button-primary">Sign up now</a>
-                    <a href="http://cloudproxy.sucuri.net/" target="_blank" class="button button-primary">Read more</a>
-                </p>
+                <div class="sucuriscan-ad-content">
+                    <h2>Preventive website security in the cloud!</h2>
+
+                    <ul class="sucuriscan-list">
+                        <li>Web Application Firewall (WAF) Protection</li>
+                        <li>Virtual Website Patching</li>
+                        <li>Cloud Intrusion Prevention System (IPS)</li>
+                        <li>High Security Website Monitoring</li>
+                        <li>Malicious Traffic Filtering</li>
+                    </ul>
+                </div>
+
+                <div class="sucuriscan-ad-footer sucuriscan-clearfix">
+                    <a href="http://sucuri.net/website-firewall/signup" target="_blank"
+                    class="button button-primary sucuriscan-pull-left">Sign up now</a>
+                    <a href="http://sucuri.net/website-firewall/" target="_blank"
+                    class="button button-primary sucuriscan-pull-right">Read more</a>
+                </div>
             </div>
 
             <iframe src="https://www.youtube-nocookie.com/embed/EVa9FY3nKuQ" height="250" class="sucuriscan-scanner-video" allowfullscreen></iframe>
