@@ -608,7 +608,7 @@ class SucuriScan {
      * @return string Secret key definition pattern.
      */
     public static function secret_key_pattern(){
-        return '/define\((\s+)?\'([A-Z_]+)\',(\s+)?\'(.*)\'(\s+)?\);/';
+        return '/define\(\s*\'([A-Z_]+)\',(\s*)\'(.+)\'\s*\);/';
     }
 
     /**
