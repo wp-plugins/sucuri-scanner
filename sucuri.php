@@ -4029,6 +4029,11 @@ class SucuriScanAPI extends SucuriScanOption {
             }
         }
 
+        // Add random request parameter to avoid request reset.
+        if ( ! empty($params) ) {
+            $params['time'] = time();
+        }
+
         if ( $method == 'GET' ) {
             if ( ! empty($params) ) {
                 $url = sprintf( '%s?%s', $url, http_build_query( $params ) );
