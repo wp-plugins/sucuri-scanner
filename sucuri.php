@@ -1370,6 +1370,7 @@ class SucuriScanFileInfo extends SucuriScan {
                         $tree = $this->get_directory_tree_with_spl( $directory );
                     } else {
                         $this->scan_interface = 'opendir';
+                        SucuriScanOption::update_option( ':scan_interface', $this->scan_interface );
                         $tree = $this->get_directory_tree( $directory );
                     }
                     break;
@@ -1456,7 +1457,11 @@ class SucuriScanFileInfo extends SucuriScan {
         $filepath = @realpath( $directory );
 
         if ( ! class_exists( 'FilesystemIterator' ) ){
-            return $this->get_directory_tree( $directory, 'opendir' );
+            $this->scan_interface = 'opendir';
+            SucuriScanOption::update_option( ':scan_interface', $this->scan_interface );
+            $alternative_tree = $this->get_directory_tree( $directory );
+
+            return $alternative_tree;
         }
 
         if ( $this->run_recursively ){
