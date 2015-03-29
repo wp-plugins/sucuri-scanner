@@ -4370,46 +4370,60 @@ class SucuriScanAPI extends SucuriScanOption {
 
         if ( self::handle_response( $response ) ) {
             $response['body']->output_data = array();
-            $log_pattern = '/^([0-9-: ]+) (.*) : (.*)/';
+            $log_pattern = '/^([0-9\-]+) ([0-9:]+) (\S+) : (.+)/';
             $extra_pattern = '/(.+ \(multiple entries\):) (.+)/';
-            $generic_pattern = '/^([A-Z][a-z]{3,7}): ([0-9a-zA-Z@_\s\.\-\(\)]+, )?(\S+; )?(.+)/';
+            $generic_pattern = '/^([A-Z][a-z]{3,7}): ([^:;]+; )?(.+)/';
             $auth_pattern = '/^User authentication (succeeded|failed): ([^<;]+)/';
 
             foreach ( $response['body']->output as $log ) {
                 if ( preg_match( $log_pattern, $log, $log_match ) ) {
                     $log_data = array(
                         'event' => 'notice',
-                        'datetime' => $log_match[1],
-                        'timestamp' => strtotime( $log_match[1] ),
-                        'account' => $log_match[2],
+                        'date' => $log_match[1],
+                        'time' => $log_match[2],
+                        'datetime' => '',
+                        'timestamp' => 0,
+                        'account' => $log_match[3],
                         'username' => 'system',
                         'remote_addr' => '::1',
-                        'message' => $log_match[3],
+                        'message' => $log_match[4],
                         'file_list' => false,
                         'file_list_count' => 0,
                     );
 
-                    $log_data['message'] = str_replace( ', new size', '; new size', $log_data['message'] );
+                    $log_data['datetime'] = sprintf( '%s %s', $log_match[1], $log_match[2] );
+                    $log_data['timestamp'] = strtotime( $log_data['datetime'] );
                     $log_data['message'] = str_replace( '<br>', '; ', $log_data['message'] );
 
                     // Extract more information from the generic audit logs.
                     if ( preg_match( $generic_pattern, $log_data['message'], $log_extra ) ) {
                         $log_data['event'] = strtolower( $log_extra[1] );
-                        $log_data['message'] = trim( $log_extra[4] );
+                        $log_data['message'] = trim( $log_extra[3] );
 
-                        // Extract the remote address from the generic logs.
-                        if ( ! empty($log_extra[3]) ) {
-                            $log_data['remote_addr'] = str_replace( ";\x20", '', $log_extra[3] );
-                        }
-
-                        // Extract the username from the authentication logs.
+                        // Extract the username and remote address from the log.
                         if ( ! empty($log_extra[2]) ) {
-                            $log_data['username'] = preg_replace( '/.*\((\S+)\),\s$/', '$1', $log_extra[2] );
-                            $log_data['username'] = str_replace( ",\x20", '', $log_data['username'] );
+                            $username_address = rtrim( $log_extra[2], ";\x20" );
+
+                            // Separate the username from the remote address.
+                            if ( strpos( $username_address, ",\x20" ) !== false ) {
+                                $usip_parts = explode( ",\x20", $username_address, 2 );
+
+                                if ( count( $usip_parts ) == 2 ) {
+                                    // Separate the username from the display name.
+                                    $log_data['username'] = preg_replace( '/^.+ \((.+)\)$/', '$1', $usip_parts[0] );
+                                    $log_data['remote_addr'] = $usip_parts[1];
+                                }
+                            } else {
+                                $log_data['remote_addr'] = $username_address;
+                            }
                         }
 
-                        // Match old user authentication logs.
-                        $log_data['message'] = str_replace( 'logged in', 'authentication succeeded', $log_data['message'] );
+                        // Fix old user authentication logs for backward compatibility.
+                        $log_data['message'] = str_replace(
+                            'logged in',
+                            'authentication succeeded',
+                            $log_data['message']
+                        );
 
                         if ( preg_match( $auth_pattern, $log_data['message'], $user_match ) ) {
                             $log_data['username'] = $user_match[2];
@@ -4419,6 +4433,7 @@ class SucuriScanAPI extends SucuriScanOption {
                     // Extract more information from the special formatted logs.
                     if ( preg_match( $extra_pattern, $log_data['message'], $log_extra ) ) {
                         $log_data['message'] = $log_extra[1];
+                        $log_extra[2] = str_replace( ', new size', '; new size', $log_extra[2] );
                         $log_data['file_list'] = explode( ',', $log_extra[2] );
                         $log_data['file_list_count'] = count( $log_data['file_list'] );
                     }
