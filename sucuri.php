@@ -3144,8 +3144,6 @@ class SucuriScanEvent extends SucuriScan {
             $new_keys_string = '';
 
             foreach ( (array) $config_lines as $config_line ){
-                $config_line = str_replace( "\n", '', $config_line );
-
                 if ( preg_match( $pattern, $config_line, $match ) ){
                     $key_name = $match[1];
 
