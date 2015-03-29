@@ -8528,6 +8528,7 @@ function sucuriscan_check_core_integrity( $version = 0 ){
 
     // Search added files (files not common in a normal wordpress installation).
     foreach ( $wp_core_hashes as $file_path => $extra_info ){
+        $file_path = str_replace( DIRECTORY_SEPARATOR, '/', $file_path );
         $file_path = preg_replace( '/^\.\/(.*)/', '$1', $file_path );
 
         if ( sucuriscan_ignore_integrity_filepath( $file_path ) ){ continue; }
