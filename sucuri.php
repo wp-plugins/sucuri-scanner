@@ -4433,7 +4433,7 @@ class SucuriScanAPI extends SucuriScanOption {
      *
      * @return array Valid audit event types with their colors.
      */
-    public static function get_audit_event_types(){
+    public static function get_audit_event_types() {
         $event_types = array(
             'critical' => '#000000',
             'debug' => '#c690ec',
@@ -4797,14 +4797,19 @@ class SucuriScanAPI extends SucuriScanOption {
                 isset($json_data->checksums)
                 && ! empty($json_data->checksums)
             ) {
-                $checksums = $json_data->checksums;
-
-                // Convert the object list to an array for better handle of the data.
-                if ( $checksums instanceof stdClass ) {
-                    $checksums = (array) $checksums;
+                if (
+                    count( (array) $json_data->checksums ) <= 1
+                    && property_exists( $json_data->checksums, $version )
+                ) {
+                    $checksums = $json_data->checksums->{$version};
+                } else {
+                    $checksums = $json_data->checksums;
                 }
 
-                return $checksums;
+                // Check whether the list of file is an object.
+                if ( $checksums instanceof stdClass ) {
+                    return (array) $checksums;
+                }
             }
         }
 
