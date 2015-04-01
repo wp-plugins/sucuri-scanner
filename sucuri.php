@@ -1678,16 +1678,27 @@ class SucuriScanFileInfo extends SucuriScan {
         if ( $dir_tree ){
             $dirs_only = array();
 
+            // Delete all the files and symbolic links.
             foreach ( $dir_tree as $filepath ){
-                if ( is_file( $filepath ) ){
-                    $removed = @unlink( $filepath );
-
-                    if ( ! $removed ){
+                if (
+                    is_file( $filepath )
+                    || is_link( $filepath )
+                ) {
+                    if ( @unlink( $filepath ) ) {
+                        /**
+                         * This is redundant but necessary.
+                         *
+                         * When a directory is scanned you could get a list of files and directory names
+                         * in the same list, so the directories do not enter in this conditional and get
+                         * deleted correctly by the code following this section. Unfortunately this may
+                         * not be always like this, so to prevent failures it is better to keep track of
+                         * the directories manually and delete them later.
+                         */
+                        $dirs_only[] = dirname( $filepath );
+                    } else {
                         $all_removed = false;
                     }
-                }
-
-                elseif ( is_dir( $filepath ) ){
+                } elseif ( is_dir( $filepath ) ) {
                     $dirs_only[] = $filepath;
                 }
             }
@@ -1705,10 +1716,13 @@ class SucuriScanFileInfo extends SucuriScan {
                 }
             }
 
+            // Sort the directories by deep level in ascendant order.
+            $dirs_only = array_unique( $dirs_only );
             usort( $dirs_only, 'sucuriscan_strlen_diff' );
 
+            // Delete all the directories starting from the deepest level.
             foreach ( $dirs_only as $dir_path ){
-                @rmdir( $dir_path );
+                rmdir( $dir_path );
             }
         }
 
