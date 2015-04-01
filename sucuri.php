@@ -1722,7 +1722,7 @@ class SucuriScanFileInfo extends SucuriScan {
 
             // Delete all the directories starting from the deepest level.
             foreach ( $dirs_only as $dir_path ){
-                rmdir( $dir_path );
+                @rmdir( $dir_path );
             }
         }
 
