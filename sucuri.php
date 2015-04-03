@@ -8727,7 +8727,7 @@ function sucuriscan_modified_files(){
     // The scanner for modified files can be disabled from the settings page.
     if ( SucuriScanOption::get_option( ':scan_modfiles' ) == 'enabled' ){
         // Search modified files among the project's files.
-        $content_hashes = sucuriscan_get_integrity_tree( ABSPATH.'wp-content', true );
+        $content_hashes = sucuriscan_get_integrity_tree( WP_CONTENT_DIR, true );
 
         if ( ! empty($content_hashes) ){
             $back_days = current_time( 'timestamp' ) - ( $back_days * 86400);
