@@ -3009,6 +3009,47 @@ class SucuriScanEvent extends SucuriScan {
     }
 
     /**
+     * Reports an esception on the code.
+     *
+     * @param  Exception $exception A valid exception object of any type.
+     * @return boolean              Whether the report was filled correctly or not.
+     */
+    public static function report_exception( $exception = false ){
+        if ( $exception ) {
+            $e_trace = $exception->getTrace();
+            $multiple_entries = array();
+
+            foreach ( $e_trace as $e_child ) {
+                $e_file = array_key_exists( 'file', $e_child )
+                    ? basename( $e_child['file'] )
+                    : '[internal function]';
+                $e_line = array_key_exists( 'line', $e_child )
+                    ? basename( $e_child['line'] )
+                    : '0';
+                $e_function = array_key_exists( 'class', $e_child )
+                    ? $e_child['class'] . $e_child['type'] . $e_child['function']
+                    : $e_child['function'];
+                $multiple_entries[] = sprintf(
+                    '%s(%s): %s',
+                    $e_file,
+                    $e_line,
+                    $e_function
+                );
+            }
+
+            $report_message = sprintf(
+                '%s: (multiple entries): %s',
+                $exception->getMessage(),
+                @implode( ',', $multiple_entries )
+            );
+
+            return self::report_debug_event( $report_message );
+        }
+
+        return false;
+    }
+
+    /**
      * Send a notification to the administrator of the specified events, only if
      * the administrator accepted to receive alerts for this type of events.
      *
