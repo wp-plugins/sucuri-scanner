@@ -8,6 +8,7 @@
         <div class="sucuriscan-hstatus sucuriscan-hstatus-%%SUCURI.Hardening.Status%%">
             <input type="submit" name="%%SUCURI.Hardening.FieldName%%"
             value="%%SUCURI.Hardening.FieldValue%%"
+            %%SUCURI.Hardening.FieldAttributes%%
             class="button-secondary" />
 
             <span>%%SUCURI.Hardening.Information%%</span>

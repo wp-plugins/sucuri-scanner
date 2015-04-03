@@ -7412,12 +7412,14 @@ function sucuriscan_harden_status( $title = '', $status = 0, $type = '', $messag
         'Hardening.Status' => 'unknown',
         'Hardening.FieldName' => '',
         'Hardening.FieldValue' => '',
-        'Hardening.Information' => 'Can not be determined.',
+        'Hardening.FieldAttributes' => '',
+        'Hardening.Information' => '',
         'Hardening.UpdateMessage' => '',
     );
 
     if ( is_null($type) ) {
         $type = 'unknown';
+        $template_variables['Hardening.FieldAttributes'] = 'disabled="disabled"';
     }
 
     $template_variables['Hardening.Status'] = (string) $status;
@@ -7430,6 +7432,11 @@ function sucuriscan_harden_status( $title = '', $status = 0, $type = '', $messag
         $template_variables['Hardening.FieldName'] = $type;
         $template_variables['Hardening.FieldValue'] = 'Harden';
         $template_variables['Hardening.Information'] = $messagewarn;
+    } else {
+        $template_variables['Hardening.FieldName'] = '';
+        $template_variables['Hardening.FieldValue'] = 'Unavailable';
+        $template_variables['Hardening.Information'] = 'Can not be determined.';
+        $template_variables['Hardening.FieldAttributes'] = 'disabled="disabled"';
     }
 
     if ( ! is_null($desc) ) {
@@ -8064,6 +8071,7 @@ function sucuriscan_harden_errorlog(){
         $error_logs = $sucuri_fileinfo->find_file( $log_filename );
         $total_log_files = count( $error_logs );
     } else {
+        $hardened = 2;
         $error_logs = array();
         $total_log_files = 0;
         $description .= '<div class="sucuriscan-inline-alert-error"><p>The filesystem scan for error '
