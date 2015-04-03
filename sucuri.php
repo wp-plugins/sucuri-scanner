@@ -1455,6 +1455,7 @@ class SucuriScanFileInfo extends SucuriScan {
     private function get_directory_tree_with_spl( $directory = '' ){
         $files = array();
         $filepath = @realpath( $directory );
+        $objects = array();
 
         if ( ! class_exists( 'FilesystemIterator' ) ){
             $this->scan_interface = 'opendir';
@@ -1464,18 +1465,22 @@ class SucuriScanFileInfo extends SucuriScan {
             return $alternative_tree;
         }
 
-        if ( $this->run_recursively ){
-            $flags = FilesystemIterator::KEY_AS_PATHNAME
-                | FilesystemIterator::CURRENT_AS_FILEINFO
-                | FilesystemIterator::SKIP_DOTS
-                | FilesystemIterator::UNIX_PATHS;
-            $objects = new RecursiveIteratorIterator(
-                new RecursiveDirectoryIterator( $filepath, $flags ),
-                RecursiveIteratorIterator::SELF_FIRST,
-                RecursiveIteratorIterator::CATCH_GET_CHILD
-            );
-        } else {
-            $objects = new DirectoryIterator( $filepath );
+        try {
+            if ( $this->run_recursively ){
+                $flags = FilesystemIterator::KEY_AS_PATHNAME
+                    | FilesystemIterator::CURRENT_AS_FILEINFO
+                    | FilesystemIterator::SKIP_DOTS
+                    | FilesystemIterator::UNIX_PATHS;
+                $objects = new RecursiveIteratorIterator(
+                    new RecursiveDirectoryIterator( $filepath, $flags ),
+                    RecursiveIteratorIterator::SELF_FIRST,
+                    RecursiveIteratorIterator::CATCH_GET_CHILD
+                );
+            } else {
+                $objects = new DirectoryIterator( $filepath );
+            }
+        } catch ( RuntimeException $exception ) {
+            SucuriScanEvent::report_exception( $exception );
         }
 
         foreach ( $objects as $filepath => $fileinfo ){
