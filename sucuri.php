@@ -7356,53 +7356,39 @@ function sucuriscan_hardening_page(){
     if (
         SucuriScanRequest::post( ':run_hardening' )
         && ! SucuriScanInterface::check_nonce()
-    ){
+    ) {
         unset($_POST['sucuriscan_run_hardening']);
     }
 
-    ob_start();
-    ?>
-
-    <div id="poststuff">
-        <form method="post">
-            <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
-            <input type="hidden" name="sucuriscan_run_hardening" value="1" />
-
-            <?php
-            sucuriscan_harden_version();
-            sucuriscan_cloudproxy_enabled();
-            sucuriscan_harden_removegenerator();
-
-            if ( SucuriScan::is_nginx_server() === true ) {
-                sucuriscan_harden_nginx_phpfpm();
-            } elseif ( SucuriScan::is_iis_server() === true ) {
-                /* TODO: Include IIS (Internet Information Services) hardening options. */
-            } else {
-                sucuriscan_harden_upload();
-                sucuriscan_harden_wpcontent();
-                sucuriscan_harden_wpincludes();
-            }
-
-            sucuriscan_harden_phpversion();
-            sucuriscan_harden_secretkeys();
-            sucuriscan_harden_readme();
-            sucuriscan_harden_adminuser();
-            sucuriscan_harden_fileeditor();
-            sucuriscan_harden_dbtables();
-            sucuriscan_harden_errorlog();
-            ?>
-        </form>
-    </div>
-
-    <?php
-    $_html = ob_get_contents();
-    ob_end_clean();
-    echo SucuriScanTemplate::get_base_template($_html, array(
+    $template_variables = array(
         'PageTitle' => 'Hardening',
-        'PageContent' => $_html,
-        'PageStyleClass' => 'hardening',
-    ));
-    return;
+        'Hardening.Version' => sucuriscan_harden_version(),
+        'Hardening.CloudProxy' => sucuriscan_cloudproxy_enabled(),
+        'Hardening.RemoveGenerator' => sucuriscan_harden_removegenerator(),
+        'Hardening.NginxPhpFpm' => '',
+        'Hardening.Upload' => '',
+        'Hardening.WpContent' => '',
+        'Hardening.WpIncludes' => '',
+        'Hardening.PhpVersion' => sucuriscan_harden_phpversion(),
+        'Hardening.SecretKeys' => sucuriscan_harden_secretkeys(),
+        'Hardening.Readme' => sucuriscan_harden_readme(),
+        'Hardening.AdminUser' => sucuriscan_harden_adminuser(),
+        'Hardening.FileEditor' => sucuriscan_harden_fileeditor(),
+        'Hardening.DBTables' => sucuriscan_harden_dbtables(),
+        'Hardening.ErrorLog' => sucuriscan_harden_errorlog(),
+    );
+
+    if ( SucuriScan::is_nginx_server() === true ) {
+        $template_variables['Hardening.NginxPhpFpm'] = sucuriscan_harden_nginx_phpfpm();
+    } elseif ( SucuriScan::is_iis_server() === true ) {
+        /* TODO: Include IIS (Internet Information Services) hardening options. */
+    } else {
+        $template_variables['Hardening.Upload'] = sucuriscan_harden_upload();
+        $template_variables['Hardening.WpContent'] = sucuriscan_harden_wpcontent();
+        $template_variables['Hardening.WpIncludes'] = sucuriscan_harden_wpincludes();
+    }
+
+    echo SucuriScanTemplate::get_template( 'hardening', $template_variables );
 }
 
 /**
@@ -7419,44 +7405,43 @@ function sucuriscan_hardening_page(){
  * @param  string  $updatemsg   Optional explanation of the hardening after the submission of the form.
  * @return void
  */
-function sucuriscan_harden_status( $title = '', $status = 0, $type = '', $messageok = '', $messagewarn = '', $desc = null, $updatemsg = null ){ ?>
-    <div class="postbox">
-        <h3><?php _e( $title ) ?></h3>
+function sucuriscan_harden_status( $title = '', $status = 0, $type = '', $messageok = '', $messagewarn = '', $desc = null, $updatemsg = null ){
+    $template_variables = array(
+        'Hardening.Title' => SucuriScan::escape( $title ),
+        'Hardening.Description' => '',
+        'Hardening.Status' => 'unknown',
+        'Hardening.FieldName' => '',
+        'Hardening.FieldValue' => '',
+        'Hardening.Information' => 'Can not be determined.',
+        'Hardening.UpdateMessage' => '',
+    );
 
-        <div class="inside">
-            <?php if ( $desc != null ): ?>
-                <p><?php _e( $desc ) ?></p>
-            <?php endif; ?>
+    if ( is_null($type) ) {
+        $type = 'unknown';
+    }
 
-            <?php if ( $status <= 5 ): ?>
-                <div class="sucuriscan-hstatus sucuriscan-hstatus-<?php _e( $status ) ?>">
-                    <?php if ( $type != null ): ?>
-                        <?php if ( $status === 1 ): ?>
-                            <input type="submit" name="<?php _e( $type ) ?>_unharden" value="Revert hardening" class="button-secondary" />
-                        <?php elseif ( $status === 0 ): ?>
-                            <input type="submit" name="<?php _e( $type ) ?>" value="Harden" class="button-primary" />
-                        <?php endif; ?>
-                    <?php endif; ?>
+    $template_variables['Hardening.Status'] = (string) $status;
 
-                    <span>
-                        <?php if ( $status === 1 ): ?>
-                            <?php _e( $messageok ) ?>
-                        <?php elseif ( $status === 0 ): ?>
-                            <?php _e( $messagewarn ) ?>
-                        <?php elseif ( $status === 2 ): ?>
-                            Can not be determined.
-                        <?php endif; ?>
-                    </span>
-                </div>
-            <?php endif; ?>
+    if ( $status === 1 ) {
+        $template_variables['Hardening.FieldName'] = $type . '_unharden';
+        $template_variables['Hardening.FieldValue'] = 'Revert hardening';
+        $template_variables['Hardening.Information'] = $messageok;
+    } elseif ( $status === 0 ) {
+        $template_variables['Hardening.FieldName'] = $type;
+        $template_variables['Hardening.FieldValue'] = 'Harden';
+        $template_variables['Hardening.Information'] = $messagewarn;
+    }
 
-            <?php if ( $updatemsg != null ): ?>
-                <p><?php _e( $updatemsg ) ?></p>
-            <?php endif; ?>
-        </div>
-    </div>
+    if ( ! is_null($desc) ) {
+        $template_variables['Hardening.Description'] = '<p>' . $desc . '</p>';
+    }
 
-<?php }
+    if ( ! is_null($updatemsg) ) {
+        $template_variables['Hardening.UpdateMessage'] = '<p>' . $updatemsg . '</p>';
+    }
+
+    return SucuriScanTemplate::get_snippet( 'hardening', $template_variables );
+}
 
 /**
  * Check whether the version number of the WordPress installed is the latest
@@ -7469,16 +7454,16 @@ function sucuriscan_harden_version(){
     $updates = get_core_updates();
     $cp = ( ! is_array( $updates ) || empty($updates) ? 1 : 0 );
 
-    if ( isset($updates[0]) && $updates[0] instanceof stdClass ){
+    if ( isset($updates[0]) && $updates[0] instanceof stdClass ) {
         if (
             $updates[0]->response == 'latest'
             || $updates[0]->response == 'development'
-        ){
+        ) {
             $cp = 1;
         }
     }
 
-    if ( strcmp( $site_version, '3.7' ) < 0 ){
+    if ( strcmp( $site_version, '3.7' ) < 0 ) {
         $cp = 0;
     }
 
@@ -7494,7 +7479,7 @@ function sucuriscan_harden_version(){
         $site_version
     );
 
-    sucuriscan_harden_status( 'Verify WordPress version', $cp, null, $messageok, $messagewarn, $initial_msg );
+    return sucuriscan_harden_status( 'Verify WordPress version', $cp, null, $messageok, $messagewarn, $initial_msg );
 }
 
 /**
@@ -7505,7 +7490,7 @@ function sucuriscan_harden_version(){
  * @return void
  */
 function sucuriscan_harden_removegenerator(){
-    sucuriscan_harden_status(
+    return sucuriscan_harden_status(
         'Remove WordPress version',
         1,
         null,
@@ -7538,7 +7523,7 @@ function sucuriscan_harden_nginx_phpfpm(){
 
     $description .= '<p class="sucuriscan-hidden">';
 
-    sucuriscan_harden_status(
+    return sucuriscan_harden_status(
         'Block PHP files',
         999,
         null,
@@ -7562,23 +7547,23 @@ function sucuriscan_harden_upload(){
     $datastore_path = SucuriScan::datastore_folder_path();
     $htaccess_upload = dirname( $datastore_path ) . '/.htaccess';
 
-    if ( ! is_readable( $htaccess_upload ) ){
+    if ( ! is_readable( $htaccess_upload ) ) {
         $cp = 0;
     } else {
         $cp = 0;
         $fcontent = SucuriScanFileInfo::file_lines( $htaccess_upload );
 
-        foreach ( $fcontent as $fline ){
-            if ( stripos( $fline, 'deny from all' ) !== false ){
+        foreach ( $fcontent as $fline ) {
+            if ( stripos( $fline, 'deny from all' ) !== false ) {
                 $cp = 1;
                 break;
             }
         }
     }
 
-    if ( SucuriScanRequest::post( ':run_hardening' ) ){
-        if ( SucuriScanRequest::post( ':harden_upload' ) && $cp == 0 ){
-            if ( @file_put_contents( $htaccess_upload, "\n<Files *.php>\ndeny from all\n</Files>" ) === false ){
+    if ( SucuriScanRequest::post( ':run_hardening' ) ) {
+        if ( SucuriScanRequest::post( ':harden_upload' ) && $cp == 0 ) {
+            if ( @file_put_contents( $htaccess_upload, "\n<Files *.php>\ndeny from all\n</Files>" ) === false ) {
                 SucuriScanInterface::error( 'Unable to create <code>.htaccess</code> file, folder destination is not writable.' );
             } else {
                 $cp = 1;
@@ -7586,16 +7571,14 @@ function sucuriscan_harden_upload(){
                 SucuriScanEvent::report_notice_event( $message );
                 SucuriScanInterface::info( $message );
             }
-        }
-
-        elseif ( SucuriScanRequest::post( ':harden_upload_unharden' ) ){
+        } elseif ( SucuriScanRequest::post( ':harden_upload_unharden' ) ) {
             $htaccess_upload_writable = ( file_exists( $htaccess_upload ) && is_writable( $htaccess_upload ) ) ? true : false;
-            $htaccess_content = $htaccess_upload_writable ? file_get_contents( $htaccess_upload ) : '';
+            $htaccess_content = $htaccess_upload_writable ? @file_get_contents( $htaccess_upload ) : '';
 
-            if ( $htaccess_upload_writable ){
+            if ( $htaccess_upload_writable ) {
                 $cp = 0;
 
-                if ( preg_match( '/<Files \*\.php>\ndeny from all\n<\/Files>/', $htaccess_content, $match ) ){
+                if ( preg_match( '/<Files \*\.php>\ndeny from all\n<\/Files>/', $htaccess_content, $match ) ) {
                     $htaccess_content = str_replace( "<Files *.php>\ndeny from all\n</Files>", '', $htaccess_content );
                     @file_put_contents( $htaccess_upload, $htaccess_content, LOCK_EX );
                 }
@@ -7613,7 +7596,7 @@ function sucuriscan_harden_upload(){
         }
     }
 
-    sucuriscan_harden_status(
+    return sucuriscan_harden_status(
         'Protect uploads directory',
         $cp,
         'sucuriscan_harden_upload',
@@ -7637,23 +7620,23 @@ function sucuriscan_harden_wpcontent(){
     $cp = 1;
     $htaccess_upload = WP_CONTENT_DIR . '/.htaccess';
 
-    if ( ! is_readable( $htaccess_upload ) ){
+    if ( ! is_readable( $htaccess_upload ) ) {
         $cp = 0;
     } else {
         $cp = 0;
         $fcontent = SucuriScanFileInfo::file_lines( $htaccess_upload );
 
-        foreach ( $fcontent as $fline ){
-            if ( stripos( $fline, 'deny from all' ) !== false ){
+        foreach ( $fcontent as $fline ) {
+            if ( stripos( $fline, 'deny from all' ) !== false ) {
                 $cp = 1;
                 break;
             }
         }
     }
 
-    if ( SucuriScanRequest::post( ':run_hardening' ) ){
-        if ( SucuriScanRequest::post( ':harden_wpcontent' ) && $cp == 0 ){
-            if ( @file_put_contents( $htaccess_upload, "\n<Files *.php>\ndeny from all\n</Files>" ) === false ){
+    if ( SucuriScanRequest::post( ':run_hardening' ) ) {
+        if ( SucuriScanRequest::post( ':harden_wpcontent' ) && $cp == 0 ) {
+            if ( @file_put_contents( $htaccess_upload, "\n<Files *.php>\ndeny from all\n</Files>" ) === false ) {
                 SucuriScanInterface::error( 'Unable to create <code>.htaccess</code> file, folder destination is not writable.' );
             } else {
                 $cp = 1;
@@ -7661,16 +7644,14 @@ function sucuriscan_harden_wpcontent(){
                 SucuriScanEvent::report_notice_event( $message );
                 SucuriScanInterface::info( $message );
             }
-        }
-
-        elseif ( SucuriScanRequest::post( ':harden_wpcontent_unharden' ) ){
+        } elseif ( SucuriScanRequest::post( ':harden_wpcontent_unharden' ) ) {
             $htaccess_upload_writable = ( file_exists( $htaccess_upload ) && is_writable( $htaccess_upload ) ) ? true : false;
-            $htaccess_content = $htaccess_upload_writable ? file_get_contents( $htaccess_upload ) : '';
+            $htaccess_content = $htaccess_upload_writable ? @file_get_contents( $htaccess_upload ) : '';
 
-            if ( $htaccess_upload_writable ){
+            if ( $htaccess_upload_writable ) {
                 $cp = 0;
 
-                if ( preg_match( '/<Files \*\.php>\ndeny from all\n<\/Files>/', $htaccess_content, $match ) ){
+                if ( preg_match( '/<Files \*\.php>\ndeny from all\n<\/Files>/', $htaccess_content, $match ) ) {
                     $htaccess_content = str_replace( "<Files *.php>\ndeny from all\n</Files>", '', $htaccess_content );
                     @file_put_contents( $htaccess_upload, $htaccess_content, LOCK_EX );
                 }
@@ -7695,7 +7676,7 @@ function sucuriscan_harden_wpcontent(){
         . 'to generate images like thumbnails and captcha codes, this is intentional so it is recommended '
         . 'to check your site once this option is enabled.';
 
-    sucuriscan_harden_status(
+    return sucuriscan_harden_status(
         'Restrict wp-content access',
         $cp,
         'sucuriscan_harden_wpcontent',
@@ -7720,22 +7701,22 @@ function sucuriscan_harden_wpincludes(){
     $cp = 1;
     $htaccess_upload = ABSPATH . '/wp-includes/.htaccess';
 
-    if ( ! is_readable( $htaccess_upload ) ){
+    if ( ! is_readable( $htaccess_upload ) ) {
         $cp = 0;
     } else {
         $cp = 0;
         $fcontent = SucuriScanFileInfo::file_lines( $htaccess_upload );
 
-        foreach ( $fcontent as $fline ){
-            if ( stripos( $fline, 'deny from all' ) !== false ){
+        foreach ( $fcontent as $fline ) {
+            if ( stripos( $fline, 'deny from all' ) !== false ) {
                 $cp = 1;
                 break;
             }
         }
     }
 
-    if ( SucuriScanRequest::post( ':run_hardening' ) ){
-        if ( SucuriScanRequest::post( ':harden_wpincludes' ) && $cp == 0 ){
+    if ( SucuriScanRequest::post( ':run_hardening' ) ) {
+        if ( SucuriScanRequest::post( ':harden_wpincludes' ) && $cp == 0 ) {
             $file_rules = "\n<Files *.php>"
                 . "\ndeny from all"
                 . "\n</Files>"
@@ -7747,7 +7728,7 @@ function sucuriscan_harden_wpincludes(){
                 . "\n</Files>"
                 . "\n";
 
-            if ( @file_put_contents( $htaccess_upload, $file_rules ) === false ){
+            if ( @file_put_contents( $htaccess_upload, $file_rules ) === false ) {
                 SucuriScanInterface::error( 'Unable to create <code>.htaccess</code> file, folder destination is not writable.' );
             } else {
                 $cp = 1;
@@ -7755,17 +7736,15 @@ function sucuriscan_harden_wpincludes(){
                 SucuriScanEvent::report_notice_event( $message );
                 SucuriScanInterface::info( $message );
             }
-        }
-
-        elseif ( SucuriScanRequest::post( ':harden_wpincludes_unharden' ) ){
+        } elseif ( SucuriScanRequest::post( ':harden_wpincludes_unharden' ) ) {
             $htaccess_upload_writable = ( file_exists( $htaccess_upload ) && is_writable( $htaccess_upload ) ) ? true : false;
-            $htaccess_content = $htaccess_upload_writable ? file_get_contents( $htaccess_upload ) : '';
+            $htaccess_content = $htaccess_upload_writable ? @file_get_contents( $htaccess_upload ) : '';
 
-            if ( $htaccess_upload_writable ){
+            if ( $htaccess_upload_writable ) {
                 $cp = 0;
 
-                if ( preg_match_all( '/<Files (\*|wp-tinymce|ms-files)\.php>\n(deny|allow) from all\n<\/Files>/', $htaccess_content, $match ) ){
-                    foreach ( $match[0] as $restriction ){
+                if ( preg_match_all( '/<Files (\*|wp-tinymce|ms-files)\.php>\n(deny|allow) from all\n<\/Files>/', $htaccess_content, $match ) ) {
+                    foreach ( $match[0] as $restriction ) {
                         $htaccess_content = str_replace( $restriction, '', $htaccess_content );
                     }
 
@@ -7785,7 +7764,7 @@ function sucuriscan_harden_wpincludes(){
         }
     }
 
-    sucuriscan_harden_status(
+    return sucuriscan_harden_status(
         'Restrict wp-includes access',
         $cp,
         'sucuriscan_harden_wpincludes',
@@ -7806,7 +7785,7 @@ function sucuriscan_harden_phpversion(){
     $phpv = phpversion();
     $cp = ( strncmp( $phpv, '5.', 2 ) < 0 ) ? 0 : 1;
 
-    sucuriscan_harden_status(
+    return sucuriscan_harden_status(
         'Verify PHP version',
         $cp,
         null,
@@ -7831,12 +7810,12 @@ function sucuriscan_cloudproxy_enabled(){
         . 'DDoS, SQL injections, etc) and helping it remain malware and blacklist free. This test checks if your site is '
         . 'using <a href="http://cloudproxy.sucuri.net/" target="_blank">Sucuri\'s CloudProxy WAF</a> to protect your site.';
 
-    if ( $proxy_info === false ){
+    if ( $proxy_info === false ) {
         $status = 0;
         $btn_string = '<a href="http://goo.gl/qfNkMq" target="_blank" class="button button-primary">Harden</a>';
     }
 
-    sucuriscan_harden_status(
+    return sucuriscan_harden_status(
         'Website Firewall protection',
         $status,
         null,
@@ -7861,17 +7840,17 @@ function sucuriscan_harden_secretkeys(){
     $wp_config_path = SucuriScan::get_wpconfig_path();
     $current_keys = SucuriScanOption::get_security_keys();
 
-    if ( $wp_config_path ){
+    if ( $wp_config_path ) {
         $cp = 1;
         $message = 'The main configuration file was found at: <code>'.$wp_config_path.'</code><br>';
 
         if (
             ! empty($current_keys['bad'])
             || ! empty($current_keys['missing'])
-        ){
+        ) {
             $cp = 0;
         }
-    }else {
+    } else {
         $cp = 0;
         $message = 'The <code>wp-config.php</code> file was not found.<br>';
     }
@@ -7886,7 +7865,7 @@ function sucuriscan_harden_secretkeys(){
         . '<a href="' . SucuriScanTemplate::get_url( 'posthack' ) . '" class="button button-primary">'
         . 'Harden</a>';
 
-    sucuriscan_harden_status(
+    return sucuriscan_harden_status(
         'Security keys',
         $cp,
         null,
@@ -7909,9 +7888,9 @@ function sucuriscan_harden_readme(){
     $cp = is_readable( ABSPATH.'/readme.html' ) ? 0 : 1;
 
     // TODO: After hardening create an option to automatically remove this after WP upgrade.
-    if ( SucuriScanRequest::post( ':run_hardening' ) ){
-        if ( SucuriScanRequest::post( ':harden_readme' ) && $cp == 0 ){
-            if ( @unlink( ABSPATH.'/readme.html' ) === false ){
+    if ( SucuriScanRequest::post( ':run_hardening' ) ) {
+        if ( SucuriScanRequest::post( ':harden_readme' ) && $cp == 0 ) {
+            if ( @unlink( ABSPATH.'/readme.html' ) === false ) {
                 $upmsg = SucuriScanInterface::error( 'Unable to remove <code>readme.html</code> file.' );
             } else {
                 $cp = 1;
@@ -7919,14 +7898,12 @@ function sucuriscan_harden_readme(){
                 SucuriScanEvent::report_notice_event( $message );
                 SucuriScanInterface::info( $message );
             }
-        }
-
-        elseif ( SucuriScanRequest::post( ':harden_readme_unharden' ) ){
+        } elseif ( SucuriScanRequest::post( ':harden_readme_unharden' ) ) {
             SucuriScanInterface::error( 'We can not revert this action, you must create the <code>readme.html</code> manually.' );
         }
     }
 
-    sucuriscan_harden_status(
+    return sucuriscan_harden_status(
         'Information leakage (readme.html)',
         $cp,
         ( $cp == 0 ? 'sucuriscan_harden_readme' : null ),
@@ -7955,14 +7932,14 @@ function sucuriscan_harden_adminuser(){
     $results = $user_query->get_results();
     $account_removed = ( count( $results ) === 0 ? 1 : 0 );
 
-    if ( $account_removed === 0 ){
+    if ( $account_removed === 0 ) {
         $upmsg = '<i><strong>Notice.</strong> We do not offer an option to automatically change the user name.
         Go to the <a href="'.admin_url( 'users.php' ).'" target="_blank">user list</a> and create a new
         administrator user. Once created, log in as that user and remove the default <code>admin</code>
         (make sure to assign all the admin posts to the new user too).</i>';
     }
 
-    sucuriscan_harden_status(
+    return sucuriscan_harden_status(
         'Default admin account',
         $account_removed,
         null,
@@ -7981,16 +7958,16 @@ function sucuriscan_harden_adminuser(){
 function sucuriscan_harden_fileeditor(){
     $file_editor_disabled = defined( 'DISALLOW_FILE_EDIT' ) ? DISALLOW_FILE_EDIT : false;
 
-    if ( SucuriScanRequest::post( ':run_hardening' ) ){
+    if ( SucuriScanRequest::post( ':run_hardening' ) ) {
         $current_time = date( 'r' );
         $wp_config_path = SucuriScan::get_wpconfig_path();
 
         $wp_config_writable = ( file_exists( $wp_config_path ) && is_writable( $wp_config_path ) ) ? true : false;
-        $new_wpconfig = $wp_config_writable ? file_get_contents( $wp_config_path ) : '';
+        $new_wpconfig = $wp_config_writable ? @file_get_contents( $wp_config_path ) : '';
 
-        if ( SucuriScanRequest::post( ':harden_fileeditor' ) ){
-            if ( $wp_config_writable ){
-                if ( preg_match( '/(.*define\(.DB_COLLATE..*)/', $new_wpconfig, $match ) ){
+        if ( SucuriScanRequest::post( ':harden_fileeditor' ) ) {
+            if ( $wp_config_writable ) {
+                if ( preg_match( '/(.*define\(.DB_COLLATE..*)/', $new_wpconfig, $match ) ) {
                     $disallow_fileedit_definition = "\n\ndefine('DISALLOW_FILE_EDIT', TRUE); // Sucuri Security: {$current_time}\n";
                     $new_wpconfig = str_replace( $match[0], $match[0].$disallow_fileedit_definition, $new_wpconfig );
                 }
@@ -8005,11 +7982,9 @@ function sucuriscan_harden_fileeditor(){
                     or is not writable, you will need to put the following code manually there:
                     <code>define("DISALLOW_FILE_EDIT", TRUE);</code>' );
             }
-        }
-
-        elseif ( SucuriScanRequest::post( ':harden_fileeditor_unharden' ) ){
-            if ( preg_match( "/(.*define\('DISALLOW_FILE_EDIT', TRUE\);.*)/", $new_wpconfig, $match ) ){
-                if ( $wp_config_writable ){
+        } elseif ( SucuriScanRequest::post( ':harden_fileeditor_unharden' ) ) {
+            if ( preg_match( "/(.*define\('DISALLOW_FILE_EDIT', TRUE\);.*)/", $new_wpconfig, $match ) ) {
+                if ( $wp_config_writable ) {
                     $new_wpconfig = str_replace( "\n{$match[1]}", '', $new_wpconfig );
                     file_put_contents( $wp_config_path, $new_wpconfig, LOCK_EX );
                     $file_editor_disabled = false;
@@ -8032,7 +8007,7 @@ function sucuriscan_harden_fileeditor(){
         also provides an additional layer of security if a hacker gains access to a well-privileged
         user account.';
 
-    sucuriscan_harden_status(
+    return sucuriscan_harden_status(
         'Plugin &amp; Theme editor',
         ( $file_editor_disabled === false ? 0 : 1 ),
         'sucuriscan_harden_fileeditor',
@@ -8055,7 +8030,7 @@ function sucuriscan_harden_dbtables(){
 
     $hardened = ( $table_prefix == 'wp_' ? 0 : 1 );
 
-    sucuriscan_harden_status(
+    return sucuriscan_harden_status(
         'Database table prefix',
         $hardened,
         null,
@@ -8082,7 +8057,7 @@ function sucuriscan_harden_errorlog(){
         . 'a development environment, and remove them in production mode.';
 
     // Search error log files in the project.
-    if ( $scan_errorlogs != 'disabled' ){
+    if ( $scan_errorlogs != 'disabled' ) {
         $sucuri_fileinfo = new SucuriScanFileInfo();
         $sucuri_fileinfo->ignore_files = false;
         $sucuri_fileinfo->ignore_directories = false;
@@ -8098,16 +8073,16 @@ function sucuriscan_harden_errorlog(){
     }
 
     // Remove every error log file found in the filesystem scan.
-    if ( SucuriScanRequest::post( ':run_hardening' ) ){
-        if ( SucuriScanRequest::post( ':harden_errorlog' ) ){
+    if ( SucuriScanRequest::post( ':run_hardening' ) ) {
+        if ( SucuriScanRequest::post( ':harden_errorlog' ) ) {
             $removed_logs = 0;
             SucuriScanEvent::report_notice_event( sprintf(
                 'Error log files deleted: (multiple entries): %s',
                 @implode( ',', $error_logs )
             ) );
 
-            foreach ( $error_logs as $i => $error_log_path ){
-                if ( unlink( $error_log_path ) ){
+            foreach ( $error_logs as $i => $error_log_path ) {
+                if ( unlink( $error_log_path ) ) {
                     unset($error_logs[ $i ]);
                     $removed_logs += 1;
                 }
@@ -8118,11 +8093,11 @@ function sucuriscan_harden_errorlog(){
     }
 
     // List the error log files in a HTML table.
-    if ( ! empty($error_logs) ){
+    if ( ! empty($error_logs) ) {
         $hardened = 0;
         $description .= '</p><ul class="sucuriscan-list-as-table">';
 
-        foreach ( $error_logs as $error_log_path ){
+        foreach ( $error_logs as $error_log_path ) {
             $error_log_path = str_replace( ABSPATH, '/', $error_log_path );
             $description .= '<li>' . $error_log_path . '</li>';
         }
@@ -8130,7 +8105,7 @@ function sucuriscan_harden_errorlog(){
         $description .= '</ul><p>';
     }
 
-    sucuriscan_harden_status(
+    return sucuriscan_harden_status(
         'Error logs',
         $hardened,
         ( $hardened == 0 ? 'sucuriscan_harden_errorlog' : null ),
