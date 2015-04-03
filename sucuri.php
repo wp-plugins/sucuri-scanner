@@ -1457,6 +1457,11 @@ class SucuriScanFileInfo extends SucuriScan {
         $filepath = @realpath( $directory );
         $objects = array();
 
+        // Exception for directory name must not be empty.
+        if ( $filepath === false ) {
+            return $files;
+        }
+
         if ( ! class_exists( 'FilesystemIterator' ) ){
             $this->scan_interface = 'opendir';
             SucuriScanOption::update_option( ':scan_interface', $this->scan_interface );
