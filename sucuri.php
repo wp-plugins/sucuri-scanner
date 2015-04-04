@@ -4769,7 +4769,7 @@ class SucuriScanAPI extends SucuriScanOption {
             'date' => date( 'Y-m-d' ),
         );
 
-        if ( preg_match( '/^[0-9]{4}(\-[0-9]{2}) {2}$/', $date ) ) {
+        if ( preg_match( '/^[0-9]{4}(\-[0-9]{2}){2}$/', $date ) ) {
             $params['date'] = $date;
         }
 
