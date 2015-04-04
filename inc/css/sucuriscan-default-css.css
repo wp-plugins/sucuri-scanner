@@ -162,6 +162,7 @@ div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:1
 .sucuriscan-scanner-results td.sucuriscan-border-bad{border-left-width:4px;border-left-style:solid}
 .sucuriscan-scanner-results .sucuriscan-malware-link{text-align:right}
 .sucuriscan-scanner-results .sucuriscan-malware-link a:hover{color:#fff}
+.sucuriscan-malware-payload{background:#f5f5f5;font-family:Monaco,monospace, serif;word-break:break-all;margin:-2px -15px -15px -15px;padding:15px}
 /* Generic Panel Magin Styles */
 .sucuriscan-maincontent .sucuriscan-corefiles,
 .sucuriscan-maincontent .sucuriscan-integrity-message,

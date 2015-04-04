@@ -6366,476 +6366,461 @@ class SucuriScanInterface {
  */
 function sucuriscan_scanner_page(){
     SucuriScanInterface::check_permissions();
-    // Check if the information is already cached.
+
+    $template_variables = array();
     $cache = new SucuriScanCache( 'sitecheck' );
     $scan_results = $cache->get( 'scan_results', SUCURISCAN_SITECHECK_LIFETIME, 'array' );
+    $report_results = (bool) ( $scan_results && ! empty($scan_results) );
+
     if (
-        (
-            $scan_results
-            && ! empty( $scan_results )
-        ) || (
-            SucuriScanInterface::check_nonce()
-            && SucuriScanRequest::post( ':malware_scan', '1' )
-        )
+        SucuriScanInterface::check_nonce()
+        && SucuriScanRequest::post( ':malware_scan', '1' )
     ) {
-        sucuriscan_sitecheck_info( $scan_results );
-    } else {
-        echo SucuriScanTemplate::get_template( 'malwarescan', array(
-            'PageTitle' => 'Malware Scan',
-            'PageStyleClass' => 'scanner-loading',
-        ) );
+        $report_results = true;
     }
+
+    if ( $report_results === true ) {
+        $template_name = 'malwarescan-results';
+        $template_variables = sucuriscan_sitecheck_info( $scan_results );
+        $template_variables['PageTitle'] = 'Malware Scan';
+        $template_variables['PageStyleClass'] = 'scanner-results';
+    } else {
+        $template_name = 'malwarescan';
+        $template_variables['PageTitle'] = 'Malware Scan';
+        $template_variables['PageStyleClass'] = 'scanner-loading';
+    }
+
+    echo SucuriScanTemplate::get_template( $template_name, $template_variables );
 }
+
 /**
  * Display the result of site scan made through SiteCheck.
  *
- * @param  array $res Array with information of the scanning.
- * @return void
+ * @param  array $scan_results Array with information of the scanning.
+ * @return array               Array with psuedo-variables to build the template.
  */
-function sucuriscan_sitecheck_info( $res = array() ){
-    // Will be TRUE only if the scanning results were retrieved from the cache.
-    $display_results = (bool) $res;
+function sucuriscan_sitecheck_info( $scan_results = array() ){
     $clean_domain = SucuriScan::get_domain();
-    // If the results are not cached, then request a new scanning.
-    if ( $res === false ) {
-        $res = SucuriScanAPI::get_sitecheck_results( $clean_domain );
+    $template_variables = array(
+        'ScannedDomainName' => $clean_domain,
+        'ScannerResults.CssClass' => '',
+        'ScannerResults.Content' => '',
+        'WebsiteDetails.CssClass' => '',
+        'WebsiteDetails.Content' => '',
+        'BlacklistStatus.CssClass' => '',
+        'BlacklistStatus.Content' => '',
+        'WebsiteLinks.CssClass' => '',
+        'WebsiteLinks.Content' => '',
+        'ModifiedFiles.CssClass' => '',
+        'ModifiedFiles.Content' => '',
+        'SignupButtonVisibility' => 'hidden',
+    );
+
+    // If the results are not cached, then request a new scan and store in cache.
+    if ( $scan_results === false ) {
+        $scan_results = SucuriScanAPI::get_sitecheck_results( $clean_domain );
+
         // Check for error messages in the request's response.
-        if ( is_string( $res ) ) {
-            if ( preg_match( '/^ERROR:(.*)/', $res, $error_m ) ) {
+        if ( is_string( $scan_results ) ) {
+            if ( preg_match( '/^ERROR:(.*)/', $scan_results, $error_m ) ) {
                 SucuriScanInterface::error( 'The site <code>' . $clean_domain . '</code> was not scanned: ' . $error_m[1] );
             } else {
-                SucuriScanInterface::error( 'SiteCheck error: ' . $res );
+                SucuriScanInterface::error( 'SiteCheck error: ' . $scan_results );
             }
-        }
-        else {
+        } else {
             $cache = new SucuriScanCache( 'sitecheck' );
-            $display_results = true;
-            // Cache the scanning results to reduce memory lose.
-            if ( ! $cache->add( 'scan_results', $res ) ) {
-                SucuriScanInterface::error( 'Could not cache the results of the SiteCheck scanning.' );
+            $results_were_cached = $cache->add( 'scan_results', $scan_results );
+
+            if ( ! $results_were_cached ) {
+                SucuriScanInterface::error( 'Could not cache the malware scan results.' );
             }
         }
     }
-    // Count the number of scans.
-    if ( $display_results === true ) {
+
+    if ( is_array( $scan_results ) && ! empty($scan_results) ) {
+        // Increase the malware scan counter.
         $sitecheck_counter = (int) SucuriScanOption::get_option( ':sitecheck_counter' );
         SucuriScanOption::update_option( ':sitecheck_counter', $sitecheck_counter + 1 );
-    }
-    ob_start();
-    ?>
+        add_thickbox();
 
-    <?php if ( $display_results ): ?>
-        <?php
-        // Check for general warnings, and return the information for Infected/Clean site.
-        $malware_warns_exist   = isset($res['MALWARE']['WARN'])   ? true : false;
-        $blacklist_warns_exist = isset($res['BLACKLIST']['WARN']) ? true : false;
-        $outdated_warns_exist  = isset($res['OUTDATEDSCAN'])      ? true : false;
-        $recommendations_exist = isset($res['RECOMMENDATIONS'])   ? true : false;
-        // Check whether this WordPress installation needs an update.
-        global $wp_version;
-        $wordpress_updated = false;
-        $updates = function_exists( 'get_core_updates' ) ? get_core_updates() : array();
+        $template_variables = sucuriscan_sitecheck_scanner_results( $scan_results, $template_variables );
+        $template_variables = sucuriscan_sitecheck_website_details( $scan_results, $template_variables );
+        $template_variables = sucuriscan_sitecheck_website_links( $scan_results, $template_variables );
+        $template_variables = sucuriscan_sitecheck_blacklist_status( $scan_results, $template_variables );
+        $template_variables = sucuriscan_sitecheck_modified_files( $scan_results, $template_variables );
+
         if (
-            ! is_array( $updates )
-            || empty($updates)
-            || $updates[0]->response == 'latest'
+            isset($scan_results['MALWARE']['WARN'])
+            || isset($scan_results['BLACKLIST']['WARN'])
         ) {
-            $wordpress_updated = true;
+            $template_variables['SignupButtonVisibility'] = 'visible';
         }
-        if ( is_array( $res ) ) {
-            // Include the Thickbox library.
-            add_thickbox();
-            // Initialize the CSS classes with default values.
-            $sucuriscan_css_malware = 'sucuriscan-border-good';
-            $sitecheck_results_tab = '';
-            $blacklist_status_tab = '';
-            $website_details_tab = '';
-            // Generate the CSS classes for the blacklist status.
-            if ( $blacklist_warns_exist ) {
-                $blacklist_status_tab = 'sucuriscan-red-tab';
+    }
+
+    return $template_variables;
+}
+
+/**
+ * Process the data returned from the results of a SiteCheck scan and generate
+ * the HTML code to display the information in the malware scan page inside the
+ * remote scanner results tab.
+ *
+ * @param  array $scan_results       Array with information of the scanning.
+ * @param  array $template_variables Array with psuedo-variables to build the template.
+ * @return array                     Array with psuedo-variables to build the template including extra information.
+ */
+function sucuriscan_sitecheck_scanner_results( $scan_results = false, $template_variables = array() ){
+    $secvars = array(
+        'WebsiteStatus' => 'Site status unknown',
+        'NoMalwareRowVisibility' => 'visible',
+        'FixButtonVisibility' => 'hidden',
+        'MalwarePayloadList' => '',
+    );
+
+    if ( isset($scan_results['MALWARE']['WARN']) ) {
+        $template_variables['ScannerResults.CssClass'] = 'sucuriscan-red-tab';
+        $secvars['WebsiteStatus'] = 'Site compromised (malware was identified)';
+        $secvars['NoMalwareRowVisibility'] = 'hidden';
+        $secvars['FixButtonVisibility'] = 'visible';
+
+        foreach ( $scan_results['MALWARE']['WARN'] as $key => $malres ) {
+            $malres = SucuriScanAPI::get_sitecheck_malware( $malres );
+
+            if ( $malres !== false ) {
+                $secvars['MalwarePayloadList'] .= SucuriScanTemplate::get_snippet( 'malwarescan-resmalware', array(
+                    'MalwareKey' => $key,
+                    'MalwareDocs' => SucuriScan::escape( $malres['malware_docs'] ),
+                    'MalwareType' => SucuriScan::escape( $malres['malware_type'] ),
+                    'MalwarePayload' => SucuriScan::escape( $malres['malware_payload'] ),
+                    'AlertMessage' => SucuriScan::escape( $malres['alert_message'] ),
+                    'InfectedUrl' => SucuriScan::escape( $malres['infected_url'] ),
+                ) );
             }
-            // Generate the CSS classes for the SiteCheck scanning results.
-            if ( $malware_warns_exist ) {
-                $sucuriscan_css_malware = 'sucuriscan-border-bad';
-                $sitecheck_results_tab = 'sucuriscan-red-tab';
-            }
-            // Generate the CSS classes for the outdated/recommendations panel.
-            if ( $outdated_warns_exist || $recommendations_exist ) {
-                $website_details_tab = 'sucuriscan-red-tab';
-            }
-            $sucuriscan_css_wpupdate = $wordpress_updated ? 'sucuriscan-border-good' : 'sucuriscan-border-bad';
         }
-        ?>
+    } else {
+        $secvars['WebsiteStatus'] = 'Site clean (no malware was identified)';
+    }
 
-        <div class="sucuriscan-tabs">
-            <ul>
-                <li class="<?php _e( $sitecheck_results_tab ) ?>">
-                    <a href="#" data-tabname="sitecheck-results">Remote Scanner Results</a>
-                </li>
-                <li class="<?php _e( $website_details_tab ) ?>">
-                    <a href="#" data-tabname="website-details">Website Details</a>
-                </li>
-                <li>
-                    <a href="#" data-tabname="website-links">IFrames / Links / Scripts</a>
-                </li>
-                <li class="<?php _e( $blacklist_status_tab ) ?>">
-                    <a href="#" data-tabname="blacklist-status">Blacklist Status</a>
-                </li>
-                <li>
-                    <a href="#" data-tabname="modified-files">Modified Files</a>
-                </li>
-            </ul>
-            <div class="sucuriscan-tab-containers">
-                <div id="sucuriscan-sitecheck-results">
-                    <table class="wp-list-table widefat sucuriscan-table sucuriscan-scanner-details">
-                        <thead>
-                            <tr>
-                                <th colspan="3" class="thead-with-button">
-                                    <?php if ( $malware_warns_exist ): ?>
-                                        <span>Site compromised (malware was identified)</span>
-                                        <a href="http://sucuri.net/website-antivirus/" target="_blank"
-                                        class="thead-topright-action button-primary">Clean website</a>
-                                    <?php else: ?>
-                                        <span>Site clean (no malware was identified)</span>
-                                    <?php endif; ?>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if ( $malware_warns_exist ): ?>
-                                <?php foreach ( $res['MALWARE']['WARN'] as $key => $malres ): ?>
-                                    <?php $malres = SucuriScanAPI::get_sitecheck_malware( $malres ); ?>
-                                    <tr>
-                                        <?php if ( $malres !== false ): ?>
-                                            <td>
-                                                <a href="<?php _e( $malres['malware_docs'] ); ?>" target="_blank">
-                                                    <?php _e( $malres['alert_message'] ); ?>
-                                                </a>
-                                            </td>
-                                            <td>
-                                                <span class="sucuriscan-monospace"><?php _e( $malres['malware_type'] ); ?></span>
-                                            </td>
-                                            <td>
-                                                <div class="sucuriscan-malware-link">
-                                                    <a href="<?php _e( $malres['infected_url'] ); ?>" target="_blank"
-                                                    class="sucuriscan-label sucuriscan-label-warning">View infected URL</a>
-                                                    <a href="#TB_inline?width=600&height=300&inlineId=sucuriscan-malware-<?php _e( $key ); ?>"
-                                                    title="SiteCheck: Malware Payload" class="thickbox sucuriscan-label sucuriscan-label-danger">
-                                                    View malware</a>
-                                                </div>
-                                                <div id="sucuriscan-malware-<?php _e( $key ); ?>" style="display:none">
-                                                    <div class="sucuriscan-malware-payload"><?php _e( $malres['malware_payload'] ); ?></div>
-                                                </div>
-                                            </td>
-                                        <?php endif; ?>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <tr>
-                                    <td><span class="sucuriscan-label sucuriscan-label-success">CLEAN</span></td>
-                                    <td colspan="3">Malware</td>
-                                </tr>
-                                <tr>
-                                    <td><span class="sucuriscan-label sucuriscan-label-success">CLEAN</span></td>
-                                    <td width="220">
-                                        <a href="http://kb.sucuri.net/malware/encoded-javascript" target="_blank">
-                                            Malicious javascript
-                                        </a>
-                                    </td>
-                                    <td>
-                                        <div>
-                                            JavaScript is a language (code) that can be executed directly by the browser and
-                                            many other applications that support it (PDF, email readers, etc). Because it is
-                                            a full programming language executed by the browser, attackers use it heavily to
-                                            run malicious code from the compromised sites.
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td><span class="sucuriscan-label sucuriscan-label-success">CLEAN</span></td>
-                                    <td width="220">
-                                        <a href="http://kb.sucuri.net/malware/malicious-iframes" target="_blank">
-                                            Malicious iframes
-                                        </a>
-                                    </td>
-                                    <td>
-                                        <div>
-                                            An inline frame (iframe) is used to embed another document within the current
-                                            HTML document. Because as the definition implies, it allows you to insert
-                                            another document inside the current HTML page. And the attackers use that
-                                            feature to insert malicious content into the compromised sites (to redirect to
-                                            spam, exploit kits, Fake AV, phishing, etc).
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td><span class="sucuriscan-label sucuriscan-label-success">CLEAN</span></td>
-                                    <td width="220">
-                                        <a href="http://kb.sucuri.net/malware/conditional-redirections" target="_blank">
-                                            Suspicious redirections (htaccess)
-                                        </a>
-                                    </td>
-                                    <td>
-                                        <div>
-                                            Conditional redirections are classified differently than the iframe/javascript
-                                            ones, because they are generally done though the HTTP headers (via .htaccess) to
-                                            redirect users from certain browsers or locations to malware/malicious
-                                            locations.
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td><span class="sucuriscan-label sucuriscan-label-success">CLEAN</span></td>
-                                    <td colspan="3">Blackhat SEO Spam</td>
-                                </tr>
-                                <tr>
-                                    <td><span class="sucuriscan-label sucuriscan-label-success">CLEAN</span></td>
-                                    <td colspan="3">Anomaly detection</td>
-                                </tr>
-                            <?php endif; ?>
-                            <tr>
-                                <td colspan="3">
-                                    <hr/>
-                                    <em>
-                                        More details at <a href="http://sitecheck.sucuri.net/results/<?php _e( $clean_domain ); ?>"
-                                        target="_blank">SiteCheck/<?php _e( $clean_domain ); ?></a>. If our free scanner
-                                        did not detect any issue, you may have a more complicated and hidden problem.
-                                        You can <a href="http://sucuri.net/signup" target="_blank">sign up</a> with
-                                        Sucuri for a complete and in depth scan+cleanup <strong>(not included in the
-                                        free checks)</strong>.
-                                    </em>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+    $template_variables['ScannerResults.Content'] = SucuriScanTemplate::get_section( 'malwarescan-resmalware', $secvars );
 
-                <div id="sucuriscan-website-details">
-                    <table class="wp-list-table widefat sucuriscan-table sucuriscan-scanner-details">
-                        <thead>
-                            <tr>
-                                <th colspan="2" class="thead-with-button">
-                                    <span>System information</span>
-                                    <?php if ( ! $wordpress_updated ): ?>
-                                        <a href="<?php echo admin_url( 'update-core.php' ); ?>" class="button button-primary thead-topright-action">
-                                            Update to <?php _e( $updates[0]->version ) ?>
-                                        </a>
-                                    <?php endif; ?>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- List of generic information from the site. -->
-                            <?php
-                            $possible_keys = array(
-                                'DOMAIN' => 'Domain Scanned',
-                                'IP' => 'Site IP Address',
-                                'HOSTING' => 'Hosting Company',
-                                'CMS' => 'CMS Found',
-                            );
-                            $possible_url_keys = array(
-                                'IFRAME' => 'List of iframes found',
-                                'JSEXTERNAL' => 'List of external scripts included',
-                                'JSLOCAL' => 'List of scripts included',
-                                'URL' => 'List of links found',
-                            );
-                            ?>
-                            <?php foreach ( $possible_keys as $result_key => $result_title ): ?>
-                                <?php if ( isset($res['SCAN'][ $result_key ]) ): ?>
-                                    <?php $result_value = implode( ', ', $res['SCAN'][ $result_key ] ); ?>
-                                    <tr>
-                                        <td><?php _e( $result_title ) ?></td>
-                                        <td><span class="sucuriscan-monospace"><?php _e( $result_value ) ?></span></td>
-                                    </tr>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                            <tr>
-                                <td>WordPress Version</td>
-                                <td><span class="sucuriscan-monospace"><?php _e( $wp_version ) ?></span></td>
-                            </tr>
-                            <tr>
-                                <td>PHP Version</td>
-                                <td><span class="sucuriscan-monospace"><?php _e( phpversion() ) ?></span></td>
-                            </tr>
-                            <!-- List of application details from the site. -->
-                            <tr>
-                                <th colspan="2">Web application details</th>
-                            </tr>
-                            <?php if ( isset($res['WEBAPP']) ): ?>
-                                <?php foreach ( $res['WEBAPP'] as $webapp_key => $webapp_details ): ?>
-                                    <?php if ( is_array( $webapp_details ) ): ?>
-                                        <?php foreach ( $webapp_details as $i => $details ): ?>
-                                            <?php
-                                            if ( is_array( $details ) ) {
-                                                $details = isset($details[0]) ? $details[0] : '';
-                                            }
-                                            $details_parts = explode( ':', $details, 2 );
-                                            $details_abc = isset($details_parts[0]) ? trim( $details_parts[0] ) : '';
-                                            $details_xyz = isset($details_parts[1]) ? trim( $details_parts[1] ) : '';
-                                            ?>
-                                            <tr>
-                                                <td><?php _e( $details_abc ) ?></td>
-                                                <td><span class="sucuriscan-monospace"><?php _e( $details_xyz ) ?></span></td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    <?php endif; ?>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                            <?php if ( isset($res['SYSTEM']['NOTICE']) ): ?>
-                                <?php foreach ( $res['SYSTEM']['NOTICE'] as $j => $notice ): ?>
-                                    <?php if ( is_array( $notice ) ) { $notice = implode( ', ', $notice ); } ?>
-                                    <tr>
-                                        <td colspan="2">
-                                            <span class="sucuriscan-monospace"><?php _e( $notice ) ?></span>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                            <?php if ( ! isset($res['WEBAPP']) && ! isset($res['SYSTEM']['NOTICE']) ): ?>
-                                <tr>
-                                    <td colspan="2"><em>No more information was found.</em></td>
-                                </tr>
-                            <?php endif; ?>
-                            <!-- Possible recommendations or outdated software on the site. -->
-                            <?php if ( $outdated_warns_exist || $recommendations_exist ): ?>
-                                <tr>
-                                    <th colspan="2">Recommendations for the site</th>
-                                </tr>
-                            <?php endif; ?>
-                            <!-- Possible outdated software on the site. -->
-                            <?php if ( $outdated_warns_exist ): ?>
-                                <?php foreach ( $res['OUTDATEDSCAN'] as $outdated ): ?>
-                                    <?php if ( count( $outdated ) >= 3 ): ?>
-                                        <tr>
-                                            <td colspan="2" class="sucuriscan-border-bad">
-                                                <strong><?php _e( $outdated[0] ) ?></strong>
-                                                <em>(<?php _e( $outdated[2] ) ?>)</em>
-                                                <span><?php _e( $outdated[1] ) ?></span>
-                                            </td>
-                                        </tr>
-                                    <?php endif; ?>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                            <!-- Possible recommendations for the site. -->
-                            <?php if ( $recommendations_exist ): ?>
-                                <?php foreach ( $res['RECOMMENDATIONS'] as $recommendation ): ?>
-                                    <?php if ( count( $recommendation ) >= 3 ): ?>
-                                        <tr>
-                                            <td colspan="2" class="sucuriscan-border-bad">
-                                                <?php
-                                                printf(
-                                                    '<strong>%s</strong><br><span>%s</span><br><a href="%s" target="_blank">%s</a>',
-                                                    SucuriScan::escape( $recommendation[0] ),
-                                                    SucuriScan::escape( $recommendation[1] ),
-                                                    SucuriScan::escape( $recommendation[2] ),
-                                                    SucuriScan::escape( $recommendation[2] )
-                                                );
-                                                ?>
-                                            </td>
-                                        </tr>
-                                    <?php endif; ?>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
+    return $template_variables;
+}
 
-                <div id="sucuriscan-website-links">
-                    <table class="wp-list-table widefat sucuriscan-table sucuriscan-scanner-links">
-                        <tbody>
-                            <?php if ( isset($res['LINKS']) ): ?>
-                                <?php foreach ( $possible_url_keys as $result_url_key => $result_url_title ): ?>
-                                    <?php if ( isset($res['LINKS'][ $result_url_key ]) ): ?>
-                                        <tr>
-                                            <th colspan="2">
-                                                <?php
-                                                printf(
-                                                    '%s (%d found)',
-                                                    __( $result_url_title ),
-                                                    count( $res['LINKS'][ $result_url_key ] )
-                                                );
-                                                ?>
-                                            </th>
-                                        </tr>
-                                        <?php foreach ( $res['LINKS'][ $result_url_key ] as $url_path ): ?>
-                                            <tr>
-                                                <td colspan="2">
-                                                    <span class="sucuriscan-monospace sucuriscan-wraptext"><?php _e( $url_path ) ?></span>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    <?php endif; ?>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <tr>
-                                    <td><em>No iFrames, links, or script files were found.</em></td>
-                                </tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
+/**
+ * Process the data returned from the results of a SiteCheck scan and generate
+ * the HTML code to display the information in the malware scan page inside the
+ * website details tab.
+ *
+ * @param  array $scan_results       Array with information of the scanning.
+ * @param  array $template_variables Array with psuedo-variables to build the template.
+ * @return array                     Array with psuedo-variables to build the template including extra information.
+ */
+function sucuriscan_sitecheck_website_details( $scan_results = false, $template_variables = array() ){
+    $secvars = array(
+        'UpdateWebsiteButtonVisibility' => 'hidden',
+        'VersionNumberOfTheUpdate' => '0.0',
+        'AdminUrlForUpdates' => admin_url( 'update-core.php' ),
+        'GenericInformationList' => '',
+        'NoAppDetailsVisibility' => 'visible',
+        'ApplicationDetailsList' => '',
+        'SystemNoticeList' => '',
+        'OutdatedSoftwareList' => '',
+        'HasRecommendationsVisibility' => 'hidden',
+        'SecurityRecomendationList' => '',
+    );
 
-                <div id="sucuriscan-blacklist-status">
-                    <table class="wp-list-table widefat sucuriscan-table sucuriscan-scanner-details">
-                        <thead>
-                            <tr>
-                                <th colspan="3" class="thead-with-button">
-                                    <span>Site <?php echo $blacklist_warns_exist ? 'blacklisted' : 'blacklist-free'; ?></span>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php
-                            $blacklist_types = array( 'INFO' => 'CLEAN', 'WARN' => 'WARNING' );
-                            foreach ( $blacklist_types as $type => $group_title ):
-                            ?>
-                                <?php if ( isset($res['BLACKLIST'][ $type ]) ): ?>
-                                    <?php foreach ( $res['BLACKLIST'][ $type ] as $blres ): ?>
-                                        <?php
-                                        $report_site = SucuriScan::escape( $blres[0] );
-                                        $report_url = SucuriScan::escape( $blres[1] );
-                                        $css_blacklist = ( $type == 'INFO' ) ? 'success' : 'danger';
-                                        ?>
-                                        <tr>
-                                            <td>
-                                                <span class="sucuriscan-label sucuriscan-label-<?php _e( $css_blacklist ); ?>">
-                                                    <?php _e( $group_title ); ?>
-                                                </span>
-                                            </td>
-                                            <td><?php _e( $report_site ); ?></td>
-                                            <td>
-                                                <a href="<?php _e( $report_url ); ?>" target="_blank">More details</a>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
+    // Check whether this WordPress installation needs an update.
+    if ( function_exists( 'get_core_updates' ) ) {
+        $site_updates = get_core_updates();
 
-                <div id="sucuriscan-modified-files">
-                    <?php echo sucuriscan_modified_files(); ?>
-                </div>
+        if (
+            ! is_array( $site_updates )
+            || empty($site_updates)
+            || $site_updates[0]->response == 'latest'
+        ) {
+            $secvars['VersionNumberOfTheUpdate'] = $site_updates[0]->version;
+        }
+    }
 
-            </div>
-        </div>
-        <?php if ( $malware_warns_exist || $blacklist_warns_exist ): ?>
-            <a href="http://sucuri.net/signup/" target="_blank" class="button button-primary button-hero sucuriscan-cleanup-btn">
-                Get your site protected with Sucuri
-            </a>
-        <?php endif; ?>
-    <?php endif; ?>
+    if (
+        isset($scan_results['OUTDATEDSCAN'])
+        || isset($scan_results['RECOMMENDATIONS'])
+    ) {
+        $template_variables['WebsiteDetails.CssClass'] = 'sucuriscan-red-tab';
+    }
 
-    <?php
-    $_html = ob_get_contents();
-    ob_end_clean();
-    echo SucuriScanTemplate::get_base_template($_html, array(
-        'PageTitle' => 'Malware Scan',
-        'PageContent' => $_html,
-        'PageStyleClass' => 'scanner-results',
-    ));
-    return;
+    $secvars = sucuriscan_sitecheck_general_information( $scan_results, $secvars );
+    $secvars = sucuriscan_sitecheck_application_details( $scan_results, $secvars );
+    $secvars = sucuriscan_sitecheck_system_notices( $scan_results, $secvars );
+    $secvars = sucuriscan_sitecheck_outdated_software( $scan_results, $secvars );
+    $secvars = sucuriscan_sitecheck_recommendations( $scan_results, $secvars );
+
+    $template_variables['WebsiteDetails.Content'] = SucuriScanTemplate::get_section( 'malwarescan-reswebdetails', $secvars );
+
+    return $template_variables;
+}
+
+/**
+ * Process the data returned from the results of a SiteCheck scan and generate
+ * the HTML code to display the information in the malware scan page inside the
+ * website details tab and specifically in the general information panel.
+ *
+ * @param  array $scan_results       Array with information of the scanning.
+ * @param  array $template_variables Array with psuedo-variables to build the template.
+ * @return array                     Array with psuedo-variables to build the template including extra information.
+ */
+function sucuriscan_sitecheck_general_information( $scan_results = false, $secvars = array() ){
+    $possible_keys = array(
+        'DOMAIN' => 'Domain Scanned',
+        'IP' => 'Site IP Address',
+        'HOSTING' => 'Hosting Company',
+        'CMS' => 'CMS Found',
+        'WP_VERSION' => 'WordPress Version',
+        'PHP_VERSION' => 'PHP Version',
+    );
+
+    if ( isset($scan_results['SCAN']) ) {
+        $scan_results['SCAN']['WP_VERSION'] = array( SucuriScan::site_version() );
+        $scan_results['SCAN']['PHP_VERSION'] = array( phpversion() );
+
+        foreach ( $possible_keys as $result_key => $result_title ) {
+            if ( isset($scan_results['SCAN'][ $result_key ]) ) {
+                $result_value = implode( ', ', $scan_results['SCAN'][ $result_key ] );
+
+                $secvars['GenericInformationList'] .= SucuriScanTemplate::get_snippet( 'malwarescan-appdetail', array(
+                    'InformationTitle' => SucuriScan::escape( $result_title ),
+                    'InformationValue' => SucuriScan::escape( $result_value ),
+                ) );
+            }
+        }
+    }
+
+    return $secvars;
+}
+
+/**
+ * Process the data returned from the results of a SiteCheck scan and generate
+ * the HTML code to display the information in the malware scan page inside the
+ * website details tab and specifically in the application details panel.
+ *
+ * @param  array $scan_results       Array with information of the scanning.
+ * @param  array $template_variables Array with psuedo-variables to build the template.
+ * @return array                     Array with psuedo-variables to build the template including extra information.
+ */
+function sucuriscan_sitecheck_application_details( $scan_results = false, $secvars = array() ){
+    if ( isset($scan_results['WEBAPP']) ) {
+        foreach ( $scan_results['WEBAPP'] as $webapp_key => $webapp_details ) {
+            if ( is_array( $webapp_details ) ) {
+                foreach ( $webapp_details as $i => $details ) {
+                    $secvars['NoAppDetailsVisibility'] = 'hidden';
+
+                    if ( is_array( $details ) ) {
+                        $details = isset($details[0]) ? $details[0] : '';
+                    }
+
+                    $details_parts = explode( ':', $details, 2 );
+                    $result_title = isset($details_parts[0]) ? trim( $details_parts[0] ) : '';
+                    $result_value = isset($details_parts[1]) ? trim( $details_parts[1] ) : '';
+
+                    $secvars['ApplicationDetailsList'] .= SucuriScanTemplate::get_snippet( 'malwarescan-appdetail', array(
+                        'InformationTitle' => SucuriScan::escape( $result_title ),
+                        'InformationValue' => SucuriScan::escape( $result_value ),
+                    ) );
+                }
+            }
+        }
+    }
+
+    return $secvars;
+}
+
+/**
+ * Process the data returned from the results of a SiteCheck scan and generate
+ * the HTML code to display the information in the malware scan page inside the
+ * website details tab and specifically in the system notices panel.
+ *
+ * @param  array $scan_results       Array with information of the scanning.
+ * @param  array $template_variables Array with psuedo-variables to build the template.
+ * @return array                     Array with psuedo-variables to build the template including extra information.
+ */
+function sucuriscan_sitecheck_system_notices( $scan_results = false, $secvars = array() ){
+    if ( isset($scan_results['SYSTEM']['NOTICE']) ) {
+        foreach ( $scan_results['SYSTEM']['NOTICE'] as $notice ) {
+            $secvars['NoAppDetailsVisibility'] = 'hidden';
+
+            if ( is_array( $notice ) ) {
+                $notice = implode( ', ', $notice );
+            }
+
+            $secvars['SystemNoticeList'] .= SucuriScanTemplate::get_snippet( 'malwarescan-sysnotice', array(
+                'SystemNotice' => SucuriScan::escape( $notice ),
+            ) );
+        }
+    }
+
+    return $secvars;
+}
+
+/**
+ * Process the data returned from the results of a SiteCheck scan and generate
+ * the HTML code to display the information in the malware scan page inside the
+ * website details tab and specifically in the outdated software panel.
+ *
+ * @param  array $scan_results       Array with information of the scanning.
+ * @param  array $template_variables Array with psuedo-variables to build the template.
+ * @return array                     Array with psuedo-variables to build the template including extra information.
+ */
+function sucuriscan_sitecheck_outdated_software( $scan_results = false, $secvars = array() ){
+    if ( isset($scan_results['OUTDATEDSCAN']) ) {
+        foreach ( $scan_results['OUTDATEDSCAN'] as $outdated ) {
+            if ( count( $outdated ) >= 3 ) {
+                $secvars['HasRecommendationsVisibility'] = 'visible';
+                $secvars['OutdatedSoftwareList'] .= SucuriScanTemplate::get_snippet( 'malwarescan-outdated', array(
+                    'OutdatedSoftwareTitle' => SucuriScan::escape( $outdated[0] ),
+                    'OutdatedSoftwareUrl' => $outdated[1],
+                    'OutdatedSoftwareValue' => SucuriScan::escape( $outdated[2] ),
+                ) );
+            }
+        }
+    }
+
+    return $secvars;
+}
+
+/**
+ * Process the data returned from the results of a SiteCheck scan and generate
+ * the HTML code to display the information in the malware scan page inside the
+ * website details tab and specifically in the security recommendations panel.
+ *
+ * @param  array $scan_results       Array with information of the scanning.
+ * @param  array $template_variables Array with psuedo-variables to build the template.
+ * @return array                     Array with psuedo-variables to build the template including extra information.
+ */
+function sucuriscan_sitecheck_recommendations( $scan_results = false, $secvars = array() ){
+    if ( isset($scan_results['RECOMMENDATIONS']) ) {
+        foreach ( $scan_results['RECOMMENDATIONS'] as $recommendation ) {
+            if ( count( $recommendation ) >= 3 ) {
+                $secvars['HasRecommendationsVisibility'] = 'visible';
+                $secvars['SecurityRecomendationList'] .= SucuriScanTemplate::get_snippet( 'malwarescan-recommendation', array(
+                    'RecommendationTitle' => SucuriScan::escape( $recommendation[0] ),
+                    'RecommendationValue' => SucuriScan::escape( $recommendation[1] ),
+                    'RecommendationUrl' => SucuriScan::escape( $recommendation[2] ),
+                    'RecommendationUrlTitle' => SucuriScan::escape( $recommendation[2] ),
+                ) );
+            }
+        }
+    }
+
+    return $secvars;
+}
+
+/**
+ * Process the data returned from the results of a SiteCheck scan and generate
+ * the HTML code to display the information in the malware scan page inside the
+ * website links tab.
+ *
+ * @param  array $scan_results       Array with information of the scanning.
+ * @param  array $template_variables Array with psuedo-variables to build the template.
+ * @return array                     Array with psuedo-variables to build the template including extra information.
+ */
+function sucuriscan_sitecheck_website_links( $scan_results = false, $template_variables = array() ){
+    $possible_url_keys = array(
+        'IFRAME' => 'List of iframes found',
+        'JSEXTERNAL' => 'List of external scripts included',
+        'JSLOCAL' => 'List of scripts included',
+        'URL' => 'List of links found',
+    );
+    $secvars = array(
+        'WebsiteLinksAllList' => '',
+        'NoLinksVisibility' => 'hidden',
+    );
+
+    if ( isset($scan_results['LINKS']) ) {
+        foreach ( $possible_url_keys as $result_key => $result_title ) {
+            if ( isset($scan_results['LINKS'][ $result_key ]) ) {
+                $result_value = 0;
+                $result_items = '';
+
+                foreach ( $scan_results['LINKS'][ $result_key ] as $url_path ) {
+                    $result_value += 1;
+                    $result_items .= SucuriScanTemplate::get_snippet( 'malwarescan-weblinkitems', array(
+                        'WebsiteLinksItemTitle' => SucuriScan::escape( $url_path ),
+                    ) );
+                }
+
+                $secvars['WebsiteLinksAllList'] .= SucuriScanTemplate::get_snippet( 'malwarescan-weblinktitle', array(
+                    'WebsiteLinksSectionTitle' => SucuriScan::escape( $result_title ),
+                    'WebsiteLinksSectionTotal' => SucuriScan::escape( $result_value ),
+                    'WebsiteLinksSectionItems' => $result_items,
+                ) );
+            }
+        }
+    } else {
+        $secvars['NoLinksVisibility'] = 'visible';
+    }
+
+    $template_variables['WebsiteLinks.Content'] = SucuriScanTemplate::get_section( 'malwarescan-resweblinks', $secvars );
+
+    return $template_variables;
+}
+
+/**
+ * Process the data returned from the results of a SiteCheck scan and generate
+ * the HTML code to display the information in the malware scan page inside the
+ * blacklist status tab.
+ *
+ * @param  array $scan_results       Array with information of the scanning.
+ * @param  array $template_variables Array with psuedo-variables to build the template.
+ * @return array                     Array with psuedo-variables to build the template including extra information.
+ */
+function sucuriscan_sitecheck_blacklist_status( $scan_results = false, $template_variables = array() ){
+    $blacklist_types = array(
+        'INFO' => 'CLEAN',
+        'WARN' => 'WARNING',
+    );
+    $secvars = array(
+        'BlacklistStatusTitle' => 'Site blacklist-free',
+        'BlacklistStatusList' => '',
+    );
+
+    if ( isset($scan_results['BLACKLIST']['WARN']) ) {
+        $template_variables['BlacklistStatusTitle'] = 'Site blacklisted';
+        $template_variables['BlacklistStatus.CssClass'] = 'sucuriscan-red-tab';
+    }
+
+    foreach ( $blacklist_types as $type => $group_title ) {
+        if ( isset($scan_results['BLACKLIST'][ $type ]) ) {
+            foreach ( $scan_results['BLACKLIST'][ $type ] as $blres ) {
+                $css_blacklist = ( $type == 'INFO' ) ? 'success' : 'danger';
+
+                $secvars['BlacklistStatusList'] .= SucuriScanTemplate::get_snippet( 'malwarescan-resblacklist', array(
+                    'BlacklistStatusCssClass' => $css_blacklist,
+                    'BlacklistStatusGroupTitle' => SucuriScan::escape( $group_title ),
+                    'BlacklistStatusReporterName' => SucuriScan::escape( $blres[0] ),
+                    'BlacklistStatusReporterUrl' => SucuriScan::escape( $blres[1] ),
+                ) );
+            }
+        }
+    }
+
+    $template_variables['BlacklistStatus.Content'] = SucuriScanTemplate::get_section( 'malwarescan-resblacklist', $secvars );
+
+    return $template_variables;
+}
+
+/**
+ * Process the data returned from the results of a SiteCheck scan and generate
+ * the HTML code to display the information in the malware scan page inside the
+ * modified files tab.
+ *
+ * @param  array $scan_results       Array with information of the scanning.
+ * @param  array $template_variables Array with psuedo-variables to build the template.
+ * @return array                     Array with psuedo-variables to build the template including extra information.
+ */
+function sucuriscan_sitecheck_modified_files( $scan_results = false, $template_variables = array() ){
+    $template_variables['ModifiedFiles.Content'] = sucuriscan_modified_files();
+
+    return $template_variables;
 }
 
 /**
