@@ -4145,7 +4145,7 @@ class SucuriScanAPI extends SucuriScanOption {
             if ( is_wp_error( $response ) ) {
                 SucuriScanInterface::error(sprintf(
                     'Something went wrong with an API call (%s action): %s',
-                    ( isset($params['a']) ? $params['a'] : 'unknown' ),
+                    ( isset($params['a']) ? self::escape( $params['a'] ) : 'unknown' ),
                     $response->get_error_message()
                 ));
             } else {
