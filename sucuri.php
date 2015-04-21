@@ -7568,13 +7568,22 @@ function sucuriscan_harden_upload(){
         }
     }
 
+    $description = 'It checks if the uploads directory of this site allows the direct execution'
+        . ' of PHP files. It is recommendable to prevent this because someone may try to exploit'
+        . ' a vulnerability of a plugin, theme, and/or other PHP-based code located in this'
+        . ' directory sending requests directory to these files.</p><p><b>Note:</b> Many plugins'
+        . ' and themes in the WordPress marketplace put <em>(insecure)</em> PHP files in this'
+        . ' folder for <em>"X"</em> or <em>"Y"</em> reasons, they may not want to change their'
+        . ' code to prevent security issues, so you will have to keep this option un-hardened'
+        . ' or else you will end up breaking their functionality.';
+
     return sucuriscan_harden_status(
         'Protect uploads directory',
         $cp,
         'sucuriscan_harden_upload',
         'Upload directory properly hardened',
         'Upload directory not hardened',
-        'It checks if your upload directory allows PHP execution or if it is browsable.',
+        $description,
         null
     );
 }
@@ -7641,12 +7650,19 @@ function sucuriscan_harden_wpcontent(){
         }
     }
 
-    $description = 'This option blocks direct PHP access to any file inside wp-content. If you experience '
-        . 'any issue after this with a theme or plugin in your site, like for example images not displaying, '
-        . 'remove the <code>.htaccess</code> file located in the content directory.'
-        . '</p><p><b>Note:</b> Many <em>(insecure)</em> themes and plugins use a PHP file in this directory '
-        . 'to generate images like thumbnails and captcha codes, this is intentional so it is recommended '
-        . 'to check your site once this option is enabled.';
+    $description = 'This option blocks direct access to any PHP file located under the content'
+        . ' directory of this site. The note under the <em>"Protect uploads directory"</em>'
+        . ' section also applies to this option so you may want to read that part too. If you'
+        . ' experience any kind of issues in your site after you apply this hardening go to the'
+        . ' content directory using a FTP client or a file manager <em>(generally available in'
+        . ' your hosting panel)</em> and rename a file named <code>.htaccess</code>.</p><p><b>'
+        . 'Note:</b> Apache/2.4 introduced new directives to configure the access level of'
+        . ' certain resources in the server, for instance the rules applied to harden these'
+        . ' directories will not work and will probably cause issues. We will not fix this'
+        . ' because there is no accurate way to determine the exact version number of Apache'
+        . ' installed in this server considering some security measures applied to its'
+        . ' configuration that will prevent the version number to be readable by PHP, proceed'
+        . ' with caution.';
 
     return sucuriscan_harden_status(
         'Restrict wp-content access',
