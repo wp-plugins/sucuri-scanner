@@ -8544,6 +8544,9 @@ function sucuriscan_core_files(){
  */
 function sucuriscan_check_core_integrity( $version = 0 ){
     $latest_hashes = SucuriScanAPI::get_official_checksums( $version );
+    $base_content_dir = defined( 'WP_CONTENT_DIR' )
+        ? basename( rtrim( WP_CONTENT_DIR, '/' ) )
+        : '';
 
     if ( ! $latest_hashes ) {
         return false;
@@ -8570,6 +8573,17 @@ function sucuriscan_check_core_integrity( $version = 0 ){
 
         $full_filepath = sprintf( '%s/%s', ABSPATH, $file_path );
 
+        // Patch for custom content directory path.
+        if (
+            ! file_exists( $full_filepath )
+            && strpos( $file_path, 'wp-content' ) !== false
+            && defined( 'WP_CONTENT_DIR' )
+        ) {
+            $file_path = str_replace( 'wp-content', $base_content_dir, $file_path );
+            $full_filepath = sprintf( '%s/%s', ABSPATH, $file_path );
+        }
+
+        // Check whether the official file exists or not.
         if ( file_exists( $full_filepath ) ) {
             $local_checksum = @md5_file( $full_filepath );
 
