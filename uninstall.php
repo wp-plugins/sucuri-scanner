@@ -12,8 +12,8 @@
  */
 
 if (
-	! defined( 'WP_UNINSTALL_PLUGIN' )
-	|| WP_UNINSTALL_PLUGIN != 'sucuri-scanner/sucuri.php'
+    ! defined( 'WP_UNINSTALL_PLUGIN' )
+    || WP_UNINSTALL_PLUGIN != 'sucuri-scanner/sucuri.php'
 ) {
     exit(0);
 }
@@ -81,28 +81,28 @@ $sucuriscan_option_names = array(
 $sucuriscan_storage_path = get_option( 'sucuriscan_datastore_path' );
 
 if (
-	$sucuriscan_storage_path !== false
-	&& file_exists( $sucuriscan_storage_path )
-	&& is_writable( $sucuriscan_storage_path )
-	&& is_dir( $sucuriscan_storage_path )
+    $sucuriscan_storage_path !== false
+    && file_exists( $sucuriscan_storage_path )
+    && is_writable( $sucuriscan_storage_path )
+    && is_dir( $sucuriscan_storage_path )
 ) {
-	@unlink( $sucuriscan_storage_path . '/.htaccess' );
-	@unlink( $sucuriscan_storage_path . '/index.html' );
-	@unlink( $sucuriscan_storage_path . '/sucuri-failedlogins.php' );
-	@unlink( $sucuriscan_storage_path . '/sucuri-ignorescanning.php' );
-	@unlink( $sucuriscan_storage_path . '/sucuri-integrity.php' );
-	@unlink( $sucuriscan_storage_path . '/sucuri-lastlogins.php' );
-	@unlink( $sucuriscan_storage_path . '/sucuri-oldfailedlogins.php' );
-	@unlink( $sucuriscan_storage_path . '/sucuri-plugindata.php' );
-	@unlink( $sucuriscan_storage_path . '/sucuri-sitecheck.php' );
-	@unlink( $sucuriscan_storage_path . '/sucuri-trustip.php' );
+    @unlink( $sucuriscan_storage_path . '/.htaccess' );
+    @unlink( $sucuriscan_storage_path . '/index.html' );
+    @unlink( $sucuriscan_storage_path . '/sucuri-failedlogins.php' );
+    @unlink( $sucuriscan_storage_path . '/sucuri-ignorescanning.php' );
+    @unlink( $sucuriscan_storage_path . '/sucuri-integrity.php' );
+    @unlink( $sucuriscan_storage_path . '/sucuri-lastlogins.php' );
+    @unlink( $sucuriscan_storage_path . '/sucuri-oldfailedlogins.php' );
+    @unlink( $sucuriscan_storage_path . '/sucuri-plugindata.php' );
+    @unlink( $sucuriscan_storage_path . '/sucuri-sitecheck.php' );
+    @unlink( $sucuriscan_storage_path . '/sucuri-trustip.php' );
 
-	@rmdir( $sucuriscan_storage_path );
+    @rmdir( $sucuriscan_storage_path );
 }
 
 foreach ( $sucuriscan_option_names as $option_name ) {
-	delete_option( 'sucuriscan_' . $option_name );
-	delete_site_option( 'sucuriscan_' . $option_name );
+    delete_option( 'sucuriscan_' . $option_name );
+    delete_site_option( 'sucuriscan_' . $option_name );
 }
 
 // EOF
