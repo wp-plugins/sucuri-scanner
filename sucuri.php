@@ -1966,6 +1966,11 @@ class SucuriScanCache extends SucuriScan {
             $folder_path = $this->datastore_folder_path();
             $file_path = $folder_path . 'sucuri-' . $this->datastore . '.php';
 
+            // Create the datastore parent directory.
+            if ( ! file_exists( $folder_path ) ) {
+                @mkdir( $folder_path, 0755, true );
+            }
+
             // Create the datastore file is it does not exists and the folder is writable.
             if (
                 ! file_exists( $file_path )
