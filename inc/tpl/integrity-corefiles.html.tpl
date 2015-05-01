@@ -24,10 +24,12 @@
                 <td colspan="4" class="sucuriscan-corefiles-warning">
                     <div>
                         <p>
-                            Changes in the integrity of your core files were detected. There are files that
-                            were added, modified, and/or removed in the core directories <code>/&lt;root&gt;</code>,
-                            <code>/wp-admin</code> and/or <code>/wp-includes</code>. You may want to check
-                            each file to determine if they were infected with malicious code.
+                            Changes in the integrity of your core files were detected, you may want to check
+                            each file to determine if they were infected with malicious code. The WordPress
+                            core directories <code>/&lt;root&gt;</code>, <code>/wp-admin</code> and <code>
+                            /wp-includes</code> are the only ones being scanned; the content, uploads, and
+                            custom directories are not part of the official archives so you have to check
+                            them manually.
                         </p>
                     </div>
                 </td>
