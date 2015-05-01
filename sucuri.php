@@ -1283,6 +1283,19 @@ class SucuriScanFileInfo extends SucuriScan {
     public $run_recursively = true;
 
     /**
+     * Whether the directory paths must be skipped or not.
+     *
+     * This is useful to retrieve the full list of resources inside a parent
+     * directory, one case where this option can be set as True is when a folder is
+     * required to be deleted recursively, considering that by default the folders
+     * are ignored and that a folder may be empty some times there could be issues
+     * because the deletion will not reach these resources.
+     *
+     * @var boolean
+     */
+    public $skip_directories = true;
+
+    /**
      * Class constructor.
      */
     public function __construct(){
@@ -1481,7 +1494,10 @@ class SucuriScanFileInfo extends SucuriScan {
         }
 
         foreach ( $objects as $filepath => $fileinfo ) {
-            if ( $fileinfo->isDir() ) {
+            if (
+                $this->skip_directories === true
+                && $fileinfo->isDir()
+            ) {
                 continue;
             }
 
@@ -1697,34 +1713,25 @@ class SucuriScanFileInfo extends SucuriScan {
      * @return boolean            TRUE if all the files and folder inside the directory were removed.
      */
     public function remove_directory_tree( $directory = '' ){
-        $all_removed = true;
         $dir_tree = $this->get_directory_tree( $directory );
 
         if ( $dir_tree ) {
             $dirs_only = array();
 
-            // Delete all the files and symbolic links.
+            // Include the parent directory as the first entry.
+            $dirs_only[] = $directory;
+
+            /**
+             * Delete all the files and symbolic links recursively and append the
+             * directories in a list to delete them later when we are sure that all files
+             * were successfully deleted, this is because PHP does not allows to delete non-
+             * empty folders.
+             */
             foreach ( $dir_tree as $filepath ) {
-                if (
-                    is_file( $filepath )
-                    || is_link( $filepath )
-                ) {
-                    if ( @unlink( $filepath ) ) {
-                        /**
-                         * This is redundant but necessary.
-                         *
-                         * When a directory is scanned you could get a list of files and directory names
-                         * in the same list, so the directories do not enter in this conditional and get
-                         * deleted correctly by the code following this section. Unfortunately this may
-                         * not be always like this, so to prevent failures it is better to keep track of
-                         * the directories manually and delete them later.
-                         */
-                        $dirs_only[] = dirname( $filepath );
-                    } else {
-                        $all_removed = false;
-                    }
-                } elseif ( is_dir( $filepath ) ) {
+                if ( is_dir( $filepath ) ) {
                     $dirs_only[] = $filepath;
+                } else {
+                    @unlink( $filepath );
                 }
             }
 
@@ -1749,9 +1756,11 @@ class SucuriScanFileInfo extends SucuriScan {
             foreach ( $dirs_only as $dir_path ) {
                 @rmdir( $dir_path );
             }
+
+            return true;
         }
 
-        return $all_removed;
+        return false;
     }
 
     /**
@@ -9051,6 +9060,7 @@ function sucuriscan_posthack_reinstall_plugins( $process_form = false ){
             $sucuri_fileinfo = new SucuriScanFileInfo();
             $sucuri_fileinfo->ignore_files = false;
             $sucuri_fileinfo->ignore_directories = false;
+            $sucuri_fileinfo->skip_directories = false;
 
             // Get (possible) cached information from the installed plugins.
             $all_plugins = SucuriScanAPI::get_plugins();
