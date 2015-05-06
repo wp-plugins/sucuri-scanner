@@ -1494,19 +1494,22 @@ class SucuriScanFileInfo extends SucuriScan {
         }
 
         foreach ( $objects as $filepath => $fileinfo ) {
+            $filename = $fileinfo->getFilename();
+
             if (
-                $this->skip_directories === true
-                && $fileinfo->isDir()
+                $this->ignore_folderpath( null, $filename )
+                || (
+                    $this->skip_directories === true
+                    && $fileinfo->isDir()
+                )
             ) {
                 continue;
             }
 
             if ( $this->run_recursively ) {
                 $directory = dirname( $filepath );
-                $filename = $fileinfo->getFilename();
             } else {
                 $directory = $fileinfo->getPath();
-                $filename = $fileinfo->getFilename();
                 $filepath = $directory . '/' . $filename;
             }
 
@@ -1533,9 +1536,8 @@ class SucuriScanFileInfo extends SucuriScan {
      */
     private function get_directory_tree_with_glob( $directory = '' ){
         $files = array();
-
-        $directory_pattern = sprintf( '%s/*', rtrim( $directory,'/' ) );
-        $files_found = glob( $directory_pattern );
+        $directory_pattern = sprintf( '%s/*', rtrim( $directory, '/' ) );
+        $files_found = @glob( $directory_pattern );
 
         if ( is_array( $files_found ) ) {
             foreach ( $files_found as $filepath ) {
@@ -1637,7 +1639,10 @@ class SucuriScanFileInfo extends SucuriScan {
             // Ignore directories specified by the administrator.
             if ( ! empty($this->ignored_directories) ) {
                 foreach ( $this->ignored_directories['directories'] as $ignored_dir ) {
-                    if ( strpos( $directory, $ignored_dir ) !== false ) {
+                    if (
+                        strpos( $directory, $ignored_dir ) !== false
+                        || strpos( $filepath, $ignored_dir ) !== false
+                    ) {
                         return true;
                     }
                 }
