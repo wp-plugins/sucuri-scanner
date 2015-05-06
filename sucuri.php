@@ -5027,12 +5027,18 @@ class SucuriScanAPI extends SucuriScanOption {
             // Complement the plugin's information with these attributes.
             $plugins[ $plugin_path ]['Repository'] = $repository;
             $plugins[ $plugin_path ]['RepositoryName'] = $repository_name;
+            $plugins[ $plugin_path ]['InstallationPath'] = sprintf( '%s/%s', WP_PLUGIN_DIR, $repository_name );
             $plugins[ $plugin_path ]['IsFreePlugin'] = $is_free_plugin;
             $plugins[ $plugin_path ]['PluginType'] = ( $is_free_plugin ? 'free' : 'premium' );
             $plugins[ $plugin_path ]['IsPluginActive'] = false;
+            $plugins[ $plugin_path ]['IsPluginInstalled'] = false;
 
             if ( is_plugin_active( $plugin_path ) ) {
                 $plugins[ $plugin_path ]['IsPluginActive'] = true;
+            }
+
+            if ( is_dir( $plugins[ $plugin_path ]['InstallationPath'] ) ) {
+                $plugins[ $plugin_path ]['IsPluginInstalled'] = true;
             }
         }
 
@@ -9015,7 +9021,13 @@ function sucuriscan_reset_user_password( $process_form = false ){
 function sucuriscan_posthack_plugins( $process_form = false ){
     $template_variables = array(
         'ResetPlugin.PluginList' => '',
+        'ResetPlugin.CacheLifeTime' => 'unknown',
     );
+
+
+    if ( defined( 'SUCURISCAN_GET_PLUGINS_LIFETIME' ) ) {
+        $template_variables['ResetPlugin.CacheLifeTime'] = SUCURISCAN_GET_PLUGINS_LIFETIME;
+    }
 
     sucuriscan_posthack_reinstall_plugins( $process_form );
     $all_plugins = SucuriScanAPI::get_plugins();

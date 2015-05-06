@@ -15,6 +15,15 @@
                     <strong>premium plugins will not be re-installed</strong>.
                 </p>
 
+                <div class="sucuriscan-inline-alert-info">
+                    <p>
+                        The information shown here is cache for %%SUCURI.ResetPlugin.CacheLifeTime%%
+                        seconds, this is necessary to reduce the quantity of HTTP requests sent to the
+                        WordPress servers and the bandwidth of your site. Currently there is no option
+                        to recreate this cache so you have to wait until it resets itself.
+                    </p>
+                </div>
+
                 <table class="wp-list-table widefat sucuriscan-table">
                     <thead>
                         <tr>
