@@ -14,14 +14,14 @@
     <table class="wp-list-table widefat sucuriscan-table sucuriscan-corefiles sucuriscan-%%SUCURI.CoreFiles.BadVisibility%%">
         <thead>
             <tr>
-                <th colspan="4" class="sucuriscan-clearfix thead-with-button">
+                <th colspan="5" class="sucuriscan-clearfix thead-with-button">
                     <span>Core integrity (%%SUCURI.CoreFiles.ListCount%% files)</span>
                     <button id="sucuriscan-corefiles-show" class="button button-primary thead-topright-action" data-action="show">Show files</button>
                 </th>
             </tr>
 
             <tr>
-                <td colspan="4" class="sucuriscan-corefiles-warning">
+                <td colspan="5" class="sucuriscan-corefiles-warning">
                     <div>
                         <p>
                             Changes in the integrity of your core files were detected, you may want to check
@@ -42,6 +42,7 @@
                 </th>
                 <th width="80" class="manage-column">Status</th>
                 <th width="100" class="manage-column">File Size</th>
+                <th width="170" class="manage-column">Modified At</th>
                 <th class="manage-column">File Path</th>
             </tr>
         </thead>
@@ -52,7 +53,7 @@
 
         <tfoot>
             <tr>
-                <td colspan="4">
+                <td colspan="5">
                     <p>
                         The action to restore the content of a file will only work with files that were
                         <b>modified</b> or <b>removed</b>, for files that were <b>added</b> you must

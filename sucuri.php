@@ -8522,7 +8522,8 @@ function sucuriscan_core_files(){
                     continue;
                 }
 
-                foreach ( $file_list as $file_path ) {
+                foreach ( $file_list as $file_info ) {
+                    $file_path = $file_info['filepath'];
                     $full_filepath = sprintf( '%s/%s', rtrim( ABSPATH, '/' ), $file_path );
 
                     // Skip files that were marked as fixed.
@@ -8545,6 +8546,7 @@ function sucuriscan_core_files(){
                         'CoreFiles.FileSize' => $file_size,
                         'CoreFiles.FileSizeHuman' => SucuriScan::human_filesize( $file_size ),
                         'CoreFiles.FileSizeNumber' => number_format( $file_size ),
+                        'CoreFiles.ModifiedAt' => SucuriScan::datetime( $file_info['modified_at'] ),
                     ));
                     $counter += 1;
                 }
@@ -8616,20 +8618,33 @@ function sucuriscan_check_core_integrity( $version = 0 ){
             && defined( 'WP_CONTENT_DIR' )
         ) {
             $file_path = str_replace( 'wp-content', $base_content_dir, $file_path );
-            $full_filepath = sprintf( '%s/%s', ABSPATH, $file_path );
+            $full_filepath = ABSPATH . '/' . $file_path;
         }
 
         // Check whether the official file exists or not.
         if ( file_exists( $full_filepath ) ) {
             $local_checksum = @md5_file( $full_filepath );
 
-            if ( $local_checksum && $local_checksum == $remote_checksum ) {
-                $output['stable'][] = $file_path;
+            if (
+                $local_checksum !== false
+                && $local_checksum === $remote_checksum
+            ) {
+                $output['stable'][] = array(
+                    'filepath' => $file_path,
+                    'modified_at' => 0,
+                );
             } else {
-                $output['modified'][] = $file_path;
+                $modified_at = @filemtime( $full_filepath );
+                $output['modified'][] = array(
+                    'filepath' => $file_path,
+                    'modified_at' => $modified_at,
+                );
             }
         } else {
-            $output['removed'][] = $file_path;
+            $output['removed'][] = array(
+                'filepath' => $file_path,
+                'modified_at' => 0,
+            );
         }
     }
 
@@ -8642,8 +8657,13 @@ function sucuriscan_check_core_integrity( $version = 0 ){
             continue;
         }
 
-        if ( ! isset($latest_hashes[ $file_path ]) ) {
-            $output['added'][] = $file_path;
+        if ( ! array_key_exists( $file_path, $latest_hashes ) ) {
+            $full_filepath = ABSPATH . '/' . $file_path;
+            $modified_at = @filemtime( $full_filepath );
+            $output['added'][] = array(
+                'filepath' => $file_path,
+                'modified_at' => $modified_at,
+            );
         }
     }
 
