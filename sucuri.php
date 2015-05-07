@@ -4367,8 +4367,19 @@ class SucuriScanAPI extends SucuriScanOption {
                     } else {
                         $action_message = 'Unknown error, there is no more information.';
 
+                        // Check whether the message list is empty or not.
                         if ( isset($response['body']->messages[0]) ) {
                             $action_message = $response['body']->messages[0];
+                        }
+
+                        // Special response for invalid API keys.
+                        if ( strpos( $action_message, 'Log file not found' ) !== false ) {
+                            SucuriScanOption::delete_option( ':api_key' );
+
+                            $action_message .= ' This generally happens when you add an invalid API key, the'
+                                . ' key will be deleted automatically to hide these warnings, if you want to'
+                                . ' recover it go to the settings page and use the recover button to send the'
+                                . ' key to your email address.';
                         }
 
                         SucuriScanInterface::error( ucwords( $response['body']->action ) . ': ' . $action_message );
