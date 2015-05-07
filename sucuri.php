@@ -8458,27 +8458,32 @@ function sucuriscan_wordpress_outdated(){
 
     $template_variables = array(
         'WordPress.Version' => $site_version,
-        'WordPress.UpgradeURL' => admin_url( 'update-core.php' ),
+        'WordPress.NewVersion' => '0.0.0',
+        'WordPress.NewLocale' => 'default',
+        'WordPress.UpdateURL' => admin_url( 'update-core.php' ),
+        'WordPress.DownloadURL' => '#',
         'WordPress.UpdateVisibility' => 'hidden',
-        'WordPressBeta.Visibility' => 'hidden',
-        'WordPressBeta.Version' => '0.0.0',
-        'WordPressBeta.UpdateURL' => admin_url( 'update-core.php' ),
-        'WordPressBeta.DownloadURL' => '#',
     );
 
-    if ( isset($updates[0]) && $updates[0] instanceof stdClass ) {
-        if ( $updates[0]->response == 'latest' ) {
-            $cp = 1;
-        } elseif ( $updates[0]->response == 'development' ) {
-            $cp = 1;
-            $template_variables['WordPressBeta.Visibility'] = 'visible';
-            $template_variables['WordPressBeta.Version'] = $updates[0]->version;
-            $template_variables['WordPressBeta.DownloadURL'] = $updates[0]->download;
-        }
-    }
+    if (
+        isset($updates[0])
+        && $updates[0] instanceof stdClass
+        && property_exists( $updates[0], 'version' )
+        && property_exists( $updates[0], 'download' )
+    ) {
+        $template_variables['WordPress.NewVersion'] = $updates[0]->version;
+        $template_variables['WordPress.DownloadURL'] = $updates[0]->download;
 
-    if ( strcmp( $site_version, '3.7' ) < 0 ) {
-        $cp = 0;
+        if ( property_exists( $updates[0], 'locale' ) ) {
+            $template_variables['WordPress.NewLocale'] = $updates[0]->locale;
+        }
+
+        if (
+            $updates[0]->response == 'latest'
+            || $updates[0]->response == 'development'
+        ) {
+            $cp = 1;
+        }
     }
 
     if ( $cp == 0 ) {
