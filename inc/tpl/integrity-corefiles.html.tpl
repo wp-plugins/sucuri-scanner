@@ -55,11 +55,12 @@
             <tr>
                 <td colspan="5">
                     <p>
-                        The action to restore the content of a file will only work with files that were
-                        <b>modified</b> or <b>removed</b>, for files that were <b>added</b> you must
-                        either remove or mark as fixed. Files marked as <b>fixed</b> will always be
-                        ignored from the integrity checks, an attacker can use this option to hide a
-                        malicious file, so always check what files are being ignored.
+                        <strong>Note.</strong> This is not a malware scanner but an integrity checker
+                        which is a completely different thing, if you want to check if your site is
+                        generating malicious code then use the <a href="%%SUCURI.URL.Scanner%%">malware
+                        scan</a> tool. If you see the text <em>"must be fixed manually"</em> in any of
+                        these files that means that they do not have write permissions so you can not
+                        fix them using this tool.
                     </p>
 
                     <label>

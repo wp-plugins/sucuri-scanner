@@ -8536,9 +8536,20 @@ function sucuriscan_core_files(){
                         }
                     }
 
-                    // Generate the HTML code from the snippet template for this file.
+                    // Add extra information to the file list.
                     $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
                     $file_size = @filesize( $full_filepath );
+                    $is_fixable_html = '';
+                    $is_fixable_text = '';
+
+                    // Check whether the file can be fixed automatically or not.
+                    if ( $file_info['is_fixable'] !== true ) {
+                        $css_class .= ' sucuriscan-opacity';
+                        $is_fixable_html = 'disabled="disbled"';
+                        $is_fixable_text = '(must be fixed manually)';
+                    }
+
+                    // Generate the HTML code from the snippet template for this file.
                     $template_variables['CoreFiles.List'] .= SucuriScanTemplate::get_snippet('integrity-corefiles', array(
                         'CoreFiles.CssClass' => $css_class,
                         'CoreFiles.StatusType' => $list_type,
@@ -8547,6 +8558,8 @@ function sucuriscan_core_files(){
                         'CoreFiles.FileSizeHuman' => SucuriScan::human_filesize( $file_size ),
                         'CoreFiles.FileSizeNumber' => number_format( $file_size ),
                         'CoreFiles.ModifiedAt' => SucuriScan::datetime( $file_info['modified_at'] ),
+                        'CoreFiles.IsFixtableFile' => $is_fixable_html,
+                        'CoreFiles.IsNotFixable' => $is_fixable_text,
                     ));
                     $counter += 1;
                 }
@@ -8631,18 +8644,23 @@ function sucuriscan_check_core_integrity( $version = 0 ){
             ) {
                 $output['stable'][] = array(
                     'filepath' => $file_path,
+                    'is_fixable' => false,
                     'modified_at' => 0,
                 );
             } else {
                 $modified_at = @filemtime( $full_filepath );
+                $is_fixable = (bool) is_writable( $full_filepath );
                 $output['modified'][] = array(
                     'filepath' => $file_path,
+                    'is_fixable' => $is_fixable,
                     'modified_at' => $modified_at,
                 );
             }
         } else {
+            $is_fixable = is_writable( dirname( $full_filepath ) );
             $output['removed'][] = array(
                 'filepath' => $file_path,
+                'is_fixable' => $is_fixable,
                 'modified_at' => 0,
             );
         }
@@ -8660,8 +8678,10 @@ function sucuriscan_check_core_integrity( $version = 0 ){
         if ( ! array_key_exists( $file_path, $latest_hashes ) ) {
             $full_filepath = ABSPATH . '/' . $file_path;
             $modified_at = @filemtime( $full_filepath );
+            $is_fixable = (bool) is_writable( $full_filepath );
             $output['added'][] = array(
                 'filepath' => $file_path,
+                'is_fixable' => $is_fixable,
                 'modified_at' => $modified_at,
             );
         }

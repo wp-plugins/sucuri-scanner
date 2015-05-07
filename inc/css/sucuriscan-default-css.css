@@ -9,6 +9,7 @@
 .sucuriscan-clearfix:after{clear:both}
 .sucuriscan-visible{}
 .sucuriscan-hidden{display:none !important}
+.sucuriscan-opacity{opacity:0.6}
 .sucuriscan-monospace{font-family:Monospace, Courier}
 .sucuriscan-ellipsis{overflow:hidden;display:inline-block;white-space:nowrap;text-overflow:ellipsis}
 .sucuriscan-wraptext{word-break:break-all}
