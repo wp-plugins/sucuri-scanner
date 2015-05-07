@@ -128,7 +128,7 @@
 /* Sidebar Antivirus Styles */
 .sucuriscan-ad-antivirus {background:#04833e;padding-bottom:0}
 .sucuriscan-ad-antivirus .sucuriscan-ad-website {display:block;text-decoration:none;margin-top:20px}
-.sucuriscan-ad-antivirus .sucuriscan-ad-website img {display:block}
+.sucuriscan-ad-antivirus .sucuriscan-ad-website img {display:block;max-width:100%}
 .sucuriscan-ad-antivirus .sucuriscan-ad-btn {
     background-color: #e8840a;
     background-image: -webkit-gradient(linear, left top, left bottom, from(#e8840a), to(#ef7f02));

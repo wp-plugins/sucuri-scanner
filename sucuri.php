@@ -4341,6 +4341,7 @@ class SucuriScanAPI extends SucuriScanOption {
         if ( $send_request ) {
             $url = SUCURISCAN_CLOUDPROXY_API;
             $params[ SUCURISCAN_CLOUDPROXY_API_VERSION ] = 1;
+            unset( $params['string'] );
 
             $response = self::api_call( $url, $method, $params );
 
