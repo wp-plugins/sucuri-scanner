@@ -4486,6 +4486,26 @@ class SucuriScanAPI extends SucuriScanOption {
     }
 
     /**
+     * Retrieve all the event logs registered by the API service.
+     *
+     * @return array The object with the data returned from the API service.
+     */
+    public static function get_all_logs(){
+        // Get the total number of lines in the logs.
+        $response = self::api_call_wordpress( 'GET', array(
+            'a' => 'get_logs',
+            'l' => 0,
+        ) );
+
+        // If success continue with the retrieval of the logs data.
+        if ( self::handle_response( $response ) ) {
+            return self::get_logs( $response['body']->total_entries );
+        }
+
+        return false;
+    }
+
+    /**
      * Retrieve the event logs registered by the API service.
      *
      * @param  integer $lines How many lines from the log file will be retrieved.
