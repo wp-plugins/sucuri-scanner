@@ -1877,6 +1877,24 @@ class SucuriScanFileInfo extends SucuriScan {
         return 0;
     }
 
+    /**
+     * Tells whether the filename is a directory, symbolic link, or file.
+     *
+     * @param  string $path Path to the file.
+     * @return string       Type of resource: dir, link, file.
+     */
+    public static function get_resource_type( $path = '' ){
+        if ( is_dir( $path ) ) {
+            return 'dir';
+        } elseif ( is_link( $path ) ) {
+            return 'link';
+        } elseif ( is_file( $path ) ) {
+            return 'file';
+        } else {
+            return 'unknown';
+        }
+    }
+
 }
 
 /**
