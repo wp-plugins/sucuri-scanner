@@ -45,7 +45,7 @@
                 <input type="submit" value="Generate New Security Keys" class="button button-primary" />
             </form>
 
-            <div class="sucuriscan_wpconfig_keys_updated sucuriscan-%%SUCURI.WPConfigUpdate.Visibility%%">
+            <div class="sucuriscan_wpconfig_keys_updated sucuriscan-monospace sucuriscan-%%SUCURI.WPConfigUpdate.Visibility%%">
                 <textarea>%%SUCURI.WPConfigUpdate.NewConfig%%</textarea>
             </div>
         </div>

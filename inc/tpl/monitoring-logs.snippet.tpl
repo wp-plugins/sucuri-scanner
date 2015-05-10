@@ -25,43 +25,43 @@
                     <tbody>
                         <tr class="alternate">
                             <td>Blocked Reason</td>
-                            <td>%%SUCURI.AuditLog.SucuriBlockReason%%</td>
+                            <td class="sucuriscan-monospace">%%SUCURI.AuditLog.SucuriBlockReason%%</td>
                         </tr>
                         <tr>
                             <td>Remote Address</td>
-                            <td>%%SUCURI.AuditLog.RemoteAddr%%</td>
+                            <td class="sucuriscan-monospace">%%SUCURI.AuditLog.RemoteAddr%%</td>
                         </tr>
                         <tr class="alternate">
                             <td>Date &amp; Time (Local Time)</td>
-                            <td>%%SUCURI.AuditLog.LocalRequestTime%%</td>
+                            <td class="sucuriscan-monospace">%%SUCURI.AuditLog.LocalRequestTime%%</td>
                         </tr>
                         <tr>
                             <td>Resource Path</td>
-                            <td>%%SUCURI.AuditLog.ResourcePath%%</td>
+                            <td class="sucuriscan-monospace">%%SUCURI.AuditLog.ResourcePath%%</td>
                         </tr>
                         <tr class="alternate">
                             <td>Request Method</td>
-                            <td>%%SUCURI.AuditLog.RequestMethod%%</td>
+                            <td class="sucuriscan-monospace">%%SUCURI.AuditLog.RequestMethod%%</td>
                         </tr>
                         <tr>
                             <td>HTTP Protocol</td>
-                            <td>%%SUCURI.AuditLog.HttpProtocol%%</td>
+                            <td class="sucuriscan-monospace">%%SUCURI.AuditLog.HttpProtocol%%</td>
                         </tr>
                         <tr class="alternate">
                             <td>HTTP Status</td>
-                            <td>%%SUCURI.AuditLog.HttpStatus%% %%SUCURI.AuditLog.HttpStatusTitle%%</td>
+                            <td class="sucuriscan-monospace">%%SUCURI.AuditLog.HttpStatus%% %%SUCURI.AuditLog.HttpStatusTitle%%</td>
                         </tr>
                         <tr>
                             <td>HTTP Bytes Sent</td>
-                            <td>%%SUCURI.AuditLog.HttpBytesSent%%</td>
+                            <td class="sucuriscan-monospace">%%SUCURI.AuditLog.HttpBytesSent%%</td>
                         </tr>
                         <tr class="alternate">
                             <td>HTTP Referer</td>
-                            <td>%%SUCURI.AuditLog.HttpReferer%%</td>
+                            <td class="sucuriscan-monospace">%%SUCURI.AuditLog.HttpReferer%%</td>
                         </tr>
                         <tr>
                             <td>HTTP User Agent</td>
-                            <td>%%SUCURI.AuditLog.HttpUserAgent%%</td>
+                            <td class="sucuriscan-monospace">%%SUCURI.AuditLog.HttpUserAgent%%</td>
                         </tr>
                     </tbody>
                 </table>

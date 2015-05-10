@@ -10,7 +10,7 @@
 .sucuriscan-visible{}
 .sucuriscan-hidden{display:none !important}
 .sucuriscan-opacity{opacity:0.6}
-.sucuriscan-monospace{font-family:Monospace, Courier}
+.sucuriscan-monospace{font-family:Menlo, Monaco, monospace, courier}
 .sucuriscan-ellipsis{overflow:hidden;display:inline-block;white-space:nowrap;text-overflow:ellipsis}
 .sucuriscan-wraptext{word-break:break-all}
 .sucuriscan-pull-left{float:left}
@@ -95,7 +95,6 @@
 .sucuriscan-table-quad-title tr:first-child th, .sucuriscan-table-quad-title tr:first-child + tr th, .sucuriscan-table-quad-title tr:first-child + tr + tr th{border-bottom:0}
 .sucuriscan-table-description{border-left-width:1px !important;box-shadow:none}
 .sucuriscan-table-description .inside{border-bottom:0 !important}
-.sucuriscan-maincontent .sucuriscan-lastmodified td{font-family:Monospace, Courier, serif;font-weight:bold}
 .widefat td.td-with-button{text-align:right;padding:3px 10px}
 .widefat td.td-with-button button{min-width:90px}
 .widefat td.td-with-button select{height:initial;line-height:initial;vertical-align:top;margin:0;padding:2px 0 3px 0}
@@ -193,7 +192,7 @@ div.sucuriscan-alert > a.close{position:absolute;top:10px;right:10px;font-size:1
 .sucuriscan-scanner-results td.sucuriscan-border-bad{border-left-width:4px;border-left-style:solid}
 .sucuriscan-scanner-results .sucuriscan-malware-link{text-align:right}
 .sucuriscan-scanner-results .sucuriscan-malware-link a:hover{color:#fff}
-.sucuriscan-malware-payload{background:#f5f5f5;font-family:Monaco,monospace, serif;word-break:break-all;margin:-2px -15px -15px -15px;padding:15px}
+.sucuriscan-malware-payload{background:#f5f5f5;word-break:break-all;margin:-2px -15px -15px -15px;padding:15px}
 /* Generic Panel Magin Styles */
 .sucuriscan-maincontent .sucuriscan-corefiles,
 .sucuriscan-maincontent .sucuriscan-integrity-message,
@@ -253,7 +252,7 @@ td.sucuriscan-corefiles-warning > div{background:#f2dede;color:#a94442;border-co
 .sucuriscan-request-summary{margin:-15px;margin-top:-3px}
 .sucuriscan-request-summary td{font-size:14px}
 .sucuriscan-request-summary tr td:first-child{font-weight:bold}
-.sucuriscan-request-summary td+td{font-family:monospace;word-break:break-all}
+.sucuriscan-request-summary td+td{word-break:break-all}
 /* Hardening Status */
 .sucuriscan-hstatus{position:relative;margin:0 -12px;padding:10px 12px;border:1px solid transparent}
 .sucuriscan-hstatus-0{background-color:#f2dede;color:#a94442;border-color:#ebccd1}
@@ -282,7 +281,7 @@ td.sucuriscan-corefiles-warning > div{background:#f2dede;color:#a94442;border-co
 .sucuriscan-pagination>li:last-child>a, .sucuriscan-pagination>li:last-child>span{border-radius:0 4px 4px 0}
 .sucuriscan-pagination>li>a.sucuriscan-pagination-active, .sucuriscan-pagination>li>a:hover{background:#0074a2;color:#fff}
 /* Resetter Styles */
-.sucuriscan_wpconfig_keys_updated textarea{width:100%;height:250px;background:#f5f5f5;font-family:monospace;font-size:12px;resize:vertical;margin:20px 0 0 0}
+.sucuriscan_wpconfig_keys_updated textarea{width:100%;height:250px;background:#f5f5f5;font-size:12px;resize:vertical;margin:20px 0 0 0}
 .sucuriscan-maincontent .sucuriscan-last-logins{margin-top:0}
 .sucuriscan-maincontent .sucuriscan-last-logins .sucuriscan-ellipsis{width:150px;line-height:inherit}
 .sucuriscan-maincontent .sucuriscan-full-textarea{width:100%;height:400px;line-height:normal;resize:vertical;padding:10px}
