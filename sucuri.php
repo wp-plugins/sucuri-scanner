@@ -10451,6 +10451,12 @@ function sucuriscan_settings_form_submissions( $page_nonce = null ){
         if ( $datastore_path = SucuriScanRequest::post( ':datastore_path' ) ) {
             $current_datastore_path = SucuriScanOption::datastore_folder_path();
 
+            // Try to create the new directory (if possible).
+            if ( ! file_exists( $datastore_path ) ) {
+                @mkdir( $datastore_path, 0755, true );
+            }
+
+            // Check if the directory is writable and move all the logs.
             if ( file_exists( $datastore_path ) ) {
                 if ( is_writable( $datastore_path ) ) {
                     $message = 'Datastore path set to <code>' . $datastore_path . '</code>';
@@ -10462,6 +10468,10 @@ function sucuriscan_settings_form_submissions( $page_nonce = null ){
 
                     if ( file_exists( $current_datastore_path ) ) {
                         $new_datastore_path = SucuriScanOption::datastore_folder_path();
+
+                        // Some file systems do not work correctly with trailing separators.
+                        $current_datastore_path = rtrim( $current_datastore_path, '/' );
+                        $new_datastore_path = rtrim( $new_datastore_path, '/' );
                         @rename( $current_datastore_path, $new_datastore_path );
                     }
                 } else {
