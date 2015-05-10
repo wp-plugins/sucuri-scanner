@@ -972,6 +972,20 @@ class SucuriScan {
     }
 
     /**
+     * Check whether a regular expression is valid or not.
+     *
+     * @param  string  $pattern The regular expression to check.
+     * @return boolean          True if the regular expression is valid, false otherwise.
+     */
+    public static function is_valid_pattern( $pattern = '' ){
+        return (bool) (
+            is_string( $pattern )
+            && ! empty( $pattern )
+            && @preg_match( $pattern, null ) !== false
+        );
+    }
+
+    /**
      * Return a string with all the valid email addresses.
      *
      * @param  string  $email    The string that will be validated as an email address.
