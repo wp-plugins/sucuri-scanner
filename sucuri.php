@@ -1918,9 +1918,9 @@ class SucuriScanCache extends SucuriScan {
      * @param  string $datastore Unique name (or identifier) of the file with the data.
      * @return void
      */
-    public function __construct( $datastore = '' ){
+    public function __construct( $datastore = '', $auto_create = true ){
         $this->datastore = $datastore;
-        $this->datastore_path = $this->datastore_file_path();
+        $this->datastore_path = $this->datastore_file_path( $auto_create );
         $this->usable_datastore = (bool) $this->datastore_path;
     }
 
@@ -1973,9 +1973,10 @@ class SucuriScanCache extends SucuriScan {
      * user running the server, in case that it does not exists the function will
      * tries to create it by itself with the right permissions to use it.
      *
-     * @return string The full path where the datastore file is located, FALSE otherwise.
+     * @param  boolean $auto_create Automatically create the file if not exists or not.
+     * @return string               The full path where the datastore file is located, FALSE otherwise.
      */
-    private function datastore_file_path(){
+    private function datastore_file_path( $auto_create = false ){
         if ( ! is_null( $this->datastore ) ) {
             $folder_path = $this->datastore_folder_path();
             $file_path = $folder_path . 'sucuri-' . $this->datastore . '.php';
@@ -1989,6 +1990,7 @@ class SucuriScanCache extends SucuriScan {
             if (
                 ! file_exists( $file_path )
                 && is_writable( $folder_path )
+                && $auto_create === true
             ) {
                 @file_put_contents( $file_path, $this->datastore_info(), LOCK_EX );
             }
@@ -3145,7 +3147,7 @@ class SucuriScanEvent extends SucuriScan {
      * @return boolean              TRUE if the IP address of the user is trusted, FALSE otherwise.
      */
     private static function is_trusted_ip( $remote_addr = '' ){
-        $cache = new SucuriScanCache( 'trustip' );
+        $cache = new SucuriScanCache( 'trustip', false );
         $trusted_ips = $cache->get_all();
 
         if ( ! $remote_addr ) {
