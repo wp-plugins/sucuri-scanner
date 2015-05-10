@@ -229,6 +229,10 @@ td.sucuriscan-corefiles-warning > div{background:#f2dede;color:#a94442;border-co
 .sucuriscan-maincontent .sucuriscan-integrity-message{position:relative}
 .sucuriscan-maincontent .sucuriscan-integrity-message .sucuriscan-integrity-mark{position:absolute;top:1px;right:1px;background:#7ad03a;font-weight:bold;color:#fff;line-height:35px;padding:0 10px;border-left:1px solid #ddd}
 .sucuriscan-maincontent .sucuriscan-ignoredfiles{margin-top:0}
+.sucuriscan-ignore-file form{padding:10px;padding-top:0;border-bottom:1px solid #ddd;border-right:1px solid #ddd}
+.sucuriscan-ignore-file p{border-bottom:none}
+.sucuriscan-ignore-file-input{width:80%}
+.sucuriscan-ignore-file-button{width:18%}
 .sucuriscan-maincontent .sucuriscan-modifiedfiles .sucuriscan-ellipsis{width:100px}
 /* Monitoring Styles */
 .sucuriscan-monitoring-settings{margin-bottom:20px}

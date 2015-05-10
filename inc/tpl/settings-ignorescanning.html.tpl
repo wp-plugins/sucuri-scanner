@@ -20,6 +20,26 @@
                     to the <em>Scanner Settings</em> panel to enable it.
                 </p>
             </div>
+
+            <div class="sucuriscan-inline-alert-info sucuriscan-ignore-file">
+                <p>
+                    You can also force the plugin to ignore specific files during the file system
+                    scans using this form, add the absolute path of the file or symbolic link that
+                    you want to skip. <strong>Note.</strong> You can not use wildcards to select
+                    multiple files following a pattern in their names, this is intentional to
+                    prevent the misuse of this tool.
+                </p>
+
+                <form action="%%SUCURI.URL.Settings%%#settings-ignorescanning" method="post">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <input type="hidden" name="sucuriscan_ignorescanning_action" value="ignore" />
+                    <input type="text" name="sucuriscan_ignorescanning_file"
+                    placeholder="e.g. /public_html/private/ssl_certificate.crt"
+                    class="sucuriscan-ignore-file-input" />
+                    <button type="submit" class="button button-primary
+                    sucuriscan-ignore-file-button">Proceed</button>
+                </form>
+            </div>
         </div>
     </div>
 </div>
