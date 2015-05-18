@@ -9189,7 +9189,6 @@ function sucuriscan_posthack_plugins( $process_form = false ){
         'ResetPlugin.CacheLifeTime' => 'unknown',
     );
 
-
     if ( defined( 'SUCURISCAN_GET_PLUGINS_LIFETIME' ) ) {
         $template_variables['ResetPlugin.CacheLifeTime'] = SUCURISCAN_GET_PLUGINS_LIFETIME;
     }
@@ -9199,35 +9198,42 @@ function sucuriscan_posthack_plugins( $process_form = false ){
     return SucuriScanTemplate::get_section( 'posthack-resetplugins', $template_variables );
 }
 
+/**
+ * Process the Ajax request to retrieve the plugins metadata.
+ *
+ * @return string HTML code for a table with the plugins metadata.
+ */
 function sucuriscan_posthack_plugins_ajax(){
-    $all_plugins = SucuriScanAPI::get_plugins();
-    $response = '';
-    $counter = 0;
+    if ( SucuriScanRequest::post( 'form_action' ) == 'get_plugins_data' ) {
+        $all_plugins = SucuriScanAPI::get_plugins();
+        $response = '';
+        $counter = 0;
 
-    foreach ( $all_plugins as $plugin_path => $plugin_data ) {
-        $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
-        $plugin_type_class = ( $plugin_data['PluginType'] == 'free' ) ? 'primary' : 'warning';
-        $input_disabled = ( $plugin_data['PluginType'] == 'free' ) ? '' : 'disabled="disabled"';
-        $plugin_status = $plugin_data['IsPluginActive'] ? 'active' : 'not active';
-        $plugin_status_class = $plugin_data['IsPluginActive'] ? 'success' : 'default';
+        foreach ( $all_plugins as $plugin_path => $plugin_data ) {
+            $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
+            $plugin_type_class = ( $plugin_data['PluginType'] == 'free' ) ? 'primary' : 'warning';
+            $input_disabled = ( $plugin_data['PluginType'] == 'free' ) ? '' : 'disabled="disabled"';
+            $plugin_status = $plugin_data['IsPluginActive'] ? 'active' : 'not active';
+            $plugin_status_class = $plugin_data['IsPluginActive'] ? 'success' : 'default';
 
-        $response .= SucuriScanTemplate::get_snippet('posthack-resetplugins', array(
-            'ResetPlugin.CssClass' => $css_class,
-            'ResetPlugin.Disabled' => $input_disabled,
-            'ResetPlugin.PluginPath' => SucuriScan::escape( $plugin_path ),
-            'ResetPlugin.Plugin' => SucuriScan::excerpt( $plugin_data['Name'], 35 ),
-            'ResetPlugin.Version' => $plugin_data['Version'],
-            'ResetPlugin.Type' => $plugin_data['PluginType'],
-            'ResetPlugin.TypeClass' => $plugin_type_class,
-            'ResetPlugin.Status' => $plugin_status,
-            'ResetPlugin.StatusClass' => $plugin_status_class,
-        ));
+            $response .= SucuriScanTemplate::get_snippet('posthack-resetplugins', array(
+                'ResetPlugin.CssClass' => $css_class,
+                'ResetPlugin.Disabled' => $input_disabled,
+                'ResetPlugin.PluginPath' => SucuriScan::escape( $plugin_path ),
+                'ResetPlugin.Plugin' => SucuriScan::excerpt( $plugin_data['Name'], 35 ),
+                'ResetPlugin.Version' => $plugin_data['Version'],
+                'ResetPlugin.Type' => $plugin_data['PluginType'],
+                'ResetPlugin.TypeClass' => $plugin_type_class,
+                'ResetPlugin.Status' => $plugin_status,
+                'ResetPlugin.StatusClass' => $plugin_status_class,
+            ));
 
-        $counter += 1;
+            $counter += 1;
+        }
+
+        print( $response );
+        exit(0);
     }
-
-    print( $response );
-    exit(0);
 }
 
 /**

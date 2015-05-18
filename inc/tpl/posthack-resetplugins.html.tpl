@@ -45,7 +45,7 @@
                     <tbody>
                         <tr>
                             <td colspan="5">
-                                <span>Loading (may take several seconds)...</span>
+                                <span>Loading <em>(may take several seconds)</em>...</span>
                             </td>
                         </tr>
                     </tbody>
@@ -68,6 +68,7 @@
                 $.post( '%%SUCURI.AjaxURL.Posthack%%', {
                     action: 'sucuriscan_posthack_ajax',
                     sucuriscan_page_nonce: '%%SUCURI.PageNonce%%',
+                    form_action: 'get_plugins_data',
                 }, function(data){
                     $('.sucuriscan-reset-plugins-table tbody').html( data );
                 });
