@@ -1693,6 +1693,15 @@ class SucuriScanFileInfo extends SucuriScan {
             return true;
         }
 
+        // Ignore files specified by the administrator.
+        if ( ! empty($this->ignored_directories) ) {
+            foreach ( $this->ignored_directories['directories'] as $ignored_dir ) {
+                if ( strpos( $ignored_dir, $filename ) !== false ) {
+                    return true;
+                }
+            }
+        }
+
         // Any file maching one of these rules WILL NOT be ignored.
         if (
             ( strpos( $filename, '.php' ) !== false) ||
