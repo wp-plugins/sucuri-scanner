@@ -8948,6 +8948,21 @@ function sucuriscan_posthack_page(){
 }
 
 /**
+ * Handle an Ajax request for this specific page.
+ *
+ * @return mixed.
+ */
+function sucuriscan_posthack_ajax(){
+    SucuriScanInterface::check_permissions();
+
+    if ( SucuriScanInterface::check_nonce() ) {
+        sucuriscan_posthack_plugins_ajax();
+    }
+
+    wp_die();
+}
+
+/**
  * Check whether the "I understand this operation" checkbox was marked or not.
  *
  * @return boolean TRUE if a form submission should be processed, FALSE otherwise.
@@ -9180,7 +9195,13 @@ function sucuriscan_posthack_plugins( $process_form = false ){
     }
 
     sucuriscan_posthack_reinstall_plugins( $process_form );
+
+    return SucuriScanTemplate::get_section( 'posthack-resetplugins', $template_variables );
+}
+
+function sucuriscan_posthack_plugins_ajax(){
     $all_plugins = SucuriScanAPI::get_plugins();
+    $response = '';
     $counter = 0;
 
     foreach ( $all_plugins as $plugin_path => $plugin_data ) {
@@ -9190,7 +9211,7 @@ function sucuriscan_posthack_plugins( $process_form = false ){
         $plugin_status = $plugin_data['IsPluginActive'] ? 'active' : 'not active';
         $plugin_status_class = $plugin_data['IsPluginActive'] ? 'success' : 'default';
 
-        $template_variables['ResetPlugin.PluginList'] .= SucuriScanTemplate::get_snippet('posthack-resetplugins', array(
+        $response .= SucuriScanTemplate::get_snippet('posthack-resetplugins', array(
             'ResetPlugin.CssClass' => $css_class,
             'ResetPlugin.Disabled' => $input_disabled,
             'ResetPlugin.PluginPath' => SucuriScan::escape( $plugin_path ),
@@ -9205,7 +9226,8 @@ function sucuriscan_posthack_plugins( $process_form = false ){
         $counter += 1;
     }
 
-    return SucuriScanTemplate::get_section( 'posthack-resetplugins', $template_variables );
+    print( $response );
+    exit(0);
 }
 
 /**
