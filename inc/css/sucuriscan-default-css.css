@@ -269,6 +269,13 @@ td.sucuriscan-corefiles-warning > div{background:#f2dede;color:#a94442;border-co
 .sucuriscan-admins-lastlogins .sucuriscan-ellipsis{width:170px}
 .sucuriscan-admins-lastlogins td{padding:4px 8px}
 .sucuriscan-lastlogins-failed{}
+/* Pattern Search Styles */
+.sucuriscan-pattern-search {}
+.sucuriscan-pattern-search-inputbox {margin-top:12px}
+.sucuriscan-pattern-search-inputbox .input-text {width:84.7777%;line-height:30px;margin:0;margin-right:6px}
+.sucuriscan-pattern-search-inputbox .input-button {width:14%;height:initial;line-height:35px}
+.sucuriscan-pattern-search .sucuriscan-cleanup-btn {margin-top:12px}
+.sucuriscan-pattern-search table label {color:#999}
 /* About Page */
 .sucuriscan-about ul{margin-left:20px}
 .sucuriscan-about ul li{list-style:initial}
