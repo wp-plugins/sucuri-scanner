@@ -1748,7 +1748,7 @@ class SucuriScanFileInfo extends SucuriScan {
      */
     public function grep_pattern( $directory = '', $pattern = '' ){
         $dir_tree = $this->get_directory_tree( $directory );
-        $pattern = '/.*' . $pattern . '.*/';
+        $pattern = '/.*' . @preg_quote( $pattern, '/' ) . '.*/';
         $results = array();
 
         if (
