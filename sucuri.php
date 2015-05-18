@@ -2937,9 +2937,9 @@ class SucuriScanEvent extends SucuriScan {
         ) {
             self::report_site_version();
 
-            $sucuri_fileinfo = new SucuriScanFileInfo();
-            $sucuri_fileinfo->scan_interface = SucuriScanOption::get_option( ':scan_interface' );
-            $signatures = $sucuri_fileinfo->get_directory_tree_md5( ABSPATH );
+            $file_info = new SucuriScanFileInfo();
+            $file_info->scan_interface = SucuriScanOption::get_option( ':scan_interface' );
+            $signatures = $file_info->get_directory_tree_md5( ABSPATH );
 
             if ( $signatures ) {
                 $hashes_sent = SucuriScanAPI::send_hashes( $signatures );
@@ -5971,11 +5971,11 @@ class SucuriScanFSScanner extends SucuriScan {
         }
 
         // Scan the project and file all directories.
-        $sucuri_fileinfo = new SucuriScanFileInfo();
-        $sucuri_fileinfo->ignore_files = true;
-        $sucuri_fileinfo->ignore_directories = true;
-        $sucuri_fileinfo->scan_interface = SucuriScanOption::get_option( ':scan_interface' );
-        $directory_list = $sucuri_fileinfo->get_diretories_only( ABSPATH );
+        $file_info = new SucuriScanFileInfo();
+        $file_info->ignore_files = true;
+        $file_info->ignore_directories = true;
+        $file_info->scan_interface = SucuriScanOption::get_option( ':scan_interface' );
+        $directory_list = $file_info->get_diretories_only( ABSPATH );
 
         if ( $directory_list ) {
             $response['is_not_ignored'] = $directory_list;
@@ -6325,9 +6325,9 @@ class SucuriScanInterface {
      */
     public static function handle_old_plugins(){
         if ( class_exists( 'SucuriScanFileInfo' ) ) {
-            $sucuri_fileinfo = new SucuriScanFileInfo();
-            $sucuri_fileinfo->ignore_files = false;
-            $sucuri_fileinfo->ignore_directories = false;
+            $file_info = new SucuriScanFileInfo();
+            $file_info->ignore_files = false;
+            $file_info->ignore_directories = false;
 
             $plugins = array(
                 'sucuri-wp-plugin/sucuri.php',
@@ -6342,7 +6342,7 @@ class SucuriScanInterface {
                         deactivate_plugins( $plugin );
                     }
 
-                    $plugin_removed = $sucuri_fileinfo->remove_directory_tree( $plugin_directory );
+                    $plugin_removed = $file_info->remove_directory_tree( $plugin_directory );
                 }
             }
         }
@@ -8176,10 +8176,10 @@ function sucuriscan_harden_errorlog(){
 
     // Search error log files in the project.
     if ( $scan_errorlogs != 'disabled' ) {
-        $sucuri_fileinfo = new SucuriScanFileInfo();
-        $sucuri_fileinfo->ignore_files = false;
-        $sucuri_fileinfo->ignore_directories = false;
-        $error_logs = $sucuri_fileinfo->find_file( $log_filename );
+        $file_info = new SucuriScanFileInfo();
+        $file_info->ignore_files = false;
+        $file_info->ignore_directories = false;
+        $error_logs = $file_info->find_file( $log_filename );
         $total_log_files = count( $error_logs );
     } else {
         $hardened = 2;
@@ -8365,12 +8365,12 @@ function sucuriscan_integrity_form_submissions(){
 function sucuriscan_get_integrity_tree( $dir = './', $recursive = false ){
     $abs_path = rtrim( ABSPATH, '/' );
 
-    $sucuri_fileinfo = new SucuriScanFileInfo();
-    $sucuri_fileinfo->ignore_files = false;
-    $sucuri_fileinfo->ignore_directories = false;
-    $sucuri_fileinfo->run_recursively = $recursive;
-    $sucuri_fileinfo->scan_interface = SucuriScanOption::get_option( ':scan_interface' );
-    $integrity_tree = $sucuri_fileinfo->get_directory_tree_md5( $dir, true );
+    $file_info = new SucuriScanFileInfo();
+    $file_info->ignore_files = false;
+    $file_info->ignore_directories = false;
+    $file_info->run_recursively = $recursive;
+    $file_info->scan_interface = SucuriScanOption::get_option( ':scan_interface' );
+    $integrity_tree = $file_info->get_directory_tree_md5( $dir, true );
 
     if ( ! $integrity_tree ) {
         $integrity_tree = array();
@@ -9246,10 +9246,10 @@ function sucuriscan_posthack_reinstall_plugins( $process_form = false ){
 
         if ( $plugin_list = SucuriScanRequest::post( 'plugin_path', '_array' ) ) {
             // Create an instance of the FileInfo interface.
-            $sucuri_fileinfo = new SucuriScanFileInfo();
-            $sucuri_fileinfo->ignore_files = false;
-            $sucuri_fileinfo->ignore_directories = false;
-            $sucuri_fileinfo->skip_directories = false;
+            $file_info = new SucuriScanFileInfo();
+            $file_info->ignore_files = false;
+            $file_info->ignore_directories = false;
+            $file_info->skip_directories = false;
 
             // Get (possible) cached information from the installed plugins.
             $all_plugins = SucuriScanAPI::get_plugins();
@@ -9267,7 +9267,7 @@ function sucuriscan_posthack_reinstall_plugins( $process_form = false ){
                             // First, remove all files/sub-folders from the plugin's directory.
                             if ( substr_count( $plugin_path, '/' ) >= 1 ) {
                                 $plugin_directory = dirname( WP_PLUGIN_DIR . '/' . $plugin_path );
-                                $sucuri_fileinfo->remove_directory_tree( $plugin_directory );
+                                $file_info->remove_directory_tree( $plugin_directory );
                             }
 
                             // Install a fresh copy of the plugin's files.
