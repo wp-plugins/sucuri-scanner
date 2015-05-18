@@ -283,6 +283,17 @@ if ( defined( 'SUCURISCAN' ) ) {
     add_action( 'admin_menu', 'SucuriScanInterface::add_interface_menu' );
 
     /**
+     * Attach Ajax requests to a custom page handler.
+     */
+    foreach ( $sucuriscan_pages as $page_func => $page_title ) {
+        $ajax_func = $page_func . '_ajax';
+
+        if ( function_exists( $ajax_func ) ) {
+            add_action( 'wp_ajax_' . $ajax_func, $ajax_func );
+        }
+    }
+
+    /**
      * Function call interceptors.
      *
      * Define the names for the hooks that will intercept specific function calls in
@@ -5489,6 +5500,23 @@ class SucuriScanTemplate extends SucuriScanRequest {
     }
 
     /**
+     * Generate an URL pointing to the page indicated in the function and that must
+     * be loaded through the Ajax handler of the administrator panel.
+     *
+     * @param  string $page Short name of the page that will be generated.
+     * @return string       Full string containing the link of the page.
+     */
+    public static function get_ajax_url( $page = '' ){
+        $url_path = admin_url( 'admin-ajax.php?page=sucuriscan' );
+
+        if ( ! empty($page) ) {
+            $url_path .= '_' . strtolower( $page );
+        }
+
+        return $url_path;
+    }
+
+    /**
      * Complement the list of pseudo-variables that will be used in the base
      * template files, this will also generate the navigation bar and detect which
      * items in it are selected by the current page.
@@ -5528,6 +5556,10 @@ class SucuriScanTemplate extends SucuriScanRequest {
             }
 
             $params[ $pseudo_var ] = self::get_url( $unique_name );
+
+            // Copy URL variable and create an Ajax handler.
+            $pseudo_var_ajax = 'Ajax' . $pseudo_var;
+            $params[ $pseudo_var_ajax ] = self::get_ajax_url( $unique_name );
 
             $navbar_item_css_class = 'nav-tab';
 
@@ -6248,6 +6280,8 @@ class SucuriScanInterface {
         if (
             function_exists( 'add_menu_page' )
             && $sucuriscan_pages
+            && is_array( $sucuriscan_pages )
+            && array_key_exists( 'sucuriscan', $sucuriscan_pages )
         ) {
             // Add main menu link.
             add_menu_page(
@@ -6259,9 +6293,7 @@ class SucuriScanInterface {
                 SUCURISCAN_URL . '/inc/images/menu-icon.png'
             );
 
-            $sub_pages = is_array( $sucuriscan_pages ) ? $sucuriscan_pages : array();
-
-            foreach ( $sub_pages as $sub_page_func => $sub_page_title ) {
+            foreach ( $sucuriscan_pages as $sub_page_func => $sub_page_title ) {
                 if (
                     $sub_page_func == 'sucuriscan_scanner'
                     && SucuriScanTemplate::is_sitecheck_disabled()
