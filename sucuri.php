@@ -1642,9 +1642,9 @@ class SucuriScanFileInfo extends SucuriScan {
     /**
      * Skip some specific directories and file paths from the filesystem scan.
      *
-     * @param  string  $directory      Directory where the scanner is located at the moment.
-     * @param  string  $filename       Name of the folder or file being scanned at the moment.
-     * @return boolean                 Either TRUE or FALSE representing that the scan should ignore this folder or not.
+     * @param  string  $directory Directory where the scanner is located at the moment.
+     * @param  string  $filename  Name of the folder or file being scanned at the moment.
+     * @return boolean            Either TRUE or FALSE representing that the scan should ignore this folder or not.
      */
     private function ignore_folderpath( $directory = '', $filename = '' ){
         // Ignoring current and parent folders.
@@ -1734,6 +1734,53 @@ class SucuriScanFileInfo extends SucuriScan {
         }
 
         return $dirs;
+    }
+
+    /**
+     * Returns a list of lines matching the specified pattern in all the files found
+     * in the specified directory, each entry in the list contains the relative path
+     * of the file and the number of the line where the pattern was found, as well
+     * as the string around the pattern in that line.
+     *
+     * @param  string $directory Directory where the scanner is located at the moment.
+     * @param  string $pattern   Text that will be searched inside each file.
+     * @return array             Associative list with the file path and line number of the match.
+     */
+    public function grep_pattern( $directory = '', $pattern = '' ){
+        $dir_tree = $this->get_directory_tree( $directory );
+        $pattern = '/.*' . $pattern . '.*/';
+        $results = array();
+
+        if (
+            class_exists( 'SplFileObject' )
+            && class_exists( 'RegexIterator' )
+            && SucuriScan::is_valid_pattern( $pattern )
+        ) {
+            foreach ( $dir_tree as $file_path ) {
+                try {
+                    $fobject = new SplFileObject( $file_path );
+                    $fstream = new RegexIterator( $fobject, $pattern, RegexIterator::MATCH );
+
+                    foreach ( $fstream as $key => $ltext ) {
+                        $lnumber = ( $key + 1 );
+                        $ltext = str_replace( "\n", '', $ltext );
+                        $fpath = str_replace( $directory, '', $file_path );
+                        $loutput = sprintf( '%s:%d:%s', $fpath, $lnumber, $ltext );
+                        $results[] = array(
+                            'file_path' => $file_path,
+                            'relative_path' => $fpath,
+                            'line_number' => $lnumber,
+                            'line_text' => $ltext,
+                            'output' => $loutput,
+                        );
+                    }
+                } catch ( RuntimeException $exception ) {
+                    SucuriScanEvent::report_exception( $exception );
+                }
+            }
+        }
+
+        return $results;
     }
 
     /**
