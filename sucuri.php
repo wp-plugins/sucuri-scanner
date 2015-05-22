@@ -4473,9 +4473,9 @@ class SucuriScanAPI extends SucuriScanOption {
          * for example, try to fix automatically issues related with disconnections,
          * timeouts, SSL certificate verifications, etc. Some of these actions can not
          * be fixed if the server where the website is being hosted has a special
-         * configuration, which then requires the human interaction of the
-         * administrator, they will see extra information explaining the response and
-         * how to proceed with it.
+         * configuration, which then requires the human interaction of the admin user,
+         * they will see extra information explaining the response and how to proceed
+         * with it.
          */
         if (
             is_array( $response )
@@ -4534,6 +4534,14 @@ class SucuriScanAPI extends SucuriScanOption {
                                 . ' key will be deleted automatically to hide these warnings, if you want to'
                                 . ' recover it go to the settings page and use the recover button to send the'
                                 . ' key to your email address.';
+                        }
+
+                        // Special response for invalid CloudProxy API keys.
+                        if ( stripos( $action_message, 'wrong api key' ) !== false ) {
+                            SucuriScanOption::delete_option( ':cloudproxy_apikey' );
+                            SucuriScanOption::delete_option( ':revproxy' );
+
+                            $action_message .= ' The CloudProxy API key does not seems to be valid.';
                         }
 
                         // Special response for connection time outs.
