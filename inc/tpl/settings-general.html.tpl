@@ -152,25 +152,32 @@
         </tr>
 
         <tr>
-            <td>API proxy host:port</td>
+            <td>API proxy <em>(host:port)</em></td>
             <td><span class="sucuriscan-monospace">%%SUCURI.APIProxy.Host%%:%%SUCURI.APIProxy.Port%%</span></td>
             <td>&nbsp;</td>
         </tr>
 
         <tr class="alternate">
-            <td>API proxy username</td>
-            <td><span class="sucuriscan-monospace">%%SUCURI.APIProxy.Username%%</span></td>
+            <td>API proxy <em>(auth)</em></td>
+            <td>
+                <span class="sucuriscan-monospace">%%SUCURI.APIProxy.Username%%</span>
+                <span class="sucuriscan-label-%%SUCURI.APIProxy.PasswordType%%">
+                    <em>password is %%SUCURI.APIProxy.PasswordText%%</em>
+                </span>
+            </td>
             <td>&nbsp;</td>
         </tr>
 
         <tr>
-            <td>API proxy password</td>
-            <td>
-                <span class="sucuriscan-label-%%SUCURI.APIProxy.PasswordType%%">
-                    %%SUCURI.APIProxy.PasswordText%%
-                </span>
+            <td>API test request</td>
+            <td><em>(Test ability to send HTTP requests)</em></td>
+            <td class="td-with-button">
+                <form action="%%SUCURI.URL.Settings%%" method="post">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <input type="hidden" name="sucuriscan_debug_request" value="1" />
+                    <button type="submit" class="button-primary">Proceed</button>
+                </form>
             </td>
-            <td>&nbsp;</td>
         </tr>
 
         <tr class="alternate">

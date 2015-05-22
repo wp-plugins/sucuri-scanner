@@ -4268,6 +4268,33 @@ class SucuriScanAPI extends SucuriScanOption {
     }
 
     /**
+     * Test ability of the site to send HTTP requests.
+     *
+     * @return string Response data from the remote service.
+     */
+    public static function test_api_call(){
+        $params = array();
+        $params['first'] = microtime();
+        $params['lorem'] = microtime();
+        $params['middle'] = microtime();
+        $params['foobar'] = microtime();
+        $params['last'] = microtime();
+        $response_data = '{invalid_data}';
+
+        $response = self::api_call( 'http://httpbin.org/post', 'POST', $params );
+
+        if (
+            is_array( $response )
+            && array_key_exists( 'body_raw', $response )
+            && is_string( $response['body_raw'] )
+        ) {
+            $response_data = $response['body_raw'];
+        }
+
+        return $response_data;
+    }
+
+    /**
      * Store the API key locally.
      *
      * @param  string  $api_key  An unique string of characters to identify this installation.
@@ -11059,6 +11086,16 @@ function sucuriscan_settings_form_submissions( $page_nonce = null ){
             SucuriScanEvent::report_info_event( $message );
             SucuriScanInterface::info( $message );
         }
+
+        // Debug ability of the plugin to send HTTP requests correctly.
+        if ( $debug_request = SucuriScanRequest::post( ':debug_request' ) ) {
+            SucuriScanInterface::info(
+                sprintf(
+                    '<pre>%s</pre>',
+                    SucuriScanAPI::test_api_call()
+                )
+            );
+        }
     }
 }
 
@@ -11171,10 +11208,10 @@ function sucuriscan_settings_general(){
         'ReverseProxySwitchValue' => 'disable',
         'ReverseProxySwitchCssClass' => 'button-danger',
         /* API Proxy Settings */
-        'APIProxy.Host' => 'n/a',
-        'APIProxy.Port' => 'n/a',
-        'APIProxy.Username' => 'n/a',
-        'APIProxy.Password' => 'n/a',
+        'APIProxy.Host' => 'no_proxy_host',
+        'APIProxy.Port' => 'no_proxy_port',
+        'APIProxy.Username' => 'no_proxy_username',
+        'APIProxy.Password' => 'no_proxy_password',
         'APIProxy.PasswordType' => 'default',
         'APIProxy.PasswordText' => 'empty',
     );
