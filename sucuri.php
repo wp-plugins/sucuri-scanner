@@ -4627,8 +4627,8 @@ class SucuriScanAPI extends SucuriScanOption {
                 if ( preg_match( $log_pattern, $log, $log_match ) ) {
                     $log_data = array(
                         'event' => 'notice',
-                        'date' => $log_match[1],
-                        'time' => $log_match[2],
+                        'date' => '',
+                        'time' => '',
                         'datetime' => '',
                         'timestamp' => 0,
                         'account' => $log_match[3],
@@ -4639,11 +4639,16 @@ class SucuriScanAPI extends SucuriScanOption {
                         'file_list_count' => 0,
                     );
 
-                    $log_data['datetime'] = sprintf( '%s %s', $log_match[1], $log_match[2] );
-                    $log_data['timestamp'] = strtotime( $log_data['datetime'] );
-                    $log_data['message'] = str_replace( '<br>', '; ', $log_data['message'] );
+                    // Extract and fix the date and time using the Eastern time zone.
+                    $datetime = sprintf( '%s %s EDT', $log_match[1], $log_match[2] );
+                    $log_data['timestamp'] = strtotime( $datetime );
+                    $log_data['datetime'] = date( 'Y-m-d H:i:s', $log_data['timestamp'] );
+                    $log_data['date'] = date( 'Y-m-d', $log_data['timestamp'] );
+                    $log_data['time'] = date( 'H:i:s', $log_data['timestamp'] );
 
                     // Extract more information from the generic audit logs.
+                    $log_data['message'] = str_replace( '<br>', '; ', $log_data['message'] );
+
                     if ( preg_match( $generic_pattern, $log_data['message'], $log_extra ) ) {
                         $log_data['event'] = strtolower( $log_extra[1] );
                         $log_data['message'] = trim( $log_extra[3] );
