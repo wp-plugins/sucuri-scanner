@@ -3304,13 +3304,17 @@ class SucuriScanEvent extends SucuriScan {
             $user = get_userdata( $user_id );
 
             if ( $user instanceof WP_User ) {
+                $website = SucuriScan::get_domain();
+                $user_login = $user->user_login;
+                $display_name = $user->display_name;
                 $new_password = wp_generate_password( 15, true, false );
 
-                $message = 'The password for your user account <strong>"'. $user->display_name .'"</strong> '
-                    . 'in the website specified above was changed, this is the new password generated automatically '
-                    . 'by the system, please update as soon as possible.<br><div style="display:inline-block;'
-                    . 'background:#ddd;font-family:monaco,monospace,courier;font-size:30px;margin:0;padding:15px;'
-                    . 'border:1px solid #999">'. $new_password .'</div>';
+                $message = SucuriScanTemplate::get_section( 'notification-resetpwd', array(
+                    'ResetPassword.UserName' => $user_login,
+                    'ResetPassword.DisplayName' => $display_name,
+                    'ResetPassword.Password' => $new_password,
+                    'ResetPassword.Website' => $website,
+                ) );
 
                 $data_set = array( 'Force' => true ); // Skip limit for emails per hour.
                 SucuriScanMail::send_mail( $user->user_email, 'Password changed', $message, $data_set );
