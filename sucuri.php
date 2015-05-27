@@ -10321,9 +10321,13 @@ function sucuriscan_get_failed_logins( $get_old_logs = false ){
             );
 
             // Read and parse all the entries found in the datastore file.
-            foreach ( $lines as $i => $line ) {
-                if ( $i >= $default_content_n ) {
-                    $login_data = @json_decode( trim( $line ), true );
+            $offset = count( $lines ) - 1;
+
+            for ( $key = $offset; $key >= 0; $key-- ) {
+                $line = trim( $lines[ $key ] );
+                $login_data = @json_decode( $line, true );
+
+                if ( is_array( $login_data ) ) {
                     $login_data['attempt_date'] = date( 'r', $login_data['attempt_time'] );
 
                     if ( ! $login_data['user_agent'] ) {
