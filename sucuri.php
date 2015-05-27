@@ -4800,6 +4800,7 @@ class SucuriScanAPI extends SucuriScanOption {
                     if ( preg_match( $extra_pattern, $log_data['message'], $log_extra ) ) {
                         $log_data['message'] = $log_extra[1];
                         $log_extra[2] = str_replace( ', new size', '; new size', $log_extra[2] );
+                        $log_extra[2] = str_replace( ",\x20", ";\x20", $log_extra[2] );
                         $log_data['file_list'] = explode( ',', $log_extra[2] );
                         $log_data['file_list_count'] = count( $log_data['file_list'] );
                     }
