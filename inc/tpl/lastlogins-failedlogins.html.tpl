@@ -44,16 +44,17 @@
 <table class="wp-list-table widefat sucuriscan-table sucuriscan-lastlogins-failed sucuriscan-%%SUCURI.IgnoreRules.TableVisibility%%">
     <thead>
         <tr>
-            <th width="20">No.</th>
-            <th>User</th>
-            <th>Password</th>
-            <th>IP Address</th>
-            <th>Date/Time</th>
-            <th width="300">User-Agent</th>
+            <th class="manage-column">&nbsp;</th>
+            <th class="manage-column">User</th>
+            <th class="manage-column">Password</th>
+            <th class="manage-column">IP Address</th>
+            <th class="manage-column">Date/Time</th>
+            <th class="manage-column" width="300">User-Agent</th>
         </tr>
     </thead>
 
     <tbody>
+
         %%SUCURI.FailedLogins.List%%
 
         <tr class="sucuriscan-%%SUCURI.FailedLogins.NoItemsVisibility%%">
@@ -61,5 +62,14 @@
                 <em>No logs so far.</em>
             </td>
         </tr>
+
+        <tr class="sucuriscan-%%SUCURI.FailedLogins.PaginationVisibility%%">
+            <td colspan="6">
+                <ul class="sucuriscan-pagination">
+                    %%SUCURI.FailedLogins.PaginationLinks%%
+                </ul>
+            </td>
+        </tr>
+
     </tbody>
 </table>

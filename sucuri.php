@@ -9280,7 +9280,7 @@ function sucuriscan_posthack_users( $process_form = false ){
             $max_per_page
         );
 
-        if ( $total_items > SUCURISCAN_MAX_PAGINATION_BUTTONS ) {
+        if ( $total_items > $max_per_page ) {
             $template_variables['ResetPassword.PaginationVisibility'] = 'visible';
         }
     }
@@ -10168,7 +10168,15 @@ function sucuriscan_failed_logins_panel(){
         'FailedLogins.NoItemsVisibility' => 'visible',
         'FailedLogins.WarningVisibility' => 'visible',
         'FailedLogins.CollectPasswordsVisibility' => 'visible',
+        'FailedLogins.PaginationLinks' => '',
+        'FailedLogins.PaginationVisibility' => 'hidden',
     );
+
+    // Define variables for the pagination.
+    $page_number = SucuriScanTemplate::get_page_number();
+    $max_per_page = SUCURISCAN_MAX_PAGINATION_BUTTONS;
+    $page_offset = ( $page_number - 1 ) * $max_per_page;
+    $page_limit = ( $page_offset + $max_per_page );
 
     $max_failed_logins = SucuriScanOption::get_option( ':maximum_failed_logins' );
     $notify_bruteforce_attack = SucuriScanOption::get_option( ':notify_bruteforce_attack' );
@@ -10193,36 +10201,49 @@ function sucuriscan_failed_logins_panel(){
     if ( $failed_logins ) {
         $counter = 0;
 
-        foreach ( $failed_logins['entries'] as $login_data ) {
-            $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
-            $wrong_user_password = '<span class="sucuriscan-label-default">hidden</span>';
+        for ( $key = $page_offset; $key < $page_limit; $key++ ) {
+            if ( array_key_exists( $key, $failed_logins['entries'] ) ) {
+                $login_data = $failed_logins['entries'][ $key ];
+                $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
+                $wrong_user_password = '<span class="sucuriscan-label-default">hidden</span>';
 
-            if ( sucuriscan_collect_wrong_passwords() === true ) {
-                if (
-                    isset($login_data['user_password'])
-                    && ! empty($login_data['user_password'])
-                ) {
-                    $wrong_user_password = SucuriScan::escape( $login_data['user_password'] );
-                } else {
-                    $wrong_user_password = '<span class="sucuriscan-label-info">empty</span>';
+                if ( sucuriscan_collect_wrong_passwords() === true ) {
+                    if (
+                        isset($login_data['user_password'])
+                        && ! empty($login_data['user_password'])
+                    ) {
+                        $wrong_user_password = SucuriScan::escape( $login_data['user_password'] );
+                    } else {
+                        $wrong_user_password = '<span class="sucuriscan-label-info">empty</span>';
+                    }
                 }
+
+                $template_variables['FailedLogins.List'] .= SucuriScanTemplate::get_snippet('lastlogins-failedlogins', array(
+                    'FailedLogins.CssClass' => $css_class,
+                    'FailedLogins.Num' => $login_data['attempt_count'],
+                    'FailedLogins.Username' => SucuriScan::escape( $login_data['user_login'] ),
+                    'FailedLogins.Password' => $wrong_user_password,
+                    'FailedLogins.RemoteAddr' => SucuriScan::escape( $login_data['remote_addr'] ),
+                    'FailedLogins.Datetime' => SucuriScan::datetime( $login_data['attempt_time'] ),
+                    'FailedLogins.UserAgent' => SucuriScan::escape( $login_data['user_agent'] ),
+                ));
+
+                $counter += 1;
             }
-
-            $template_variables['FailedLogins.List'] .= SucuriScanTemplate::get_snippet('lastlogins-failedlogins', array(
-                'FailedLogins.CssClass' => $css_class,
-                'FailedLogins.Num' => ($counter + 1),
-                'FailedLogins.Username' => SucuriScan::escape( $login_data['user_login'] ),
-                'FailedLogins.Password' => $wrong_user_password,
-                'FailedLogins.RemoteAddr' => SucuriScan::escape( $login_data['remote_addr'] ),
-                'FailedLogins.Datetime' => SucuriScan::datetime( $login_data['attempt_time'] ),
-                'FailedLogins.UserAgent' => SucuriScan::escape( $login_data['user_agent'] ),
-            ));
-
-            $counter += 1;
         }
 
         if ( $counter > 0 ) {
             $template_variables['FailedLogins.NoItemsVisibility'] = 'hidden';
+        }
+
+        $template_variables['FailedLogins.PaginationLinks'] = SucuriScanTemplate::get_pagination(
+            '%%SUCURI.URL.Lastlogins%%#failed-logins',
+            $failed_logins['count'],
+            $max_per_page
+        );
+
+        if ( $failed_logins['count'] > $max_per_page ) {
+            $template_variables['FailedLogins.PaginationVisibility'] = 'visible';
         }
     }
 
@@ -10329,6 +10350,7 @@ function sucuriscan_get_failed_logins( $get_old_logs = false ){
 
                 if ( is_array( $login_data ) ) {
                     $login_data['attempt_date'] = date( 'r', $login_data['attempt_time'] );
+                    $login_data['attempt_count'] = ( $key + 1 );
 
                     if ( ! $login_data['user_agent'] ) {
                         $login_data['user_agent'] = 'Unknown';

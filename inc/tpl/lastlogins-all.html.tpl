@@ -13,7 +13,7 @@
             </th>
         </tr>
         <tr>
-            <th class="manage-column">No.</th>
+            <th class="manage-column">&nbsp;</th>
             <th class="manage-column">User</th>
             <th class="manage-column">IP Address</th>
             <th class="manage-column">Hostname</th>
