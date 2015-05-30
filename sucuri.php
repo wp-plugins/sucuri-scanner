@@ -2491,7 +2491,7 @@ class SucuriScanOption extends SucuriScanRequest {
             'sucuriscan_site_version' => '0.0',
             'sucuriscan_sitecheck_counter' => 0,
             'sucuriscan_sitecheck_scanner' => 'enabled',
-            'sucuriscan_verify_ssl_cert' => 'true',
+            'sucuriscan_verify_ssl_cert' => 'false',
         );
 
         return $defaults;
