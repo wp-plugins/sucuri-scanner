@@ -806,11 +806,16 @@ class SucuriScan {
      */
     public static function datetime( $timestamp = 0 ){
         if ( is_numeric( $timestamp ) && $timestamp > 0 ) {
+            $gmt_offset = get_option( 'gmt_offset' );
             $date_format = get_option( 'date_format' );
             $time_format = get_option( 'time_format' );
-            $timezone_format = sprintf( '%s %s', $date_format, $time_format );
+            $tz_format = sprintf( '%s %s', $date_format, $time_format );
 
-            return date_i18n( $timezone_format, $timestamp );
+            if ( is_numeric( $gmt_offset ) ) {
+                $timestamp += ( $gmt_offset * 3600 );
+            }
+
+            return date_i18n( $tz_format, $timestamp );
         }
 
         return null;
