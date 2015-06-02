@@ -276,6 +276,7 @@ td.sucuriscan-corefiles-warning > div{background:#f2dede;color:#a94442;border-co
 .sucuriscan-pattern-search-inputbox .input-button {width:14%;height:initial;line-height:35px}
 .sucuriscan-pattern-search .sucuriscan-cleanup-btn {margin-top:12px}
 .sucuriscan-pattern-search table label {color:#999}
+.sucuriscan-pattern-search .sucuriscan-grep-text em{color:#ea3838}
 /* About Page */
 .sucuriscan-about ul{margin-left:20px}
 .sucuriscan-about ul li{list-style:initial}

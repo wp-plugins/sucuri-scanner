@@ -51,6 +51,12 @@
                         $('.sucuriscan-pattern-search .sucuriscan-table tbody').html( data );
                         $('.sucuriscan-pattern-search form .input-text').attr('disabled', false);
                         $('.sucuriscan-pattern-search form .input-button').attr('disabled', false);
+
+                        $('.sucuriscan-pattern-search .sucuriscan-grep-text span').each(function(key, el){
+                            var text = $(el).text();
+                            var regex = new RegExp( '(.*)(' + query + ')(.*)', 'g' );
+                            $(el).html( text.replace( regex, '$1<em>$2</em>$3' ) );
+                        });
                     });
                 };
 

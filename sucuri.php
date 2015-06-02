@@ -1762,7 +1762,7 @@ class SucuriScanFileInfo extends SucuriScan {
      */
     public function grep_pattern( $directory = '', $pattern = '' ){
         $dir_tree = $this->get_directory_tree( $directory );
-        $pattern = '/.*' . @preg_quote( $pattern, '/' ) . '.*/';
+        $pattern = '/.*' . str_replace( '/', '\/', $pattern ) . '.*/';
         $results = array();
 
         if (
