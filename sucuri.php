@@ -4562,8 +4562,11 @@ class SucuriScanAPI extends SucuriScanOption {
                             $action_message = $response['body']->messages[0] . '.';
                         }
 
+                        // Keep a copy of the original API response message.
+                        $raw_message = $action_message;
+
                         // Special response for invalid API keys.
-                        if ( stripos( $action_message, 'log file not found' ) !== false ) {
+                        if ( stripos( $raw_message, 'log file not found' ) !== false ) {
                             SucuriScanOption::delete_option( ':api_key' );
 
                             $action_message .= ' This generally happens when you add an invalid API key, the'
@@ -4573,7 +4576,7 @@ class SucuriScanAPI extends SucuriScanOption {
                         }
 
                         // Special response for invalid CloudProxy API keys.
-                        if ( stripos( $action_message, 'wrong api key' ) !== false ) {
+                        if ( stripos( $raw_message, 'wrong api key' ) !== false ) {
                             SucuriScanOption::delete_option( ':cloudproxy_apikey' );
                             SucuriScanOption::delete_option( ':revproxy' );
 
@@ -4581,7 +4584,7 @@ class SucuriScanAPI extends SucuriScanOption {
                         }
 
                         // Special response for connection time outs.
-                        if ( stripos( $action_message, 'timed out' ) !== false ) {
+                        if ( stripos( $raw_message, 'timed out' ) !== false ) {
                             $current_timeout = SucuriScanOption::get_option( ':request_timeout' );
 
                             if ( $current_timeout < 300 ) {
@@ -4593,6 +4596,19 @@ class SucuriScanAPI extends SucuriScanOption {
                                 . ' connection after ' . $current_timeout . ' seconds. Wait a few minutes until'
                                 . ' the issue is resolved by itself, or change the timeout limit from the general'
                                 . ' settings page of the plugin, the option is named "API request timeout".';
+                        }
+
+                        // Stop SSL peer verification on connection failures.
+                        if (
+                            stripos( $raw_message, 'no alternative certificate' )
+                            || stripos( $raw_message, 'error setting certificate' )
+                        ) {
+                            SucuriScanOption::update_option( ':verify_ssl_cert', 'false' );
+
+                            $action_message .= 'There were some issues with the SSL certificate either in this'
+                                . ' server or with the remote API service. The automatic verification of the'
+                                . ' certificates has been deactivated to reduce the noise during the execution'
+                                . ' of the HTTP requests.';
                         }
 
                         SucuriScanInterface::error(
