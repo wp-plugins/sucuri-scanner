@@ -9138,7 +9138,6 @@ function sucuriscan_posthack_page(){
         'UpdateSecretKeys' => sucuriscan_update_secret_keys( $process_form ),
         'ResetPassword' => sucuriscan_posthack_users( $process_form ),
         'ResetPlugins' => sucuriscan_posthack_plugins( $process_form ),
-        'PatternSearch' => sucuriscan_posthack_grep( $process_form ),
     );
 
     echo SucuriScanTemplate::get_template( 'posthack', $template_variables );
@@ -9154,7 +9153,6 @@ function sucuriscan_posthack_ajax(){
 
     if ( SucuriScanInterface::check_nonce() ) {
         sucuriscan_posthack_plugins_ajax();
-        sucuriscan_posthack_grep_ajax();
     }
 
     wp_die();
@@ -9488,66 +9486,6 @@ function sucuriscan_posthack_reinstall_plugins( $process_form = false ){
         } else {
             SucuriScanInterface::error( 'You did not select a free plugin to reinstall.' );
         }
-    }
-}
-
-/**
- * Process the request that will start the execution of a file system scan
- * inside all the project looking for files that contain the pattern that was
- * queried by the user, similar to what the Unix grep command does
- * (unfortunately with less performance).
- *
- * @param  boolean $process_form Whether a form was submitted or not.
- * @return void
- */
-function sucuriscan_posthack_grep( $process_form = false ){
-    $template_variables = array(
-    );
-
-    return SucuriScanTemplate::get_section( 'posthack-patternsearch', $template_variables );
-}
-
-/**
- * Process the Ajax request to search a pattern among the project files.
- *
- * @return string HTML code for the table with the pattern matching data.
- */
-function sucuriscan_posthack_grep_ajax(){
-    if ( SucuriScanRequest::post( 'form_action' ) == 'pattern_search' ) {
-        // Get and clear user query.
-        $pattern = SucuriScanRequest::post( 'pattern' );
-        $pattern = sanitize_text_field( $pattern );
-        $response = '';
-        $counter = 0;
-
-        // Instantiate and grep the pattern in the project.
-        $file_info = new SucuriScanFileInfo();
-        $file_info->ignore_files = false;
-        $file_info->ignore_directories = false;
-        $file_info->skip_directories = true;
-        $file_info->run_recursively = true;
-        $grep_results = $file_info->grep_pattern( ABSPATH, $pattern );
-
-        // Iterate over the results and prepare for output.
-        if ( ! empty( $grep_results ) ) {
-            foreach ( $grep_results as $result ) {
-                $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
-                $response .= SucuriScanTemplate::get_snippet('posthack-patternsearch', array(
-                    'PatternSearch.CssClass' => $css_class,
-                    'PatternSearch.FilePath' => $result['file_path'],
-                    'PatternSearch.RelativePath' => $result['relative_path'],
-                    'PatternSearch.LineNumber' => $result['line_number'],
-                    'PatternSearch.LineText' => SucuriScan::escape( $result['line_text'] ),
-                    'PatternSearch.MatchingText' => SucuriScan::escape( $result['output'] ),
-                ));
-                $counter += 1;
-            }
-        } else {
-            $response = '<tr><td>Nothing was found.</td></tr>';
-        }
-
-        print( $response );
-        exit(0);
     }
 }
 

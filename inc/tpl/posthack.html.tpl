@@ -10,9 +10,6 @@
         <li>
             <a href="#" data-tabname="reset-plugins">Reset Plugins</a>
         </li>
-        <li>
-            <a href="#" data-tabname="pattern-search">Pattern Search</a>
-        </li>
     </ul>
 
     <div class="sucuriscan-tab-containers">
@@ -26,10 +23,6 @@
 
         <div id="sucuriscan-reset-plugins">
             %%SUCURI.ResetPlugins%%
-        </div>
-
-        <div id="sucuriscan-pattern-search">
-            %%SUCURI.PatternSearch%%
         </div>
     </div>
 </div>
