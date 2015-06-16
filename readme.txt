@@ -3,7 +3,7 @@ Contributors: dd@sucuri.net
 Donate Link: http://sucuri.net/
 Tags: malware, security, firewall, scan, spam, virus, sucuri, protection,WordPress Security, Login Security,Security Auditing,File Integrity,htaccess,phishing,backdoors,SQL Injection, RFI, LFI, XSS, CSRF, website firewall, Website Security, Performance Optimization, Zero Day, Software Vulnerability, Exploits, Hacks, Attackers, Bad Actors, Reverse Proxy, Two Factor Security, Two Factor Authentication, Security Logs, HeatBleed Vulnerability, Website Protection, Bash Vulnerability, RevSlider Vulnerability, MailPoet Vulnerability, Malware Prevention, Website Firewall, Website AntiVirus, Security Response, Security Detection, Security Prevention
 Requires at least:3.2
-Stable tag:1.7.9
+Stable tag:1.7.10
 Tested up to: 4.2.2
 
 The Sucuri WordPress Security plugin is a security toolset for security integrity monitoring, malware detection and security hardening.
@@ -351,6 +351,11 @@ service from the WordPress dashboard.
 
 
 == Changelog ==
+
+= 1.7.10 =
+* Added better checks for SSL issues
+* Fix for audit log timezones
+* Various bugfixes and improvements
 
 = 1.7.9 =
 * Improved reinstallation process
