@@ -3298,7 +3298,12 @@ class SucuriScanEvent extends SucuriScan {
             }
 
             $title = str_replace( '_', chr( 32 ), $event );
-            $mail_sent = SucuriScanMail::send_mail( $email, $title, $content, $email_params );
+            $mail_sent = SucuriScanMail::send_mail(
+                $email,
+                $title,
+                $content,
+                $email_params
+            );
 
             return $mail_sent;
         }
@@ -11177,13 +11182,25 @@ function sucuriscan_settings_form_submissions( $page_nonce = null ){
         }
 
         // Debug ability of the plugin to send HTTP requests correctly.
-        if ( $debug_request = SucuriScanRequest::post( ':debug_request' ) ) {
+        if ( SucuriScanRequest::post( ':debug_request' ) ) {
             SucuriScanInterface::info(
                 sprintf(
                     '<pre>%s</pre>',
                     SucuriScanAPI::test_api_call()
                 )
             );
+        }
+
+        // Debug ability of the plugin to send HTTP requests correctly.
+        if ( SucuriScanRequest::post( ':debug_email' ) ) {
+            $recipient = SucuriScanOption::get_option( ':notify_to' );
+            $mail_sent = SucuriScanMail::send_mail(
+                $recipient,
+                'Test email alert',
+                sprintf( 'Test email alert sent at %s', date('r') ),
+                array( 'Force' => true )
+            );
+            SucuriScanInterface::info( 'Test email alert sent, check your inbox.' );
         }
     }
 }
