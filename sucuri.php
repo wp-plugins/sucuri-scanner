@@ -6731,13 +6731,36 @@ class SucuriScanInterface {
      * @return void
      */
     private static function admin_notice( $type = 'updated', $message = '' ){
-        $alert_id = rand( 100, 999 );
-        if ( ! empty($message) ): ?>
-            <div id="sucuriscan-alert-<?php echo $alert_id; ?>" class="<?php echo $type; ?> sucuriscan-alert sucuriscan-alert-<?php echo $type; ?>">
-                <a href="javascript:void(0)" class="close" onclick="sucuriscan_alert_close('<?php echo $alert_id; ?>')">&times;</a>
-                <p><?php _e( $message ); ?></p>
-            </div>
-        <?php endif;
+        $display_notice = true;
+
+        /**
+         * Do not render notice during user authentication.
+         *
+         * There are some special cases when the error or warning messages should not be
+         * rendered to the end user because it may break the default functionality of
+         * the request handler. For instance, rendering an HTML alert like this when the
+         * user authentication process is executed may cause a "headers already sent"
+         * error.
+         */
+        if (
+            ! empty( $_POST )
+            && SucuriScanRequest::post( 'log' )
+            && SucuriScanRequest::post( 'pwd' )
+            && SucuriScanRequest::post( 'wp-submit' )
+        ) {
+            $display_notice = false;
+        }
+
+        // Display the HTML notice to the current user.
+        if ( $display_notice === true ) {
+            $alert_id = rand( 100, 999 );
+            if ( ! empty($message) ): ?>
+                <div id="sucuriscan-alert-<?php echo $alert_id; ?>" class="<?php echo $type; ?> sucuriscan-alert sucuriscan-alert-<?php echo $type; ?>">
+                    <a href="javascript:void(0)" class="close" onclick="sucuriscan_alert_close('<?php echo $alert_id; ?>')">&times;</a>
+                    <p><?php _e( $message ); ?></p>
+                </div>
+            <?php endif;
+        }
     }
 
     /**
@@ -11191,7 +11214,7 @@ function sucuriscan_settings_form_submissions( $page_nonce = null ){
             );
         }
 
-        // Debug ability of the plugin to send HTTP requests correctly.
+        // Debug ability of the plugin to send email alerts correctly.
         if ( SucuriScanRequest::post( ':debug_email' ) ) {
             $recipient = SucuriScanOption::get_option( ':notify_to' );
             $mail_sent = SucuriScanMail::send_mail(
