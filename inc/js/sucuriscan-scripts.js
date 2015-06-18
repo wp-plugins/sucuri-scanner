@@ -10,6 +10,18 @@ function sucuriscan_alert_close(id){
 }
 
 jQuery(document).ready(function($){
+    $('.sucuriscan-modal-btn').on('click', function(ev){
+        ev.preventDefault();
+        var modalid = $(this).data('modalid');
+        $('div.' + modalid).removeClass('sucuriscan-hidden');
+    });
+
+    $('.sucuriscan-overlay, .sucuriscan-modal-close').on('click', function(ev){
+        ev.preventDefault();
+        $('.sucuriscan-overlay').addClass('sucuriscan-hidden');
+        $('.sucuriscan-modal').addClass('sucuriscan-hidden');
+    });
+
     if( $('.sucuriscan-tabs').length ){
         var hidden_class = 'sucuriscan-hidden';
         var active_class = 'sucuriscan-tab-active';

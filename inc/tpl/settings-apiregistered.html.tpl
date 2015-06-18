@@ -10,7 +10,6 @@
             and better posture, all with the intent of reducing risk.
         </p>
 
-        <a href="%%SUCURI.URL.Home%%" class="button button-primary">Go to your Dashboard</a>
+        <a href="%%SUCURI.URL.Home%%" class="button button-primary">Go to the dashboard</a>
     </div>
 </div>
-

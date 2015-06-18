@@ -41,13 +41,15 @@
 .wp-core-ui .button-danger-disabled, .wp-core-ui .button-danger.disabled, .wp-core-ui .button-danger:disabled, .wp-core-ui .button-danger[disabled]{color:#e79494 !important;background:#ba2929 !important;border-color:#7f1b1b !important}
 .wp-core-ui .sucuriscan-btnblock{display:block;width:100%;text-align:center}
 /* Modal Window */
-.sucuriscan-overlay{position:fixed;top:0;left:0;bottom:0;right:0;z-index:800;background:rgba(0, 0, 0, 0.5)}
-.sucuriscan-modal{position:fixed;top:100px;left:50%;z-index:900}
-.sucuriscan-modal-outside{position:relative;left:-50%;border:1px solid #ddd}
+.sucuriscan-overlay{position:fixed;top:0;left:0;bottom:0;right:0;z-index:9990;background:rgba(0, 0, 0, 0.5)}
+.sucuriscan-modal{position:fixed;top:52px;left:26%;z-index:9990;width:48%}
+.sucuriscan-modal-outside{position:relative;left:0;border:1px solid #ddd}
 .sucuriscan-modal-inside{background:#fff;padding:20px}
-.sucuriscan-modal-header{padding:10px 20px;border-bottom:1px solid #ddd}
-.sucuriscan-modal-header .sucuriscan-modal-title{min-height:18px;margin:0}
-.sucuriscan-modal-close{display:inline-block;position:absolute;top:0;right:0;font-size:16px;font-weight:bold;text-decoration:none;line-height:39px;padding:0 15px;border-left:1px solid #ddd}
+.sucuriscan-modal-header{padding:0;border-bottom:1px solid #ddd}
+.sucuriscan-modal-header .sucuriscan-modal-title{float:left;line-height:38px;margin:0;margin-left:10px}
+.sucuriscan-modal-header .sucuriscan-modal-logo{display:inline-block;float:left;margin-top:8px;margin-left:18px}
+.sucuriscan-modal-header .sucuriscan-modal-logo img{height:22px}
+.sucuriscan-modal-close{display:inline-block;position:absolute;top:0;right:0;font-size:16px;font-weight:bold;text-decoration:none;line-height:38px;padding:0 15px;border-left:1px solid #ddd}
 .sucuriscan-modal-inside p:first-child{margin-top:0}
 .sucuriscan-modal-inside p:last-child{margin-bottom:0}
 /* Label and Tags */
@@ -283,8 +285,13 @@ td.sucuriscan-corefiles-warning > div{background:#f2dede;color:#a94442;border-co
 .sucuriscan-about li label{font-weight:bold;vertical-align:initial}
 /* API Registered Modal */
 .sucuriscan-apikey-registered{}
-.sucuriscan-apikey-registered .sucuriscan-pull-right{width:400px;margin-left:20px}
+.sucuriscan-apikey-registered .sucuriscan-pull-right{width:400px}
 .sucuriscan-apikey-registered .sucuriscan-sitelogo{background-position:0 -17px;height:83px}
+/* Setup Instructions Modal */
+.sucuriscan-setup-instructions{}
+.sucuriscan-setup-instructions .form-table{}
+.sucuriscan-setup-instructions .form-table td{padding:0;padding-bottom:12px}
+.sucuriscan-setup-instructions .form-table select{max-width:400px}
 /* Pagination Styles */
 .sucuriscan-pagination{display:inline-block;margin:0;padding:0;border-radius:4px}
 .sucuriscan-pagination>li{display:inline}

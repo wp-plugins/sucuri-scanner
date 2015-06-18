@@ -782,6 +782,68 @@ class SucuriScan {
     }
 
     /**
+     * Get user data by field and data.
+     *
+     * @param  integer $identifier User account identifier.
+     * @return object              WordPress user object with data.
+     */
+    public static function get_user_by_id( $identifier = 0 ){
+        if ( function_exists( 'get_user_by' ) ) {
+            $user = get_user_by( 'id', $identifier );
+
+            if ( $user instanceof WP_User ) {
+                return $user;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Retrieve a list of all admin user accounts.
+     *
+     * @return array List of admin users, false otherwise.
+     */
+    public static function get_admin_users(){
+        if ( function_exists( 'get_users' ) ) {
+            $args = array( 'role' => 'administrator' );
+
+            return get_users( $args );
+        }
+
+        return false;
+    }
+
+    /**
+     * Get a list of user emails that can be used to generate an API key for this
+     * website. Only accounts with the status in zero will be returned, the status
+     * field in the users table is officially deprecated but some 3rd-party plugins
+     * still use it to check if the account was activated by the owner of the email,
+     * a value different than zero generally means that the email was not verified
+     * successfully.
+     *
+     * @return array List of user identifiers and email addresses.
+     */
+    public static function get_users_for_api_key(){
+        $valid_users = array();
+        $users = self::get_admin_users();
+
+        if ( $users !== false ) {
+            foreach ( $users as $user ) {
+                if ( $user->user_status === '0' ) {
+                    $valid_users[ $user->ID ] = sprintf(
+                        '%s - %s',
+                        $user->user_login,
+                        $user->user_email
+                    );
+                }
+            }
+        }
+
+        return $valid_users;
+    }
+
+    /**
      * Returns the current time measured in the number of seconds since the Unix Epoch.
      *
      * @return integer Return current Unix timestamp.
@@ -4304,6 +4366,18 @@ class SucuriScanAPI extends SucuriScanOption {
     }
 
     /**
+     * Check whether the plugin API key is valid or not.
+     *
+     * @param  string  $api_key An unique string to identify this installation.
+     * @return boolean          True if the API key is valid, false otherwise.
+     */
+    private static function is_valid_key( $api_key = '' ){
+        $pattern = '/^[a-z0-9]{32}$/';
+
+        return (bool) ( @preg_match( $pattern, $api_key ) );
+    }
+
+    /**
      * Store the API key locally.
      *
      * @param  string  $api_key  An unique string of characters to identify this installation.
@@ -4312,7 +4386,7 @@ class SucuriScanAPI extends SucuriScanOption {
      */
     public static function set_plugin_key( $api_key = '', $validate = false ){
         if ( $validate ) {
-            if ( ! preg_match( '/^[a-z0-9]{32}$/', $api_key ) ) {
+            if ( ! self::is_valid_key( $api_key ) ) {
                 SucuriScanInterface::error( 'Invalid API key format' );
                 return false;
             }
@@ -4333,7 +4407,10 @@ class SucuriScanAPI extends SucuriScanOption {
     public static function get_plugin_key(){
         $api_key = self::get_option( ':api_key' );
 
-        if ( $api_key && strlen( $api_key ) > 10 ) {
+        if (
+            is_string( $api_key )
+            && self::is_valid_key( $api_key )
+        ) {
             return $api_key;
         }
 
@@ -4649,11 +4726,16 @@ class SucuriScanAPI extends SucuriScanOption {
     /**
      * Send a request to the API to register this site.
      *
-     * @return boolean true if the API key was generated, false otherwise.
+     * @param  string  $email Optional email address for the registration.
+     * @return boolean        True if the API key was generated, false otherwise.
      */
-    public static function register_site(){
+    public static function register_site( $email = '' ){
+        if ( ! is_string($email) || empty( $email ) ) {
+            $email = self::get_site_email();
+        }
+
         $response = self::api_call_wordpress( 'POST', array(
-            'e' => self::get_site_email(),
+            'e' => $email,
             's' => self::get_domain(),
             'a' => 'register_site',
         ), false );
@@ -5650,7 +5732,13 @@ class SucuriScanTemplate extends SucuriScanRequest {
         $params['PageNonce'] = wp_create_nonce( 'sucuriscan_page_nonce' );
         $params['PageStyleClass'] = isset($params['PageStyleClass']) ? $params['PageStyleClass'] : 'base';
         $params['CleanDomain'] = self::get_domain();
-        $params['AdminEmail'] = self::get_site_email();
+        $params['AdminEmails'] = '';
+
+        // Get a list of admin users for the API key generation.
+        if ( SucuriScanAPI::get_plugin_key() === false ) {
+            $admin_users = SucuriScan::get_users_for_api_key();
+            $params['AdminEmails'] = self::get_select_options( $admin_users );
+        }
 
         // Hide the advertisements from the layout.
         $ads_visibility = SucuriScanOption::get_option( ':ads_visibility' );
@@ -5875,6 +5963,8 @@ class SucuriScanTemplate extends SucuriScanRequest {
     public static function get_modal( $template = '', $params = array() ){
         $required = array(
             'Title' => 'Lorem ipsum dolor sit amet',
+            'Visibility' => 'visible',
+            'Identifier' => 'foobar',
             'CssClass' => '',
             'Content' => '<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do
                 eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim
@@ -5894,6 +5984,8 @@ class SucuriScanTemplate extends SucuriScanRequest {
             }
         }
 
+        $params['Visibility'] = 'sucuriscan-' . $params['Visibility'];
+        $params['Identifier'] = 'sucuriscan-' . $template . '-modal';
         $params = self::shared_params( $params );
 
         return self::get_template( 'modalwindow', $params, 'section' );
@@ -5930,8 +6022,10 @@ class SucuriScanTemplate extends SucuriScanRequest {
             }
 
             $options .= sprintf(
-                '<option value="%s" %s>%s</option>',
-                $option_name, $selected_str, $option_label
+                "<option value=\"%s\" %s>%s</option>\n",
+                SucuriScan::escape( $option_name ),
+                SucuriScan::escape( $selected_str ),
+                SucuriScan::escape( $option_label )
             );
         }
 
@@ -6678,6 +6772,11 @@ class SucuriScanInterface {
             && ! SucuriScanRequest::post( ':manual_api_key' )
         ) {
             echo SucuriScanTemplate::get_section( 'setup-notice' );
+            echo SucuriScanTemplate::get_modal('setup-form', array(
+                'Visibility' => 'hidden',
+                'Title' => 'Sucuri API key generation',
+                'CssClass' => 'sucuriscan-setup-instructions',
+            ));
         }
     }
 
@@ -11135,15 +11234,24 @@ function sucuriscan_settings_general(){
     $display_manual_key_form = (bool) ( SucuriScanRequest::post( ':recover_key' ) !== false );
 
     if ( $page_nonce && SucuriScanRequest::post( ':plugin_api_key' ) !== false ) {
-        $registered = SucuriScanAPI::register_site();
+        $user_id = SucuriScanRequest::post(':setup_user');
+        $user_obj = SucuriScan::get_user_by_id( $user_id );
 
-        if ( $registered ) {
-            $api_registered_modal = SucuriScanTemplate::get_modal('settings-apiregistered', array(
-                'Title' => 'Site registered successfully',
-                'CssClass' => 'sucuriscan-apikey-registered',
-            ));
-        } else {
-            $display_manual_key_form = true;
+        if (
+            $user_obj !== false
+            && user_can( $user_obj, 'administrator' )
+        ) {
+            if ( SucuriScanAPI::register_site( $user_obj->user_email ) ) {
+                $api_registered_modal = SucuriScanTemplate::get_modal(
+                    'settings-apiregistered',
+                    array(
+                        'Title' => 'Site registered successfully',
+                        'CssClass' => 'sucuriscan-apikey-registered',
+                    )
+                );
+            } else {
+                $display_manual_key_form = true;
+            }
         }
     }
 
