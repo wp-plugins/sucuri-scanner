@@ -6532,7 +6532,7 @@ class SucuriScanInterface {
      * @return void
      */
     public static function initialize(){
-        if ( SucuriScan::support_reverse_proxy() ) {
+        if ( SucuriScan::is_behind_cloudproxy() ) {
             $_SERVER['SUCURIREAL_REMOTE_ADDR'] = $_SERVER['REMOTE_ADDR'];
             $_SERVER['REMOTE_ADDR'] = SucuriScan::get_remote_addr();
         }
