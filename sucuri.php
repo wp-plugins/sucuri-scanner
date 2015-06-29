@@ -3087,9 +3087,10 @@ class SucuriScanEvent extends SucuriScan {
      * @param  integer $severity Importance of the event that will be reported, values from one to five.
      * @param  string  $location In which part of the system was the event triggered.
      * @param  string  $message  The explanation of the event.
+     * @param  boolean $internal Whether the event will be publicly visible or not.
      * @return boolean           TRUE if the event was logged in the monitoring service, FALSE otherwise.
      */
-    private static function report_event( $severity = 0, $location = '', $message = '' ){
+    private static function report_event( $severity = 0, $location = '', $message = '', $internal = false ){
         $user = wp_get_current_user();
         $username = false;
         $current_time = date( 'Y-m-d H:i:s' );
@@ -3122,6 +3123,11 @@ class SucuriScanEvent extends SucuriScan {
             default: $severity_name = 'Info';     break;
         }
 
+        // Mark the event as internal if necessary.
+        if ( $internal === true ) {
+            $severity_name = '@' . $severity_name;
+        }
+
         // Clear event message.
         $message = strip_tags( $message );
         $message = str_replace( "\r", '', $message );
@@ -3142,71 +3148,78 @@ class SucuriScanEvent extends SucuriScan {
     /**
      * Reports a debug event on the website.
      *
-     * @param  string  $message Text witht the explanation of the event or action performed.
-     * @return boolean          Either true or false depending on the success of the operation.
+     * @param  string  $message  Text witht the explanation of the event or action performed.
+     * @param  boolean $internal Whether the event will be publicly visible or not.
+     * @return boolean           Either true or false depending on the success of the operation.
      */
-    public static function report_debug_event( $message = '' ){
-        return self::report_event( 0, 'core', $message );
+    public static function report_debug_event( $message = '', $internal = false ){
+        return self::report_event( 0, 'core', $message, $internal );
     }
 
     /**
      * Reports a notice event on the website.
      *
-     * @param  string  $message Text witht the explanation of the event or action performed.
-     * @return boolean          Either true or false depending on the success of the operation.
+     * @param  string  $message  Text witht the explanation of the event or action performed.
+     * @param  boolean $internal Whether the event will be publicly visible or not.
+     * @return boolean           Either true or false depending on the success of the operation.
      */
-    public static function report_notice_event( $message = '' ){
-        return self::report_event( 1, 'core', $message );
+    public static function report_notice_event( $message = '', $internal = false ){
+        return self::report_event( 1, 'core', $message, $internal );
     }
 
     /**
      * Reports a info event on the website.
      *
-     * @param  string  $message Text witht the explanation of the event or action performed.
-     * @return boolean          Either true or false depending on the success of the operation.
+     * @param  string  $message  Text witht the explanation of the event or action performed.
+     * @param  boolean $internal Whether the event will be publicly visible or not.
+     * @return boolean           Either true or false depending on the success of the operation.
      */
-    public static function report_info_event( $message = '' ){
-        return self::report_event( 2, 'core', $message );
+    public static function report_info_event( $message = '', $internal = false ){
+        return self::report_event( 2, 'core', $message, $internal );
     }
 
     /**
      * Reports a warning event on the website.
      *
-     * @param  string  $message Text witht the explanation of the event or action performed.
-     * @return boolean          Either true or false depending on the success of the operation.
+     * @param  string  $message  Text witht the explanation of the event or action performed.
+     * @param  boolean $internal Whether the event will be publicly visible or not.
+     * @return boolean           Either true or false depending on the success of the operation.
      */
-    public static function report_warning_event( $message = '' ){
-        return self::report_event( 3, 'core', $message );
+    public static function report_warning_event( $message = '', $internal = false ){
+        return self::report_event( 3, 'core', $message, $internal );
     }
 
     /**
      * Reports a error event on the website.
      *
-     * @param  string  $message Text witht the explanation of the event or action performed.
-     * @return boolean          Either true or false depending on the success of the operation.
+     * @param  string  $message  Text witht the explanation of the event or action performed.
+     * @param  boolean $internal Whether the event will be publicly visible or not.
+     * @return boolean           Either true or false depending on the success of the operation.
      */
-    public static function report_error_event( $message = '' ){
-        return self::report_event( 4, 'core', $message );
+    public static function report_error_event( $message = '', $internal = false ){
+        return self::report_event( 4, 'core', $message, $internal );
     }
 
     /**
      * Reports a critical event on the website.
      *
-     * @param  string  $message Text witht the explanation of the event or action performed.
-     * @return boolean          Either true or false depending on the success of the operation.
+     * @param  string  $message  Text witht the explanation of the event or action performed.
+     * @param  boolean $internal Whether the event will be publicly visible or not.
+     * @return boolean           Either true or false depending on the success of the operation.
      */
-    public static function report_critical_event( $message = '' ){
-        return self::report_event( 5, 'core', $message );
+    public static function report_critical_event( $message = '', $internal = false ){
+        return self::report_event( 5, 'core', $message, $internal );
     }
 
     /**
      * Reports a notice or error event for enable and disable actions.
      *
-     * @param  string  $message Text witht the explanation of the event or action performed.
+     * @param  string  $message  Text witht the explanation of the event or action performed.
      * @param  string  $action   An optional text, hopefully either enabled or disabled.
-     * @return boolean          Either true or false depending on the success of the operation.
+     * @param  boolean $internal Whether the event will be publicly visible or not.
+     * @return boolean           Either true or false depending on the success of the operation.
      */
-    public static function report_auto_event( $message = '', $action = '' ){
+    public static function report_auto_event( $message = '', $action = '', $internal = false ){
         $message = strip_tags( $message );
 
         // Auto-detect the action performed, either enabled or disabled.
@@ -3216,11 +3229,11 @@ class SucuriScanEvent extends SucuriScan {
 
         // Report the correct event for the action performed.
         if ( $action == 'enabled' ) {
-            return self::report_notice_event( $message );
+            return self::report_notice_event( $message, $internal );
         } elseif ( $action == 'disabled' ) {
-            return self::report_error_event( $message );
+            return self::report_error_event( $message, $internal );
         } else {
-            return self::report_info_event( $message );
+            return self::report_info_event( $message, $internal );
         }
     }
 
@@ -4841,7 +4854,7 @@ class SucuriScanAPI extends SucuriScanOption {
             $response['body']->output_data = array();
             $log_pattern = '/^([0-9\-]+) ([0-9:]+) (\S+) : (.+)/';
             $extra_pattern = '/(.+ \(multiple entries\):) (.+)/';
-            $generic_pattern = '/^([A-Z][a-z]{3,7}): ([^:;]+; )?(.+)/';
+            $generic_pattern = '/^@?([A-Z][a-z]{3,7}): ([^:;]+; )?(.+)/';
             $auth_pattern = '/^User authentication (succeeded|failed): ([^<;]+)/';
 
             foreach ( $response['body']->output as $log ) {
