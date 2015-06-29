@@ -305,7 +305,6 @@ if ( defined( 'SUCURISCAN' ) ) {
      */
     if ( class_exists( 'SucuriScanHook' ) ) {
         $sucuriscan_hooks = array(
-            // Passes.
             'add_attachment',
             'add_link',
             'create_category',
@@ -314,20 +313,21 @@ if ( defined( 'SUCURISCAN' ) ) {
             'login_form_resetpass',
             'private_to_published',
             'publish_page',
-            'publish_post',
             'publish_phone',
-            'xmlrpc_publish_post',
+            'publish_post',
             'retrieve_password',
             'switch_theme',
             'user_register',
+            'wp_insert_comment',
             'wp_login',
             'wp_login_failed',
             'wp_trash_post',
+            'xmlrpc_publish_post',
         );
 
         foreach ( $sucuriscan_hooks as $hook_name ) {
             $hook_func = 'SucuriScanHook::hook_' . $hook_name;
-            add_action( $hook_name, $hook_func, 50 );
+            add_action( $hook_name, $hook_func, 50, 5 );
         }
 
         add_action( 'admin_init', 'SucuriScanHook::hook_undefined_actions' );
@@ -3834,6 +3834,39 @@ class SucuriScanHook extends SucuriScanEvent {
                 }
             }
         }
+    }
+
+    /**
+     * Fires immediately after a comment is inserted into the database.
+     *
+     * The action comment-post can also be used to track the insertion of data in
+     * the comments table, but this only returns the identifier of the new entry in
+     * the database and the status (approved, not approved, spam). The WP-Insert-
+     * Comment action returns the same identifier and additionally the full data set
+     * with the comment information.
+     *
+     * @see https://codex.wordpress.org/Plugin_API/Action_Reference/wp_insert_comment
+     * @see https://codex.wordpress.org/Plugin_API/Action_Reference/comment_post
+     *
+     * @param  integer $id      The comment identifier.
+     * @param  object  $comment The comment object.
+     * @return void
+     */
+    public static function hook_wp_insert_comment( $id = 0, $comment = false ){
+        $data_set = array(
+            'id' => $comment->comment_ID,
+            'post_id' => $comment->comment_post_ID,
+            'user_id' => $comment->user_id,
+            'parent' => $comment->comment_parent,
+            'approved' => $comment->comment_approved,
+            'remote_addr' => $comment->comment_author_IP,
+            'author_email' => $comment->comment_author_email,
+            'date' => $comment->comment_date,
+            'content' => $comment->comment_content,
+            'user_agent' => $comment->comment_agent,
+        );
+        $message = base64_encode( json_encode( $data_set ) );
+        self::report_notice_event( 'Base64:' . $message, true );
     }
 
     // TODO: Detect auto updates in core, themes, and plugin files.
