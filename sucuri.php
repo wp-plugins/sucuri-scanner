@@ -8252,57 +8252,33 @@ function sucuriscan_harden_upload(){
  * @return void
  */
 function sucuriscan_harden_wpcontent(){
-    $cp = 1;
-    $htaccess_upload = WP_CONTENT_DIR . '/.htaccess';
-
-    if ( ! is_readable( $htaccess_upload ) ) {
-        $cp = 0;
-    } else {
-        $cp = 0;
-        $fcontent = SucuriScanFileInfo::file_lines( $htaccess_upload );
-
-        foreach ( $fcontent as $fline ) {
-            if ( stripos( $fline, 'deny from all' ) !== false ) {
-                $cp = 1;
-                break;
-            }
-        }
-    }
-
     if ( SucuriScanRequest::post( ':run_hardening' ) ) {
-        if ( SucuriScanRequest::post( ':harden_wpcontent' ) && $cp == 0 ) {
-            if ( @file_put_contents( $htaccess_upload, "\n<Files *.php>\ndeny from all\n</Files>" ) === false ) {
-                SucuriScanInterface::error( 'Unable to create <code>.htaccess</code> file, folder destination is not writable.' );
-            } else {
-                $cp = 1;
+        if ( SucuriScanRequest::post( ':harden_wpcontent' ) ) {
+            $result = SucuriScanHardening::harden_directory( WP_CONTENT_DIR );
+
+            if ( $result === true ) {
                 $message = 'Hardening applied to the content directory';
                 SucuriScanEvent::report_notice_event( $message );
                 SucuriScanInterface::info( $message );
+            } else {
+                SucuriScanInterface::error( 'Error hardening directory, check the permissions.' );
             }
         } elseif ( SucuriScanRequest::post( ':harden_wpcontent_unharden' ) ) {
-            $htaccess_upload_writable = ( file_exists( $htaccess_upload ) && is_writable( $htaccess_upload ) ) ? true : false;
-            $htaccess_content = $htaccess_upload_writable ? @file_get_contents( $htaccess_upload ) : '';
+            $result = SucuriScanHardening::unharden_directory( WP_CONTENT_DIR );
 
-            if ( $htaccess_upload_writable ) {
-                $cp = 0;
-
-                if ( preg_match( '/<Files \*\.php>\ndeny from all\n<\/Files>/', $htaccess_content, $match ) ) {
-                    $htaccess_content = str_replace( "<Files *.php>\ndeny from all\n</Files>", '', $htaccess_content );
-                    @file_put_contents( $htaccess_upload, $htaccess_content, LOCK_EX );
-                }
-
+            if ( $result === true ) {
                 $message = 'Hardening reverted in the content directory';
                 SucuriScanEvent::report_error_event( $message );
                 SucuriScanInterface::info( $message );
             } else {
-                SucuriScanInterface::info(
-                    'File <code>' . WP_CONTENT_DIR . '/.htaccess</code> does not exists or is not
-                    writable, you will need to remove the following code manually from there:
-                    <code>&lt;Files *.php&gt;deny from all&lt;/Files&gt;</code>'
-                );
+                SucuriScanInterface::info( 'Access file is not writable, check the permissions.' );
             }
         }
     }
+
+    // Check whether the directory is already hardened or not.
+    $is_hardened = SucuriScanHardening::is_hardened( WP_CONTENT_DIR );
+    $cp = ( $is_hardened === true ) ? 1 : 0;
 
     $description = 'This option blocks direct access to any PHP file located under the content'
         . ' directory of this site. The note under the <em>"Protect uploads directory"</em>'
