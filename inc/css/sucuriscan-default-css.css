@@ -230,7 +230,10 @@ td.sucuriscan-corefiles-warning > div{background:#f2dede;color:#a94442;border-co
 .sucuriscan-maincontent td.sucuriscan-corefiles-warning div{padding:10px;border-width:1px;border-style:solid}
 .sucuriscan-maincontent td.sucuriscan-corefiles-warning code{font-size:12px;padding:0 5px}
 .sucuriscan-maincontent .sucuriscan-integrity-message{position:relative}
-.sucuriscan-maincontent .sucuriscan-integrity-message .sucuriscan-integrity-mark{position:absolute;top:1px;right:1px;background:#7ad03a;font-weight:bold;color:#fff;line-height:35px;padding:0 10px;border-left:1px solid #ddd}
+.sucuriscan-maincontent .sucuriscan-integrity-message .sucuriscan-integrity-mark,
+.sucuriscan-maincontent .sucuriscan-integrity-message .sucuriscan-integrity-failure{position:absolute;top:1px;right:1px;background:#ddd;font-weight:bold;color:#fff;line-height:35px;padding:0 10px;border-left:1px solid #ddd}
+.sucuriscan-maincontent .sucuriscan-integrity-message .sucuriscan-integrity-mark{background:#7ad03a}
+.sucuriscan-maincontent .sucuriscan-integrity-message .sucuriscan-integrity-failure{background:#dd3d36;border-left:0}
 .sucuriscan-maincontent .sucuriscan-ignoredfiles{margin-top:0}
 .sucuriscan-ignore-file form{padding:10px;padding-top:0;border-bottom:1px solid #ddd;border-right:1px solid #ddd}
 .sucuriscan-ignore-file p{border-bottom:none}

@@ -8,6 +8,22 @@
     </div>
 </div>
 
+<div class="postbox sucuriscan-border sucuriscan-border-bad sucuriscan-integrity-message sucuriscan-%%SUCURI.CoreFiles.FailureVisibility%%">
+    <span class="sucuriscan-integrity-failure">FAILURE</span>
+    <h3>Core integrity</h3>
+
+    <div class="inside">
+        <p>
+            Error retrieving the WordPress core hashes. The information used by the plugin
+            to determine the integrity of the core files is retrieved and controlled by
+            WordPress. Any error message related with this tool is likely related with a
+            modification in their API service that is not supported yet. It is also possible
+            that your website is not able to communicate with this server due to a missing
+            HTTP transport tool.
+        </p>
+    </div>
+</div>
+
 <form action="%%SUCURI.URL.Home%%" method="post">
     <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
 
