@@ -189,6 +189,7 @@ if ( defined( 'SUCURISCAN' ) ) {
         'sucuriscan_notify_plugin_change' => 'Receive email alerts for <strong>Sucuri</strong> plugin changes',
         'sucuriscan_prettify_mails' => 'Receive email alerts in HTML <em>(there may be issues with some mail services)</em>',
         'sucuriscan_lastlogin_redirection' => 'Allow redirection after login to report the last-login information',
+        'sucuriscan_notify_scan_checksums' => 'Receive email alerts for core integrity checks',
         'sucuriscan_notify_user_registration' => 'user:Receive email alerts for new user registration',
         'sucuriscan_notify_success_login' => 'user:Receive email alerts for successful login attempts',
         'sucuriscan_notify_failed_login' => 'user:Receive email alerts for failed login attempts',
@@ -268,7 +269,7 @@ if ( defined( 'SUCURISCAN' ) ) {
      * information to the Sucuri API service where a security and integrity scan
      * will be performed against the hashes provided and the official versions.
      */
-    add_action( 'sucuriscan_scheduled_scan', 'SucuriScanEvent::filesystem_scan' );
+    add_action( 'sucuriscan_scheduled_scan', 'SucuriScan::run_scheduled_task' );
 
     /**
      * Initialize the execute of the main plugin's functions.
@@ -616,6 +617,16 @@ class SucuriScan {
      */
     public static function secret_key_pattern(){
         return '/define\(\s*\'([A-Z_]+)\',(\s*)\'(.+)\'\s*\);/';
+    }
+
+    /**
+     * Execute the plugin' scheduled tasks.
+     *
+     * @return void
+     */
+    public static function run_scheduled_task(){
+        SucuriScanEvent::filesystem_scan();
+        sucuriscan_core_files( true );
     }
 
     /**
@@ -2533,6 +2544,7 @@ class SucuriScanOption extends SucuriScanRequest {
             'sucuriscan_notify_plugin_installed' => 'disabled',
             'sucuriscan_notify_plugin_updated' => 'disabled',
             'sucuriscan_notify_post_publication' => 'enabled',
+            'sucuriscan_notify_scan_checksums' => 'disabled',
             'sucuriscan_notify_settings_updated' => 'disabled',
             'sucuriscan_notify_success_login' => 'enabled',
             'sucuriscan_notify_theme_activated' => 'disabled',
@@ -3307,6 +3319,9 @@ class SucuriScanEvent extends SucuriScan {
                 $content .= "[2] http://kb.sucuri.net/definitions/attacks/brute-force/password-guessing <br>\n";
             } elseif ( $event == 'bruteforce_attack' ) {
                 // Send a notification even if the limit of emails per hour was reached.
+                $email_params['Force'] = true;
+            } elseif ( $event == 'scan_checksums' ) {
+                $event = 'core_integrity_checks';
                 $email_params['Force'] = true;
             }
 
@@ -8959,18 +8974,23 @@ function sucuriscan_wordpress_outdated(){
 /**
  * Compare the md5sum of the core files in the current site with the hashes hosted
  * remotely in Sucuri servers. These hashes are updated every time a new version
- * of WordPress is released.
+ * of WordPress is released. If the "Send Email" parameter is set the function will
+ * send a notification to the administrator with a list of files that were added,
+ * modified and/or deleted so far.
  *
- * @return void
+ * @param  boolean $send_email If the HTML code returned will be sent via email.
+ * @return string              HTML code with a list of files that were affected.
  */
-function sucuriscan_core_files(){
+function sucuriscan_core_files( $send_email = false ){
     $site_version = SucuriScan::site_version();
+    $affected_files = 0;
 
     $template_variables = array(
         'CoreFiles.List' => '',
         'CoreFiles.ListCount' => 0,
         'CoreFiles.GoodVisibility' => 'visible',
         'CoreFiles.BadVisibility' => 'hidden',
+        'CoreFiles.FailureVisibility' => 'hidden',
     );
 
     if ( $site_version && SucuriScanOption::get_option( ':scan_checksums' ) == 'enabled' ) {
@@ -9030,6 +9050,7 @@ function sucuriscan_core_files(){
                         'CoreFiles.IsNotFixable' => $is_fixable_text,
                     ));
                     $counter += 1;
+                    $affected_files += 1;
                 }
             }
 
@@ -9039,8 +9060,22 @@ function sucuriscan_core_files(){
                 $template_variables['CoreFiles.BadVisibility'] = 'visible';
             }
         } else {
-            SucuriScanInterface::error( 'Error retrieving the WordPress core hashes, try again.' );
+            $template_variables['CoreFiles.GoodVisibility'] = 'hidden';
+            $template_variables['CoreFiles.BadVisibility'] = 'hidden';
+            $template_variables['CoreFiles.FailureVisibility'] = 'visible';
         }
+    }
+
+    // Send an email notification with the affected files.
+    if ( $send_email === true ) {
+        if ( $affected_files > 0 ) {
+            $content = SucuriScanTemplate::get_section( 'notification-corefiles', $template_variables );
+            $sent = SucuriScanEvent::notify_event( 'scan_checksums', $content );
+
+            return $sent;
+        }
+
+        return false;
     }
 
     return SucuriScanTemplate::get_section( 'integrity-corefiles', $template_variables );
@@ -11010,6 +11045,10 @@ function sucuriscan_settings_form_submissions( $page_nonce = null ){
         // Update the notification settings.
         if ( SucuriScanRequest::post( ':save_notification_settings' ) !== false ) {
             $options_updated_counter = 0;
+
+            if ( SucuriScanRequest::post( ':notify_scan_checksums', '1' ) ) {
+                $_POST['sucuriscan_prettify_mails'] = '1';
+            }
 
             foreach ( $sucuriscan_notify_options as $alert_type => $alert_label ) {
                 $option_value = SucuriScanRequest::post( $alert_type, '(1|0)' );
