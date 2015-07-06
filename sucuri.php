@@ -3868,22 +3868,34 @@ class SucuriScanHook extends SucuriScanEvent {
      * @return void
      */
     public static function hook_wp_insert_comment( $id = 0, $comment = false ){
-        $data_set = array(
-            'id' => $comment->comment_ID,
-            'post_id' => $comment->comment_post_ID,
-            'user_id' => $comment->user_id,
-            'parent' => $comment->comment_parent,
-            'approved' => $comment->comment_approved,
-            'remote_addr' => $comment->comment_author_IP,
-            'author_email' => $comment->comment_author_email,
-            'date' => $comment->comment_date,
-            'content' => $comment->comment_content,
-            'user_agent' => $comment->comment_agent,
-        );
-        $message = base64_encode( json_encode( $data_set ) );
-        self::report_notice_event( 'Base64:' . $message, true );
+        if (
+            $comment instanceof stdClass
+            && property_exists( $comment, 'comment_ID' )
+            && property_exists( $comment, 'comment_agent' )
+            && property_exists( $comment, 'comment_author_IP' )
+        ) {
+            $data_set = array(
+                'id' => $comment->comment_ID,
+                'post_id' => $comment->comment_post_ID,
+                'user_id' => $comment->user_id,
+                'parent' => $comment->comment_parent,
+                'approved' => $comment->comment_approved,
+                'remote_addr' => $comment->comment_author_IP,
+                'author_email' => $comment->comment_author_email,
+                'date' => $comment->comment_date,
+                'content' => $comment->comment_content,
+                'user_agent' => $comment->comment_agent,
+            );
+            $message = base64_encode( json_encode( $data_set ) );
+            self::report_notice_event( 'Base64:' . $message, true );
+        }
     }
 
+    // TODO: Log when the comment status is modified: wp_set_comment_status
+    // TODO: Log when the comment data is modified: edit_comment
+    // TODO: Log when the comment is going to be deleted: delete_comment, trash_comment
+    // TODO: Log when the comment is finally deleted: deleted_comment, trashed_comment
+    // TODO: Log when the comment is closed: comment_closed
     // TODO: Detect auto updates in core, themes, and plugin files.
 
     /**
