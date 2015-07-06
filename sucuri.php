@@ -7847,10 +7847,12 @@ class SucuriScanHardening extends SucuriScan {
      * Currently supports Apache 2.2 and 2.4 and denies access to all PHP files with
      * any mixed extension case.
      *
-     * @return array List of access control rules.
+     * @param  string $directory Valid directory path.
+     * @return array             List of access control rules.
      */
-    private static function get_rules(){
-        return array(
+    private static function get_rules( $directory = '' ){
+        $directory = basename( $directory );
+        $rules = array(
             '<FilesMatch "\.(?i:php)$">',
             '  <IfModule !mod_authz_core.c>',
             '    Deny from all',
@@ -7860,6 +7862,17 @@ class SucuriScanHardening extends SucuriScan {
             '  </IfModule>',
             '</FilesMatch>',
         );
+
+        if ( $directory == 'wp-includes' ) {
+            $rules[] = '<Files wp-tinymce.php>';
+            $rules[] = '  Allow from all';
+            $rules[] = '</Files>';
+            $rules[] = '<Files ms-files.php>';
+            $rules[] = '  Allow from all';
+            $rules[] = '</Files>';
+        }
+
+        return $rules;
     }
 
     /**
@@ -7879,7 +7892,7 @@ class SucuriScanHardening extends SucuriScan {
         ) {
             $fhandle = false;
             $target = $directory . '/.htaccess';
-            $deny_rules = self::get_rules();
+            $deny_rules = self::get_rules( $directory );
 
             if ( file_exists( $target ) ) {
                 $fhandle = @fopen( $target, 'a' );
@@ -7909,7 +7922,7 @@ class SucuriScanHardening extends SucuriScan {
      */
     public static function unharden_directory( $directory = '' ){
         if ( self::is_hardened( $directory ) ) {
-            $deny_rules = self::get_rules();
+            $deny_rules = self::get_rules( $directory );
             $fpath = $directory . '/.htaccess';
             $content = @file_get_contents( $fpath );
 
@@ -7946,7 +7959,7 @@ class SucuriScanHardening extends SucuriScan {
                 file_exists( $fpath )
                 && is_readable( $fpath )
             ) {
-                $rules = self::get_rules();
+                $rules = self::get_rules( $directory );
                 $rules_str = implode( "\n", $rules );
                 $content = @file_get_contents( $fpath );
 
@@ -8293,71 +8306,35 @@ function sucuriscan_harden_wpcontent(){
  * @return void
  */
 function sucuriscan_harden_wpincludes(){
-    $cp = 1;
-    $htaccess_upload = ABSPATH . '/wp-includes/.htaccess';
-
-    if ( ! is_readable( $htaccess_upload ) ) {
-        $cp = 0;
-    } else {
-        $cp = 0;
-        $fcontent = SucuriScanFileInfo::file_lines( $htaccess_upload );
-
-        foreach ( $fcontent as $fline ) {
-            if ( stripos( $fline, 'deny from all' ) !== false ) {
-                $cp = 1;
-                break;
-            }
-        }
-    }
+    $dpath = ABSPATH . '/wp-includes';
 
     if ( SucuriScanRequest::post( ':run_hardening' ) ) {
-        if ( SucuriScanRequest::post( ':harden_wpincludes' ) && $cp == 0 ) {
-            $file_rules = "\n<Files *.php>"
-                . "\ndeny from all"
-                . "\n</Files>"
-                . "\n<Files wp-tinymce.php>"
-                . "\nallow from all"
-                . "\n</Files>"
-                . "\n<Files ms-files.php>"
-                . "\nallow from all"
-                . "\n</Files>"
-                . "\n";
+        if ( SucuriScanRequest::post( ':harden_wpincludes' ) ) {
+            $result = SucuriScanHardening::harden_directory( $dpath );
 
-            if ( @file_put_contents( $htaccess_upload, $file_rules ) === false ) {
-                SucuriScanInterface::error( 'Unable to create <code>.htaccess</code> file, folder destination is not writable.' );
-            } else {
-                $cp = 1;
+            if ( $result === true ) {
                 $message = 'Hardening applied to the library directory';
                 SucuriScanEvent::report_notice_event( $message );
                 SucuriScanInterface::info( $message );
+            } else {
+                SucuriScanInterface::error( 'Error hardening directory, check the permissions.' );
             }
         } elseif ( SucuriScanRequest::post( ':harden_wpincludes_unharden' ) ) {
-            $htaccess_upload_writable = ( file_exists( $htaccess_upload ) && is_writable( $htaccess_upload ) ) ? true : false;
-            $htaccess_content = $htaccess_upload_writable ? @file_get_contents( $htaccess_upload ) : '';
+            $result = SucuriScanHardening::unharden_directory( $dpath );
 
-            if ( $htaccess_upload_writable ) {
-                $cp = 0;
-
-                if ( preg_match_all( '/<Files (\*|wp-tinymce|ms-files)\.php>\n(deny|allow) from all\n<\/Files>/', $htaccess_content, $match ) ) {
-                    foreach ( $match[0] as $restriction ) {
-                        $htaccess_content = str_replace( $restriction, '', $htaccess_content );
-                    }
-
-                    @file_put_contents( $htaccess_upload, $htaccess_content, LOCK_EX );
-                }
-
+            if ( $result === true ) {
                 $message = 'Hardening reverted in the library directory';
                 SucuriScanEvent::report_error_event( $message );
                 SucuriScanInterface::info( $message );
             } else {
-                SucuriScanInterface::error(
-                    'File <code>wp-includes/.htaccess</code> does not exists or is not
-                    writable, you will need to remove the following code manually from
-                    there: <code>&lt;Files *.php&gt;deny from all&lt;/Files&gt;</code>'
-                );
+                SucuriScanInterface::info( 'Access file is not writable, check the permissions.' );
             }
         }
     }
+
+    // Check whether the directory is already hardened or not.
+    $is_hardened = SucuriScanHardening::is_hardened( $dpath );
+    $cp = ( $is_hardened === true ) ? 1 : 0;
 
     return sucuriscan_harden_status(
         'Restrict wp-includes access',
