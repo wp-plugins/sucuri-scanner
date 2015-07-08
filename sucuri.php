@@ -756,6 +756,8 @@ class SucuriScan {
             && NOT_USING_CLOUDPROXY === true
         ) {
             $status = false;
+            $host_by_addr = '::1';
+            $host_by_name = 'localhost';
         } else {
             $host_by_addr = @gethostbyname( $http_host );
             $host_by_name = @gethostbyaddr( $host_by_addr );
