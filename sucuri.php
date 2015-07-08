@@ -750,9 +750,17 @@ class SucuriScan {
      */
     public static function is_behind_cloudproxy( $verbose = false ){
         $http_host = self::get_top_level_domain();
-        $host_by_addr = @gethostbyname( $http_host );
-        $host_by_name = @gethostbyaddr( $host_by_addr );
-        $status = (bool) preg_match( '/^cloudproxy[0-9]+\.sucuri\.net$/', $host_by_name );
+
+        if (
+            defined( 'NOT_USING_CLOUDPROXY' )
+            && NOT_USING_CLOUDPROXY === true
+        ) {
+            $status = false;
+        } else {
+            $host_by_addr = @gethostbyname( $http_host );
+            $host_by_name = @gethostbyaddr( $host_by_addr );
+            $status = (bool) preg_match( '/^cloudproxy[0-9]+\.sucuri\.net$/', $host_by_name );
+        }
 
         /*
          * If the DNS reversion failed but the CloudProxy API key is set, then consider
