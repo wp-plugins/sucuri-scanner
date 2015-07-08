@@ -254,6 +254,8 @@ if ( defined( 'SUCURISCAN' ) ) {
     $sucuriscan_email_subjects = array(
         'Sucuri Alert, :domain, :event',
         'Sucuri Alert, :domain, :event, :remoteaddr',
+        'Sucuri Alert, :domain, :event, :username',
+        'Sucuri Alert, :domain, :event, :email',
         'Sucuri Alert, :event, :remoteaddr',
         'Sucuri Alert, :event',
     );
@@ -5642,28 +5644,50 @@ class SucuriScanMail extends SucuriScanOption {
      * @return string        A text with the subject for the email alert.
      */
     private static function get_email_subject( $event = '' ){
-        $email_subject = self::get_option( ':email_subject' );
+        $subject = self::get_option( ':email_subject' );
 
         /**
          * Probably a bad value in the options table. Delete the entry from the database
          * and call this function to try again, it will probably fall in an infinite
          * loop, but this is the easiest way to control this procedure.
          */
-        if ( ! $email_subject ) {
+        if ( ! $subject ) {
             self::delete_option( ':email_subject' );
 
             return self::get_email_subject( $event );
         }
 
-        $domain_name = self::get_domain();
-        $remote_addr = self::get_remote_addr();
-        $email_subject = str_replace(
-            array( ':domain', ':event', ':remoteaddr' ),
-            array( $domain_name, $event, $remote_addr ),
-            strip_tags( $email_subject )
-        );
+        $subject = strip_tags( $subject );
+        $subject = str_replace( ':event', $event, $subject );
+        $subject = str_replace( ':domain', self::get_domain(), $subject );
+        $subject = str_replace( ':remoteaddr', self::get_remote_addr(), $subject );
 
-        return $email_subject;
+        /**
+         * Extract user data from the current session.
+         *
+         * Get the data of the user in the current session only if the pseudo-tags for
+         * the username and/or email address are necessary to build the email subject,
+         * otherwise this operation may delay the sending of the alerts.
+         */
+        if ( preg_match( '/:(username|email)/', $subject ) ) {
+            $user = wp_get_current_user();
+            $username = 'unknown';
+            $eaddress = 'unknown';
+
+            if (
+                $user instanceof WP_User
+                && isset( $user->user_login )
+                && isset( $user->user_email )
+            ) {
+                $username = $user->user_login;
+                $eaddress = $user->user_email;
+            }
+
+            $subject = str_replace( ':username', $user->user_login, $subject );
+            $subject = str_replace( ':email', $user->user_email, $subject );
+        }
+
+        return $subject;
     }
 
     /**
