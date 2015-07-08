@@ -310,6 +310,7 @@ if ( defined( 'SUCURISCAN' ) ) {
         $sucuriscan_hooks = array(
             'add_attachment',
             'add_link',
+            'all',
             'create_category',
             'delete_post',
             'delete_user',
@@ -3899,6 +3900,25 @@ class SucuriScanHook extends SucuriScanEvent {
     // TODO: Log when the comment is finally deleted: deleted_comment, trashed_comment
     // TODO: Log when the comment is closed: comment_closed
     // TODO: Detect auto updates in core, themes, and plugin files.
+
+    /**
+     * Placeholder for arbitrary actions.
+     *
+     * @return void
+     */
+    public static function hook_all( $action = null, $data = false ){
+        global $wp_filter;
+
+        if (
+            is_array( $wp_filter )
+            && ! empty( $wp_filter )
+            && ! array_key_exists( $action, $wp_filter )
+            && preg_match( '/^(admin_post|wp_ajax)_.+/', $action )
+        ) {
+            $message = sprintf( 'Undefined XHR action %s', $action );
+            self::report_error_event( $message );
+        }
+    }
 
     /**
      * Send a notifications to the administrator of some specific events that are
