@@ -743,7 +743,7 @@ class SucuriScan {
     }
 
     /**
-     * Check whether the site is behing the Sucuri CloudProxy network.
+     * Check whether the site is behind the Sucuri CloudProxy network.
      *
      * @param  boolean $verbose Return an array with the hostname, address, and status, or not.
      * @return boolean          Either TRUE or FALSE if the site is behind CloudProxy.
@@ -7919,6 +7919,7 @@ class SucuriScanHardening extends SucuriScan {
         $rules = array(
             '<FilesMatch "\.(?i:php)$">',
             '  <IfModule !mod_authz_core.c>',
+            '    Order allow,deny',
             '    Deny from all',
             '  </IfModule>',
             '  <IfModule mod_authz_core.c>',
@@ -8339,14 +8340,7 @@ function sucuriscan_harden_wpcontent(){
         . ' section also applies to this option so you may want to read that part too. If you'
         . ' experience any kind of issues in your site after you apply this hardening go to the'
         . ' content directory using a FTP client or a file manager <em>(generally available in'
-        . ' your hosting panel)</em> and rename a file named <code>.htaccess</code>.</p><p><b>'
-        . 'Note:</b> Apache/2.4 introduced new directives to configure the access level of'
-        . ' certain resources in the server, for instance the rules applied to harden these'
-        . ' directories will not work and will probably cause issues. We will not fix this'
-        . ' because there is no accurate way to determine the exact version number of Apache'
-        . ' installed in this server considering some security measures applied to its'
-        . ' configuration that will prevent the version number to be readable by PHP, proceed'
-        . ' with caution.';
+        . ' your hosting panel)</em> and rename a file named <code>.htaccess</code>.';
 
     return sucuriscan_harden_status(
         'Restrict wp-content access',
