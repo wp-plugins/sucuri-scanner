@@ -10208,7 +10208,11 @@ if ( ! function_exists( 'sucuri_login_redirect' ) ) {
     function sucuriscan_login_redirect( $redirect_to = '', $request = null, $user = false ){
         $login_url = ! empty($redirect_to) ? $redirect_to : admin_url();
 
-        if ( $user instanceof WP_User && $user->ID ) {
+        if (
+            $user instanceof WP_User
+            && in_array( 'administrator', $user->roles )
+            && SucuriScanOption::get_option( ':lastlogin_redirection' ) === 'enabled'
+        ) {
             $login_url = add_query_arg( 'sucuriscan_lastlogin', 1, $login_url );
         }
 
