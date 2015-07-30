@@ -5911,10 +5911,12 @@ class SucuriScanTemplate extends SucuriScanRequest {
             $params['LayoutType'] = 'onecolumn';
             $params['AdsVisibility'] = 'hidden';
             $params['ReviewNavbarButton'] = 'visible';
+            $params['PageSidebarContent'] = '';
         } else {
             $params['LayoutType'] = 'twocolumns';
             $params['AdsVisibility'] = 'visible';
             $params['ReviewNavbarButton'] = 'hidden';
+            $params['PageSidebarContent'] = self::get_template( 'bsidebar', $params, 'section' );
         }
 
         return $params;
