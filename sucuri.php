@@ -328,7 +328,7 @@ if ( defined( 'SUCURISCAN' ) ) {
             'xmlrpc_publish_post',
         );
 
-        if ( SucuriScanOption::get_option( ':xhr_monitor' ) === 'enabled' ) {
+        if ( SucuriScanOption::is_enabled( ':xhr_monitor' ) ) {
             $sucuriscan_hooks[] = 'all';
         }
 
@@ -742,7 +742,7 @@ class SucuriScan {
      * @return boolean TRUE if reverse proxies must be supported, FALSE otherwise.
      */
     public static function support_reverse_proxy(){
-        return (bool) ( SucuriScanOption::get_option( ':revproxy' ) === 'enabled' );
+        return SucuriScanOption::is_enabled( ':revproxy' );
     }
 
     /**
@@ -759,7 +759,7 @@ class SucuriScan {
     public static function execute_dns_lookups(){
         if (
             ( defined( 'NOT_USING_CLOUDPROXY' ) && NOT_USING_CLOUDPROXY === true )
-            || SucuriScanOption::get_option( ':dns_lookups' ) === 'disabled'
+            || SucuriScanOption::is_disabled( ':dns_lookups' )
         ) {
             return false;
         }
@@ -2753,6 +2753,26 @@ class SucuriScanOption extends SucuriScanRequest {
     }
 
     /**
+     * Check whether a setting is enabled or not.
+     *
+     * @param  string  $option Name of the option to be deleted.
+     * @return boolean         True if the option is enabled, false otherwise.
+     */
+    public static function is_enabled( $option = '' ){
+        return (bool) ( self::get_option( $option ) === 'enabled' );
+    }
+
+    /**
+     * Check whether a setting is disabled or not.
+     *
+     * @param  string  $option Name of the option to be deleted.
+     * @return boolean         True if the option is disabled, false otherwise.
+     */
+    public static function is_disabled( $option = '' ){
+        return (bool) ( self::get_option( $option ) === 'disabled' );
+    }
+
+    /**
      * Delete all the plugin options from the database.
      *
      * @return void
@@ -3051,7 +3071,7 @@ class SucuriScanEvent extends SucuriScan {
 
         // The filesystem scanner can be disabled from the settings page.
         if (
-            SucuriScanOption::get_option( ':fs_scanner' ) == 'disabled'
+            SucuriScanOption::is_disabled( ':fs_scanner' )
             && $force_scan === false
         ) {
             return false;
@@ -3911,7 +3931,7 @@ class SucuriScanHook extends SucuriScanEvent {
             && property_exists( $comment, 'comment_ID' )
             && property_exists( $comment, 'comment_agent' )
             && property_exists( $comment, 'comment_author_IP' )
-            && SucuriScanOption::get_option( ':comment_monitor' ) === 'enabled'
+            && SucuriScanOption::is_enabled( ':comment_monitor' )
         ) {
             $data_set = array(
                 'id' => $comment->comment_ID,
@@ -5633,7 +5653,7 @@ class SucuriScanMail extends SucuriScanOption {
      * @return boolean Whether the emails will be in HTML or Plain/Text.
      */
     public static function prettify_mails(){
-        return ( self::get_option( ':prettify_mails' ) === 'enabled' );
+        return self::is_enabled( ':prettify_mails' );
     }
 
     /**
@@ -5990,7 +6010,7 @@ class SucuriScanTemplate extends SucuriScanRequest {
         foreach ( $sub_pages as $sub_page_func => $sub_page_title ) {
             if (
                 $sub_page_func == 'sucuriscan_scanner'
-                && self::is_sitecheck_disabled()
+                && SucuriScanOption::is_disabled( ':sitecheck_scanner' )
             ) {
                 continue;
             }
@@ -6247,24 +6267,6 @@ class SucuriScanTemplate extends SucuriScanRequest {
         return $html_links;
     }
 
-    /**
-     * Check whether the SiteCheck scanner and the malware scan page are disabled.
-     *
-     * @return boolean TRUE if the SiteCheck scanner and malware scan page are disabled.
-     */
-    public static function is_sitecheck_disabled(){
-        return (bool) ( SucuriScanOption::get_option( ':sitecheck_scanner' ) === 'disabled' );
-    }
-
-    /**
-     * Check whether the SiteCheck scanner and the malware scan page are enabled.
-     *
-     * @return boolean TRUE if the SiteCheck scanner and malware scan page are enabled.
-     */
-    public static function is_sitecheck_enabled(){
-        return (bool) ( SucuriScanOption::get_option( ':sitecheck_scanner' ) !== 'disabled' );
-    }
-
 }
 
 /**
@@ -6311,7 +6313,7 @@ class SucuriScanFSScanner extends SucuriScan {
      * @return boolean Whether the feature to ignore files is enabled or not.
      */
     public static function will_ignore_scanning(){
-        return ( SucuriScanOption::get_option( ':ignore_scanning' ) === 'enabled' );
+        return SucuriScanOption::is_enabled( ':ignore_scanning' );
     }
 
     /**
@@ -6752,7 +6754,7 @@ class SucuriScanInterface {
             foreach ( $sucuriscan_pages as $sub_page_func => $sub_page_title ) {
                 if (
                     $sub_page_func == 'sucuriscan_scanner'
-                    && SucuriScanTemplate::is_sitecheck_disabled()
+                    && SucuriScanOption::is_disabled( ':sitecheck_scanner' )
                 ) {
                     continue;
                 }
@@ -8983,7 +8985,7 @@ function sucuriscan_auditlogs(){
 
         if (
             $audit_logs->total_entries >= $max_per_page
-            && SucuriScanOption::get_option( ':audit_report' ) !== 'enabled'
+            && SucuriScanOption::is_disabled( ':audit_report' )
         ) {
             $template_variables['AuditLogs.EnableAuditReportVisibility'] = 'visible';
         }
@@ -9057,7 +9059,7 @@ function sucuriscan_auditreport(){
     $audit_report = false;
     $logs4report = SucuriScanOption::get_option( ':logs4report' );
 
-    if ( SucuriScanOption::get_option( ':audit_report' ) !== 'disabled' ) {
+    if ( SucuriScanOption::is_enabled( ':audit_report' ) ) {
         $audit_report = SucuriScanAPI::get_audit_report( $logs4report );
     }
 
@@ -9181,7 +9183,7 @@ function sucuriscan_core_files( $send_email = false ){
         'CoreFiles.FailureVisibility' => 'hidden',
     );
 
-    if ( $site_version && SucuriScanOption::get_option( ':scan_checksums' ) == 'enabled' ) {
+    if ( $site_version && SucuriScanOption::is_enabled( ':scan_checksums' ) ) {
         // Check if there are added, removed, or modified files.
         $latest_hashes = sucuriscan_check_core_integrity( $site_version );
 
@@ -9478,7 +9480,7 @@ function sucuriscan_modified_files(){
     }
 
     // The scanner for modified files can be disabled from the settings page.
-    if ( SucuriScanOption::get_option( ':scan_modfiles' ) == 'enabled' ) {
+    if ( SucuriScanOption::is_enabled( ':scan_modfiles' ) ) {
         // Search modified files among the project's files.
         $content_hashes = sucuriscan_get_integrity_tree( WP_CONTENT_DIR, true );
 
@@ -10269,7 +10271,7 @@ if ( ! function_exists( 'sucuri_login_redirect' ) ) {
         if (
             $user instanceof WP_User
             && in_array( 'administrator', $user->roles )
-            && SucuriScanOption::get_option( ':lastlogin_redirection' ) === 'enabled'
+            && SucuriScanOption::is_enabled( ':lastlogin_redirection' )
         ) {
             $login_url = add_query_arg( 'sucuriscan_lastlogin', 1, $login_url );
         }
@@ -10277,7 +10279,7 @@ if ( ! function_exists( 'sucuri_login_redirect' ) ) {
         return $login_url;
     }
 
-    if ( SucuriScanOption::get_option( ':lastlogin_redirection' ) == 'enabled' ) {
+    if ( SucuriScanOption::is_enabled( ':lastlogin_redirection' ) ) {
         add_filter( 'login_redirect', 'sucuriscan_login_redirect', 10, 3 );
     }
 }
@@ -10626,7 +10628,7 @@ function sucuriscan_failed_logins_panel(){
  * @return boolean TRUE if the password must be collected, FALSE otherwise.
  */
 function sucuriscan_collect_wrong_passwords(){
-    return (bool) ( SucuriScanOption::get_option( ':collect_wrong_passwords' ) === 'enabled' );
+    return SucuriScanOption::is_enabled( ':collect_wrong_passwords' );
 }
 
 /**
@@ -12572,7 +12574,7 @@ function sucuriscan_infosys_errorlogs(){
         $error_log_path = @realpath( ABSPATH . '/' . $log_filename );
     }
 
-    if ( SucuriScanOption::get_option( ':parse_errorlogs' ) === 'disabled' ) {
+    if ( SucuriScanOption::is_disabled( ':parse_errorlogs' ) ) {
         $template_variables['ErrorLog.DisabledVisibility'] = 'visible';
     }
 
