@@ -3917,16 +3917,22 @@ class SucuriScanHook extends SucuriScanEvent {
      * @return void
      */
     public static function hook_all( $action = null, $data = false ){
-        global $wp_filter;
+        global $wp_filter, $wp_actions;
 
         if (
             is_array( $wp_filter )
-            && ! empty( $wp_filter )
+            && is_array( $wp_actions )
+            && array_key_exists( $action, $wp_actions )
             && ! array_key_exists( $action, $wp_filter )
-            && preg_match( '/^(admin_post|wp_ajax)_.+/', $action )
+            && (
+                substr( $action, 0, 11 ) === 'admin_post_'
+                || substr( $action, 0, 8 ) === 'wp_ajax_'
+            )
         ) {
             $message = sprintf( 'Undefined XHR action %s', $action );
             self::report_error_event( $message );
+            header( 'HTTP/1.1 400 Bad Request' );
+            exit(1);
         }
     }
 
