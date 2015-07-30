@@ -310,7 +310,6 @@ if ( defined( 'SUCURISCAN' ) ) {
         $sucuriscan_hooks = array(
             'add_attachment',
             'add_link',
-            'all',
             'create_category',
             'delete_post',
             'delete_user',
@@ -328,6 +327,10 @@ if ( defined( 'SUCURISCAN' ) ) {
             'wp_trash_post',
             'xmlrpc_publish_post',
         );
+
+        if ( SucuriScanOption::get_option( ':xhr_monitor' ) === 'enabled' ) {
+            $sucuriscan_hooks[] = 'all';
+        }
 
         foreach ( $sucuriscan_hooks as $hook_name ) {
             $hook_func = 'SucuriScanHook::hook_' . $hook_name;
@@ -2605,6 +2608,7 @@ class SucuriScanOption extends SucuriScanRequest {
             'sucuriscan_sitecheck_counter' => 0,
             'sucuriscan_sitecheck_scanner' => 'enabled',
             'sucuriscan_verify_ssl_cert' => 'false',
+            'sucuriscan_xhr_monitor' => 'disabled',
         );
 
         return $defaults;
@@ -11164,6 +11168,17 @@ function sucuriscan_settings_form_submissions( $page_nonce = null ){
             SucuriScanInterface::info( $message );
         }
 
+        // Configure the XHR monitor option.
+        if ( $xhr_monitor = SucuriScanRequest::post(':xhr_monitor', '(en|dis)able') ) {
+            $action_d = $xhr_monitor . 'd';
+            $message = 'XHR (XML HTTP Request) monitor was <code>' . $action_d . '</code>';
+
+            SucuriScanOption::update_option( ':xhr_monitor', $action_d );
+            SucuriScanEvent::report_info_event( $message );
+            SucuriScanEvent::notify_event( 'plugin_change', $message );
+            SucuriScanInterface::info( $message );
+        }
+
         // Update the limit for audit logs report.
         if ( $logs4report = SucuriScanRequest::post( ':logs4report', '[0-9]{1,4}' ) ) {
             $message = 'Limit for audit logs report set to <code>' . $logs4report . '</code>';
@@ -11599,6 +11614,7 @@ function sucuriscan_settings_general(){
     $revproxy = SucuriScanOption::get_option( ':revproxy' );
     $dns_lookups = SucuriScanOption::get_option( ':dns_lookups' );
     $comment_monitor = SucuriScanOption::get_option( ':comment_monitor' );
+    $xhr_monitor = SucuriScanOption::get_option( ':xhr_monitor' );
     $invalid_domain = false;
 
     // Check whether the domain name is valid or not.
@@ -11647,10 +11663,15 @@ function sucuriscan_settings_general(){
         'DnsLookupsSwitchValue' => 'disable',
         'DnsLookupsSwitchCssClass' => 'button-danger',
         /* Comment Monitoring */
-        'CommentMonitoringStatus' => 'Enabled',
-        'CommentMonitoringSwitchText' => 'Disable',
-        'CommentMonitoringSwitchValue' => 'disable',
-        'CommentMonitoringSwitchCssClass' => 'button-danger',
+        'CommentMonitorStatus' => 'Enabled',
+        'CommentMonitorSwitchText' => 'Disable',
+        'CommentMonitorSwitchValue' => 'disable',
+        'CommentMonitorSwitchCssClass' => 'button-danger',
+        /* XHR Monitoring */
+        'XhrMonitorStatus' => 'Enabled',
+        'XhrMonitorSwitchText' => 'Disable',
+        'XhrMonitorSwitchValue' => 'disable',
+        'XhrMonitorSwitchCssClass' => 'button-danger',
         /* API Proxy Settings */
         'APIProxy.Host' => 'no_proxy_host',
         'APIProxy.Port' => 'no_proxy_port',
@@ -11694,10 +11715,17 @@ function sucuriscan_settings_general(){
     }
 
     if ( $comment_monitor == 'disabled' ) {
-        $template_variables['CommentMonitoringStatus'] = 'Disabled';
-        $template_variables['CommentMonitoringSwitchText'] = 'Enable';
-        $template_variables['CommentMonitoringSwitchValue'] = 'enable';
-        $template_variables['CommentMonitoringSwitchCssClass'] = 'button-success';
+        $template_variables['CommentMonitorStatus'] = 'Disabled';
+        $template_variables['CommentMonitorSwitchText'] = 'Enable';
+        $template_variables['CommentMonitorSwitchValue'] = 'enable';
+        $template_variables['CommentMonitorSwitchCssClass'] = 'button-success';
+    }
+
+    if ( $xhr_monitor == 'disabled' ) {
+        $template_variables['XhrMonitorStatus'] = 'Disabled';
+        $template_variables['XhrMonitorSwitchText'] = 'Enable';
+        $template_variables['XhrMonitorSwitchValue'] = 'enable';
+        $template_variables['XhrMonitorSwitchCssClass'] = 'button-success';
     }
 
     if ( sucuriscan_collect_wrong_passwords() === true ) {
