@@ -50,7 +50,7 @@
         <tfoot>
             <tr>
                 <td colspan="4">
-                    <button type="submit" class="button button-primary">Removed selected</button>
+                    <button type="submit" class="button button-primary">Remove selected</button>
                 </td>
             </tr>
         </tfoot>

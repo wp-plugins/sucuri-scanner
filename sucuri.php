@@ -743,6 +743,28 @@ class SucuriScan {
     }
 
     /**
+     * Check whether the DNS lookups should be execute or not.
+     *
+     * DNS lookups are only necessary if you are planning to use a reverse proxy or
+     * firewall (like CloudProxy), this is used to set the correct IP address when
+     * the firewall/proxy filters the requests. If you are not planning to use any
+     * of these is better to disable this option, otherwise the load time of your
+     * site may be affected.
+     *
+     * @return boolean True if the DNS lookups should be executed, false otherwise.
+     */
+    public static function execute_dns_lookups(){
+        if (
+            ( defined( 'NOT_USING_CLOUDPROXY' ) && NOT_USING_CLOUDPROXY === true )
+            || SucuriScanOption::get_option( ':dns_lookups' ) === 'disabled'
+        ) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * Check whether the site is behind the Sucuri CloudProxy network.
      *
      * @param  boolean $verbose Return an array with the hostname, address, and status, or not.
@@ -751,17 +773,14 @@ class SucuriScan {
     public static function is_behind_cloudproxy( $verbose = false ){
         $http_host = self::get_top_level_domain();
 
-        if (
-            defined( 'NOT_USING_CLOUDPROXY' )
-            && NOT_USING_CLOUDPROXY === true
-        ) {
-            $status = false;
-            $host_by_addr = '::1';
-            $host_by_name = 'localhost';
-        } else {
+        if ( self::execute_dns_lookups() ) {
             $host_by_addr = @gethostbyname( $http_host );
             $host_by_name = @gethostbyaddr( $host_by_addr );
             $status = (bool) preg_match( '/^cloudproxy[0-9]+\.sucuri\.net$/', $host_by_name );
+        } else {
+            $status = false;
+            $host_by_addr = '::1';
+            $host_by_name = 'localhost';
         }
 
         /*
@@ -2533,6 +2552,7 @@ class SucuriScanOption extends SucuriScanRequest {
             'sucuriscan_cloudproxy_apikey' => '',
             'sucuriscan_collect_wrong_passwords' => 'disabled',
             'sucuriscan_datastore_path' => '',
+            'sucuriscan_dns_lookups' => 'enabled',
             'sucuriscan_email_subject' => 'Sucuri Alert, :domain, :event',
             'sucuriscan_emails_per_hour' => 5,
             'sucuriscan_emails_sent' => 0,
@@ -10870,6 +10890,17 @@ function sucuriscan_settings_form_submissions( $page_nonce = null ){
             SucuriScanEvent::notify_event( 'plugin_change', 'Sucuri API key removed' );
         }
 
+        // Configure the DNS lookups option for reverse proxy detection.
+        if ( $dns_lookups = SucuriScanRequest::post(':dns_lookups', '(en|dis)able') ) {
+            $action_d = $dns_lookups . 'd';
+            $message = 'DNS lookups for reverse proxy detection <code>' . $action_d . '</code>';
+
+            SucuriScanOption::update_option( ':dns_lookups', $action_d );
+            SucuriScanEvent::report_info_event( $message );
+            SucuriScanEvent::notify_event( 'plugin_change', $message );
+            SucuriScanInterface::info( $message );
+        }
+
         // Enable or disable the filesystem scanner.
         if ( $fs_scanner = SucuriScanRequest::post( ':fs_scanner', '(en|dis)able' ) ) {
             $action_d = $fs_scanner . 'd';
@@ -11506,6 +11537,7 @@ function sucuriscan_settings_general(){
             $user_obj !== false
             && user_can( $user_obj, 'administrator' )
         ) {
+            // Send request to generate new API key or display form to set manually.
             if ( SucuriScanAPI::register_site( $user_obj->user_email ) ) {
                 $api_registered_modal = SucuriScanTemplate::get_modal(
                     'settings-apiregistered',
@@ -11528,6 +11560,7 @@ function sucuriscan_settings_general(){
     $audit_report = SucuriScanOption::get_option( ':audit_report' );
     $logs4report = SucuriScanOption::get_option( ':logs4report' );
     $revproxy = SucuriScanOption::get_option( ':revproxy' );
+    $dns_lookups = SucuriScanOption::get_option( ':dns_lookups' );
     $invalid_domain = false;
 
     // Check whether the domain name is valid or not.
@@ -11570,6 +11603,11 @@ function sucuriscan_settings_general(){
         'ReverseProxySwitchText' => 'Disable',
         'ReverseProxySwitchValue' => 'disable',
         'ReverseProxySwitchCssClass' => 'button-danger',
+        /* Execute DNS Lookups */
+        'DnsLookupsStatus' => 'Enabled',
+        'DnsLookupsSwitchText' => 'Disable',
+        'DnsLookupsSwitchValue' => 'disable',
+        'DnsLookupsSwitchCssClass' => 'button-danger',
         /* API Proxy Settings */
         'APIProxy.Host' => 'no_proxy_host',
         'APIProxy.Port' => 'no_proxy_port',
@@ -11603,6 +11641,13 @@ function sucuriscan_settings_general(){
         $template_variables['ReverseProxySwitchText'] = 'Enable';
         $template_variables['ReverseProxySwitchValue'] = 'enable';
         $template_variables['ReverseProxySwitchCssClass'] = 'button-success';
+    }
+
+    if ( $dns_lookups == 'disabled' ) {
+        $template_variables['DnsLookupsStatus'] = 'Disabled';
+        $template_variables['DnsLookupsSwitchText'] = 'Enable';
+        $template_variables['DnsLookupsSwitchValue'] = 'enable';
+        $template_variables['DnsLookupsSwitchCssClass'] = 'button-success';
     }
 
     if ( sucuriscan_collect_wrong_passwords() === true ) {

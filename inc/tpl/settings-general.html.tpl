@@ -205,6 +205,18 @@
         </tr>
 
         <tr>
+            <td>Execute DNS lookups</td>
+            <td>%%SUCURI.DnsLookupsStatus%%</td>
+            <td class="td-with-button">
+                <form action="%%SUCURI.URL.Settings%%" method="post">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <input type="hidden" name="sucuriscan_dns_lookups" value="%%SUCURI.DnsLookupsSwitchValue%%" />
+                    <button type="submit" class="button-primary %%SUCURI.DnsLookupsSwitchCssClass%%">%%SUCURI.DnsLookupsSwitchText%%</button>
+                </form>
+            </td>
+        </tr>
+
+        <tr>
             <td>Display audit report</td>
             <td>%%SUCURI.AuditReportStatus%%</td>
             <td class="td-with-button">
