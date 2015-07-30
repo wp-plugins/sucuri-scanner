@@ -205,6 +205,42 @@
         </tr>
 
         <tr>
+            <td>Execute DNS lookups</td>
+            <td>%%SUCURI.DnsLookupsStatus%%</td>
+            <td class="td-with-button">
+                <form action="%%SUCURI.URL.Settings%%" method="post">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <input type="hidden" name="sucuriscan_dns_lookups" value="%%SUCURI.DnsLookupsSwitchValue%%" />
+                    <button type="submit" class="button-primary %%SUCURI.DnsLookupsSwitchCssClass%%">%%SUCURI.DnsLookupsSwitchText%%</button>
+                </form>
+            </td>
+        </tr>
+
+        <tr>
+            <td>Allow comment monitor</td>
+            <td>%%SUCURI.CommentMonitorStatus%%</td>
+            <td class="td-with-button">
+                <form action="%%SUCURI.URL.Settings%%" method="post">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <input type="hidden" name="sucuriscan_comment_monitor" value="%%SUCURI.CommentMonitorSwitchValue%%" />
+                    <button type="submit" class="button-primary %%SUCURI.CommentMonitorSwitchCssClass%%">%%SUCURI.CommentMonitorSwitchText%%</button>
+                </form>
+            </td>
+        </tr>
+
+        <tr>
+            <td>Allow XHR monitor</td>
+            <td>%%SUCURI.XhrMonitorStatus%%</td>
+            <td class="td-with-button">
+                <form action="%%SUCURI.URL.Settings%%" method="post">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <input type="hidden" name="sucuriscan_xhr_monitor" value="%%SUCURI.XhrMonitorSwitchValue%%" />
+                    <button type="submit" class="button-primary %%SUCURI.XhrMonitorSwitchCssClass%%">%%SUCURI.XhrMonitorSwitchText%%</button>
+                </form>
+            </td>
+        </tr>
+
+        <tr>
             <td>Display audit report</td>
             <td>%%SUCURI.AuditReportStatus%%</td>
             <td class="td-with-button">

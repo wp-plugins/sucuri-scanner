@@ -4,7 +4,7 @@ Plugin Name: Sucuri Security - Auditing, Malware Scanner and Hardening
 Plugin URI: http://wordpress.sucuri.net/
 Description: The <a href="http://sucuri.net/" target="_blank">Sucuri</a> plugin provides the website owner the best Activity Auditing, SiteCheck Remote Malware Scanning, Effective Security Hardening and Post-Hack features. SiteCheck will check for malware, spam, blacklisting and other security issues like .htaccess redirects, hidden eval code, etc. The best thing about it is it's completely free.
 Author: Sucuri, INC
-Version: 1.7.12
+Version: 1.7.13
 Author URI: http://sucuri.net
 */
 
@@ -66,7 +66,7 @@ define( 'SUCURISCAN', 'sucuriscan' );
 /**
  * Current version of the plugin's code.
  */
-define( 'SUCURISCAN_VERSION', '1.7.12' );
+define( 'SUCURISCAN_VERSION', '1.7.13' );
 
 /**
  * The name of the Sucuri plugin main file.
@@ -310,7 +310,6 @@ if ( defined( 'SUCURISCAN' ) ) {
         $sucuriscan_hooks = array(
             'add_attachment',
             'add_link',
-            'all',
             'create_category',
             'delete_post',
             'delete_user',
@@ -328,6 +327,10 @@ if ( defined( 'SUCURISCAN' ) ) {
             'wp_trash_post',
             'xmlrpc_publish_post',
         );
+
+        if ( SucuriScanOption::get_option( ':xhr_monitor' ) === 'enabled' ) {
+            $sucuriscan_hooks[] = 'all';
+        }
 
         foreach ( $sucuriscan_hooks as $hook_name ) {
             $hook_func = 'SucuriScanHook::hook_' . $hook_name;
@@ -743,6 +746,28 @@ class SucuriScan {
     }
 
     /**
+     * Check whether the DNS lookups should be execute or not.
+     *
+     * DNS lookups are only necessary if you are planning to use a reverse proxy or
+     * firewall (like CloudProxy), this is used to set the correct IP address when
+     * the firewall/proxy filters the requests. If you are not planning to use any
+     * of these is better to disable this option, otherwise the load time of your
+     * site may be affected.
+     *
+     * @return boolean True if the DNS lookups should be executed, false otherwise.
+     */
+    public static function execute_dns_lookups(){
+        if (
+            ( defined( 'NOT_USING_CLOUDPROXY' ) && NOT_USING_CLOUDPROXY === true )
+            || SucuriScanOption::get_option( ':dns_lookups' ) === 'disabled'
+        ) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * Check whether the site is behind the Sucuri CloudProxy network.
      *
      * @param  boolean $verbose Return an array with the hostname, address, and status, or not.
@@ -751,17 +776,14 @@ class SucuriScan {
     public static function is_behind_cloudproxy( $verbose = false ){
         $http_host = self::get_top_level_domain();
 
-        if (
-            defined( 'NOT_USING_CLOUDPROXY' )
-            && NOT_USING_CLOUDPROXY === true
-        ) {
-            $status = false;
-            $host_by_addr = '::1';
-            $host_by_name = 'localhost';
-        } else {
+        if ( self::execute_dns_lookups() ) {
             $host_by_addr = @gethostbyname( $http_host );
             $host_by_name = @gethostbyaddr( $host_by_addr );
             $status = (bool) preg_match( '/^cloudproxy[0-9]+\.sucuri\.net$/', $host_by_name );
+        } else {
+            $status = false;
+            $host_by_addr = '::1';
+            $host_by_name = 'localhost';
         }
 
         /*
@@ -2532,7 +2554,9 @@ class SucuriScanOption extends SucuriScanRequest {
             'sucuriscan_audit_report' => 'disabled',
             'sucuriscan_cloudproxy_apikey' => '',
             'sucuriscan_collect_wrong_passwords' => 'disabled',
+            'sucuriscan_comment_monitor' => 'disabled',
             'sucuriscan_datastore_path' => '',
+            'sucuriscan_dns_lookups' => 'enabled',
             'sucuriscan_email_subject' => 'Sucuri Alert, :domain, :event',
             'sucuriscan_emails_per_hour' => 5,
             'sucuriscan_emails_sent' => 0,
@@ -2584,6 +2608,7 @@ class SucuriScanOption extends SucuriScanRequest {
             'sucuriscan_sitecheck_counter' => 0,
             'sucuriscan_sitecheck_scanner' => 'enabled',
             'sucuriscan_verify_ssl_cert' => 'false',
+            'sucuriscan_xhr_monitor' => 'disabled',
         );
 
         return $defaults;
@@ -3886,6 +3911,7 @@ class SucuriScanHook extends SucuriScanEvent {
             && property_exists( $comment, 'comment_ID' )
             && property_exists( $comment, 'comment_agent' )
             && property_exists( $comment, 'comment_author_IP' )
+            && SucuriScanOption::get_option( ':comment_monitor' ) === 'enabled'
         ) {
             $data_set = array(
                 'id' => $comment->comment_ID,
@@ -3917,16 +3943,22 @@ class SucuriScanHook extends SucuriScanEvent {
      * @return void
      */
     public static function hook_all( $action = null, $data = false ){
-        global $wp_filter;
+        global $wp_filter, $wp_actions;
 
         if (
             is_array( $wp_filter )
-            && ! empty( $wp_filter )
+            && is_array( $wp_actions )
+            && array_key_exists( $action, $wp_actions )
             && ! array_key_exists( $action, $wp_filter )
-            && preg_match( '/^(admin_post|wp_ajax)_.+/', $action )
+            && (
+                substr( $action, 0, 11 ) === 'admin_post_'
+                || substr( $action, 0, 8 ) === 'wp_ajax_'
+            )
         ) {
             $message = sprintf( 'Undefined XHR action %s', $action );
             self::report_error_event( $message );
+            header( 'HTTP/1.1 400 Bad Request' );
+            exit(1);
         }
     }
 
@@ -7962,6 +7994,7 @@ class SucuriScanHardening extends SucuriScan {
             $deny_rules = self::get_rules( $directory );
 
             if ( file_exists( $target ) ) {
+                self::fix_previous_hardening( $directory );
                 $fhandle = @fopen( $target, 'a' );
             } else {
                 $fhandle = @fopen( $target, 'w' );
@@ -8007,6 +8040,29 @@ class SucuriScanHardening extends SucuriScan {
         }
 
         return false;
+    }
+
+    /**
+     * Remove the hardening applied in previous versions.
+     *
+     * @param  string  $directory Valid directory path.
+     * @return boolean            True if the access control file was fixed.
+     */
+    private static function fix_previous_hardening( $directory = '' ){
+        $fpath = $directory . '/.htaccess';
+        $content = @file_get_contents( $fpath );
+        $rules = "<Files *.php>\ndeny from all\n</Files>";
+
+        if ( $content ) {
+            if ( strpos( $content, $rules ) !== false ) {
+                $content = str_replace( $rules, '', $content );
+                $written = @file_put_contents( $fpath, $content );
+
+                return (bool) ( $written !== false );
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -10864,6 +10920,17 @@ function sucuriscan_settings_form_submissions( $page_nonce = null ){
             SucuriScanEvent::notify_event( 'plugin_change', 'Sucuri API key removed' );
         }
 
+        // Configure the DNS lookups option for reverse proxy detection.
+        if ( $dns_lookups = SucuriScanRequest::post(':dns_lookups', '(en|dis)able') ) {
+            $action_d = $dns_lookups . 'd';
+            $message = 'DNS lookups for reverse proxy detection <code>' . $action_d . '</code>';
+
+            SucuriScanOption::update_option( ':dns_lookups', $action_d );
+            SucuriScanEvent::report_info_event( $message );
+            SucuriScanEvent::notify_event( 'plugin_change', $message );
+            SucuriScanInterface::info( $message );
+        }
+
         // Enable or disable the filesystem scanner.
         if ( $fs_scanner = SucuriScanRequest::post( ':fs_scanner', '(en|dis)able' ) ) {
             $action_d = $fs_scanner . 'd';
@@ -11085,6 +11152,28 @@ function sucuriscan_settings_form_submissions( $page_nonce = null ){
             $message = 'Reverse proxy support was <code>' . $action_d . '</code>';
 
             SucuriScanOption::update_option( ':revproxy', $action_d );
+            SucuriScanEvent::report_info_event( $message );
+            SucuriScanEvent::notify_event( 'plugin_change', $message );
+            SucuriScanInterface::info( $message );
+        }
+
+        // Configure the comment monitor option.
+        if ( $comment_monitor = SucuriScanRequest::post(':comment_monitor', '(en|dis)able') ) {
+            $action_d = $comment_monitor . 'd';
+            $message = 'Comment monitor was <code>' . $action_d . '</code>';
+
+            SucuriScanOption::update_option( ':comment_monitor', $action_d );
+            SucuriScanEvent::report_info_event( $message );
+            SucuriScanEvent::notify_event( 'plugin_change', $message );
+            SucuriScanInterface::info( $message );
+        }
+
+        // Configure the XHR monitor option.
+        if ( $xhr_monitor = SucuriScanRequest::post(':xhr_monitor', '(en|dis)able') ) {
+            $action_d = $xhr_monitor . 'd';
+            $message = 'XHR (XML HTTP Request) monitor was <code>' . $action_d . '</code>';
+
+            SucuriScanOption::update_option( ':xhr_monitor', $action_d );
             SucuriScanEvent::report_info_event( $message );
             SucuriScanEvent::notify_event( 'plugin_change', $message );
             SucuriScanInterface::info( $message );
@@ -11500,6 +11589,7 @@ function sucuriscan_settings_general(){
             $user_obj !== false
             && user_can( $user_obj, 'administrator' )
         ) {
+            // Send request to generate new API key or display form to set manually.
             if ( SucuriScanAPI::register_site( $user_obj->user_email ) ) {
                 $api_registered_modal = SucuriScanTemplate::get_modal(
                     'settings-apiregistered',
@@ -11522,6 +11612,9 @@ function sucuriscan_settings_general(){
     $audit_report = SucuriScanOption::get_option( ':audit_report' );
     $logs4report = SucuriScanOption::get_option( ':logs4report' );
     $revproxy = SucuriScanOption::get_option( ':revproxy' );
+    $dns_lookups = SucuriScanOption::get_option( ':dns_lookups' );
+    $comment_monitor = SucuriScanOption::get_option( ':comment_monitor' );
+    $xhr_monitor = SucuriScanOption::get_option( ':xhr_monitor' );
     $invalid_domain = false;
 
     // Check whether the domain name is valid or not.
@@ -11564,6 +11657,21 @@ function sucuriscan_settings_general(){
         'ReverseProxySwitchText' => 'Disable',
         'ReverseProxySwitchValue' => 'disable',
         'ReverseProxySwitchCssClass' => 'button-danger',
+        /* Execute DNS Lookups */
+        'DnsLookupsStatus' => 'Enabled',
+        'DnsLookupsSwitchText' => 'Disable',
+        'DnsLookupsSwitchValue' => 'disable',
+        'DnsLookupsSwitchCssClass' => 'button-danger',
+        /* Comment Monitoring */
+        'CommentMonitorStatus' => 'Enabled',
+        'CommentMonitorSwitchText' => 'Disable',
+        'CommentMonitorSwitchValue' => 'disable',
+        'CommentMonitorSwitchCssClass' => 'button-danger',
+        /* XHR Monitoring */
+        'XhrMonitorStatus' => 'Enabled',
+        'XhrMonitorSwitchText' => 'Disable',
+        'XhrMonitorSwitchValue' => 'disable',
+        'XhrMonitorSwitchCssClass' => 'button-danger',
         /* API Proxy Settings */
         'APIProxy.Host' => 'no_proxy_host',
         'APIProxy.Port' => 'no_proxy_port',
@@ -11597,6 +11705,27 @@ function sucuriscan_settings_general(){
         $template_variables['ReverseProxySwitchText'] = 'Enable';
         $template_variables['ReverseProxySwitchValue'] = 'enable';
         $template_variables['ReverseProxySwitchCssClass'] = 'button-success';
+    }
+
+    if ( $dns_lookups == 'disabled' ) {
+        $template_variables['DnsLookupsStatus'] = 'Disabled';
+        $template_variables['DnsLookupsSwitchText'] = 'Enable';
+        $template_variables['DnsLookupsSwitchValue'] = 'enable';
+        $template_variables['DnsLookupsSwitchCssClass'] = 'button-success';
+    }
+
+    if ( $comment_monitor == 'disabled' ) {
+        $template_variables['CommentMonitorStatus'] = 'Disabled';
+        $template_variables['CommentMonitorSwitchText'] = 'Enable';
+        $template_variables['CommentMonitorSwitchValue'] = 'enable';
+        $template_variables['CommentMonitorSwitchCssClass'] = 'button-success';
+    }
+
+    if ( $xhr_monitor == 'disabled' ) {
+        $template_variables['XhrMonitorStatus'] = 'Disabled';
+        $template_variables['XhrMonitorSwitchText'] = 'Enable';
+        $template_variables['XhrMonitorSwitchValue'] = 'enable';
+        $template_variables['XhrMonitorSwitchCssClass'] = 'button-success';
     }
 
     if ( sucuriscan_collect_wrong_passwords() === true ) {

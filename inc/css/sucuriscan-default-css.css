@@ -87,6 +87,9 @@
 .wrap div.sucuriscan-setup-notice p{font-size:14px;line-height:20px;margin:0 0 0 10px;padding:7px 0}
 .wrap div.sucuriscan-setup-notice, .wrap div.sucuriscan-setup-notice .sucuriscan-setup-image{border-color:#4393ac}
 .wp-core-ui .sucuriscan-review-hero, .wp-core-ui .button.sucuriscan-review-hero{position:relative;top:-2px;right:-15px;height:initial;line-height:30px;float:right;padding:0 20px}
+.sucuriscan-table-setup{}
+.sucuriscan-table-setup td{vertical-align:top}
+.sucuriscan-table-setup .sucuriscan-description{font-size:12px;margin-top:10px}
 /* Table Styles */
 .sucuriscan-maincontent .sucuriscan-table{margin-top:12px}
 .sucuriscan-maincontent .sucuriscan-table tr > th{border-top:1px solid #e5e5e5;border-bottom:1px solid #e5e5e5}
