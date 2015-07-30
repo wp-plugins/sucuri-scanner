@@ -2551,6 +2551,7 @@ class SucuriScanOption extends SucuriScanRequest {
             'sucuriscan_audit_report' => 'disabled',
             'sucuriscan_cloudproxy_apikey' => '',
             'sucuriscan_collect_wrong_passwords' => 'disabled',
+            'sucuriscan_comment_monitor' => 'disabled',
             'sucuriscan_datastore_path' => '',
             'sucuriscan_dns_lookups' => 'enabled',
             'sucuriscan_email_subject' => 'Sucuri Alert, :domain, :event',
@@ -3906,6 +3907,7 @@ class SucuriScanHook extends SucuriScanEvent {
             && property_exists( $comment, 'comment_ID' )
             && property_exists( $comment, 'comment_agent' )
             && property_exists( $comment, 'comment_author_IP' )
+            && SucuriScanOption::get_option( ':comment_monitor' ) === 'enabled'
         ) {
             $data_set = array(
                 'id' => $comment->comment_ID,
@@ -11151,6 +11153,17 @@ function sucuriscan_settings_form_submissions( $page_nonce = null ){
             SucuriScanInterface::info( $message );
         }
 
+        // Configure the comment monitor option.
+        if ( $comment_monitor = SucuriScanRequest::post(':comment_monitor', '(en|dis)able') ) {
+            $action_d = $comment_monitor . 'd';
+            $message = 'Comment monitor was <code>' . $action_d . '</code>';
+
+            SucuriScanOption::update_option( ':comment_monitor', $action_d );
+            SucuriScanEvent::report_info_event( $message );
+            SucuriScanEvent::notify_event( 'plugin_change', $message );
+            SucuriScanInterface::info( $message );
+        }
+
         // Update the limit for audit logs report.
         if ( $logs4report = SucuriScanRequest::post( ':logs4report', '[0-9]{1,4}' ) ) {
             $message = 'Limit for audit logs report set to <code>' . $logs4report . '</code>';
@@ -11585,6 +11598,7 @@ function sucuriscan_settings_general(){
     $logs4report = SucuriScanOption::get_option( ':logs4report' );
     $revproxy = SucuriScanOption::get_option( ':revproxy' );
     $dns_lookups = SucuriScanOption::get_option( ':dns_lookups' );
+    $comment_monitor = SucuriScanOption::get_option( ':comment_monitor' );
     $invalid_domain = false;
 
     // Check whether the domain name is valid or not.
@@ -11632,6 +11646,11 @@ function sucuriscan_settings_general(){
         'DnsLookupsSwitchText' => 'Disable',
         'DnsLookupsSwitchValue' => 'disable',
         'DnsLookupsSwitchCssClass' => 'button-danger',
+        /* Comment Monitoring */
+        'CommentMonitoringStatus' => 'Enabled',
+        'CommentMonitoringSwitchText' => 'Disable',
+        'CommentMonitoringSwitchValue' => 'disable',
+        'CommentMonitoringSwitchCssClass' => 'button-danger',
         /* API Proxy Settings */
         'APIProxy.Host' => 'no_proxy_host',
         'APIProxy.Port' => 'no_proxy_port',
@@ -11672,6 +11691,13 @@ function sucuriscan_settings_general(){
         $template_variables['DnsLookupsSwitchText'] = 'Enable';
         $template_variables['DnsLookupsSwitchValue'] = 'enable';
         $template_variables['DnsLookupsSwitchCssClass'] = 'button-success';
+    }
+
+    if ( $comment_monitor == 'disabled' ) {
+        $template_variables['CommentMonitoringStatus'] = 'Disabled';
+        $template_variables['CommentMonitoringSwitchText'] = 'Enable';
+        $template_variables['CommentMonitoringSwitchValue'] = 'enable';
+        $template_variables['CommentMonitoringSwitchCssClass'] = 'button-success';
     }
 
     if ( sucuriscan_collect_wrong_passwords() === true ) {

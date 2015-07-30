@@ -217,6 +217,18 @@
         </tr>
 
         <tr>
+            <td>Allow Comment Monitor</td>
+            <td>%%SUCURI.CommentMonitoringStatus%%</td>
+            <td class="td-with-button">
+                <form action="%%SUCURI.URL.Settings%%" method="post">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <input type="hidden" name="sucuriscan_comment_monitor" value="%%SUCURI.CommentMonitoringSwitchValue%%" />
+                    <button type="submit" class="button-primary %%SUCURI.CommentMonitoringSwitchCssClass%%">%%SUCURI.CommentMonitoringSwitchText%%</button>
+                </form>
+            </td>
+        </tr>
+
+        <tr>
             <td>Display audit report</td>
             <td>%%SUCURI.AuditReportStatus%%</td>
             <td class="td-with-button">
