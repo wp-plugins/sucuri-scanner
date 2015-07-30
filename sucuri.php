@@ -7988,6 +7988,7 @@ class SucuriScanHardening extends SucuriScan {
             $deny_rules = self::get_rules( $directory );
 
             if ( file_exists( $target ) ) {
+                self::fix_previous_hardening( $directory );
                 $fhandle = @fopen( $target, 'a' );
             } else {
                 $fhandle = @fopen( $target, 'w' );
@@ -8033,6 +8034,29 @@ class SucuriScanHardening extends SucuriScan {
         }
 
         return false;
+    }
+
+    /**
+     * Remove the hardening applied in previous versions.
+     *
+     * @param  string  $directory Valid directory path.
+     * @return boolean            True if the access control file was fixed.
+     */
+    private static function fix_previous_hardening( $directory = '' ){
+        $fpath = $directory . '/.htaccess';
+        $content = @file_get_contents( $fpath );
+        $rules = "<Files *.php>\ndeny from all\n</Files>";
+
+        if ( $content ) {
+            if ( strpos( $content, $rules ) !== false ) {
+                $content = str_replace( $rules, '', $content );
+                $written = @file_put_contents( $fpath, $content );
+
+                return (bool) ( $written !== false );
+            }
+        }
+
+        return true;
     }
 
     /**
