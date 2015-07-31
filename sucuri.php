@@ -9155,6 +9155,7 @@ function sucuriscan_wordpress_outdated(){
         if (
             $updates[0]->response == 'latest'
             || $updates[0]->response == 'development'
+            || $updates[0]->version == $site_version
         ) {
             $cp = 1;
         }
@@ -9187,11 +9188,15 @@ function sucuriscan_core_files( $send_email = false ){
         'CoreFiles.GoodVisibility' => 'visible',
         'CoreFiles.BadVisibility' => 'hidden',
         'CoreFiles.FailureVisibility' => 'hidden',
+        'CoreFiles.RemoteChecksumsURL' => '',
     );
 
     if ( $site_version && SucuriScanOption::is_enabled( ':scan_checksums' ) ) {
         // Check if there are added, removed, or modified files.
         $latest_hashes = sucuriscan_check_core_integrity( $site_version );
+        $template_variables['CoreFiles.RemoteChecksumsURL'] =
+            'http://api.wordpress.org/core/checksums/1.0/'
+            . '?version=' . $site_version . '&locale=en_US';
 
         if ( $latest_hashes ) {
             $cache = new SucuriScanCache( 'integrity' );
