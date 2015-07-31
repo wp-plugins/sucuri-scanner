@@ -920,7 +920,13 @@ class SucuriScan {
             $tz_format = sprintf( '%s %s', $date_format, $time_format );
 
             if ( is_numeric( $gmt_offset ) ) {
-                $timestamp += ( $gmt_offset * 3600 );
+                if ( $gmt_offset == 0 ) {
+                    /* Neutral timezone. */
+                } elseif ( $gmt_offset < 0 ) {
+                    $timestamp += ( $gmt_offset * 3600 );
+                } elseif ( $gmt_offset > 0 ) {
+                    $timestamp -= ( $gmt_offset * 3600 );
+                }
             }
 
             return date_i18n( $tz_format, $timestamp );
@@ -12638,6 +12644,7 @@ function sucuriscan_server_info(){
         'Top_Level_Domain' => 'Unknown',
         'Remote_Address' => SucuriScan::get_remote_addr(),
         'Remote_Address_Header' => SucuriScan::get_remote_addr_header(),
+        'Datetime_and_Timezone' => '',
         'Operating_system' => sprintf( '%s (%d Bit)', PHP_OS, PHP_INT_SIZE * 8 ),
         'Server' => 'Unknown',
         'Developer_mode' => 'OFF',
@@ -12657,6 +12664,11 @@ function sucuriscan_server_info(){
     $info_vars['Top_Level_Domain'] = SucuriScan::get_domain( true );
     $info_vars['Using_CloudProxy'] = $proxy_info['status'] ? 'Yes' : 'No';
     $info_vars['Support_Reverse_Proxy'] = $reverse_proxy ? 'Yes' : 'No';
+    $info_vars['Datetime_and_Timezone'] = sprintf(
+        '%s (GMT %s)',
+        SucuriScan::current_datetime(),
+        get_option( 'gmt_offset' )
+    );
 
     if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
         $info_vars['Developer_mode'] = 'ON';
