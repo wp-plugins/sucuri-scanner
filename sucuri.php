@@ -9759,6 +9759,8 @@ function sucuriscan_reset_user_password( $process_form = false ){
             arsort( $user_identifiers );
 
             foreach ( $user_identifiers as $user_id ) {
+                $user_id = intval( $user_id );
+
                 if ( SucuriScanEvent::set_new_password( $user_id ) ) {
                     $pwd_changed[] = $user_id;
                 } else {
@@ -9767,14 +9769,14 @@ function sucuriscan_reset_user_password( $process_form = false ){
             }
 
             if ( ! empty($pwd_changed) ) {
-                $message = 'Password changed for user identifiers <code>' . @implode( ', ',$pwd_changed ) . '</code>';
+                $message = 'Password changed for user identifiers <code>' . @implode( ', ', $pwd_changed ) . '</code>';
 
                 SucuriScanEvent::report_notice_event( $message );
                 SucuriScanInterface::info( $message );
             }
 
             if ( ! empty($pwd_not_changed) ) {
-                SucuriScanInterface::error( 'Password change failed for users: ' . implode( ', ',$pwd_not_changed ) );
+                SucuriScanInterface::error( 'Password change failed for users: ' . implode( ', ', $pwd_not_changed ) );
             }
         } else {
             SucuriScanInterface::error( 'You did not select a user from the list.' );
