@@ -937,16 +937,6 @@ class SucuriScan {
             $time_format = get_option( 'time_format' );
             $tz_format = sprintf( '%s %s', $date_format, $time_format );
 
-            if ( is_numeric( $gmt_offset ) ) {
-                if ( $gmt_offset == 0 ) {
-                    /* Neutral timezone. */
-                } elseif ( $gmt_offset < 0 ) {
-                    $timestamp += ( $gmt_offset * 3600 );
-                } elseif ( $gmt_offset > 0 ) {
-                    $timestamp -= ( $gmt_offset * 3600 );
-                }
-            }
-
             return date_i18n( $tz_format, $timestamp );
         }
 
@@ -11714,6 +11704,9 @@ function sucuriscan_settings_general(){
         'APIProxy.Password' => 'no_proxy_password',
         'APIProxy.PasswordType' => 'default',
         'APIProxy.PasswordText' => 'empty',
+        /* Timezone Settings */
+        'CustomTimezone' => '',
+        'CurrentDatetime' => '',
     );
 
     if ( array_key_exists( $emails_per_hour, $sucuriscan_emails_per_hour ) ) {
@@ -11765,6 +11758,13 @@ function sucuriscan_settings_general(){
 
     if ( sucuriscan_collect_wrong_passwords() === true ) {
         $template_variables['CollectWrongPasswords'] = '<span class="sucuriscan-label-error">Yes, collect passwords</span>';
+    }
+
+    if ( function_exists( 'wp_timezone_choice' ) ) {
+        $gmt_offset = SucuriScanOption::get_option( 'gmt_offset' );
+        $tzstring = SucuriScanOption::get_option( 'timezone_string' );
+        $template_variables['CurrentDatetime'] = SucuriScan::current_datetime();
+        $template_variables['CustomTimezone'] = empty( $tzstring ) ? 'UTC' . $gmt_offset : $tzstring;
     }
 
     // Determine if the API calls with pass through a proxy or not.

@@ -288,5 +288,18 @@
             </td>
         </tr>
 
+        <tr>
+            <td>Current Timezone</td>
+            <td>%%SUCURI.CustomTimezone%% <em>(%%SUCURI.CurrentDatetime%%)</em></td>
+            <td class="td-with-button">
+                <form action="%%SUCURI.URL.Settings%%" method="post">
+                    <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+                    <a href="options-general.php" target="_blank" class="button">
+                        <span>Change Timezone from the Settings/General page</span>
+                    </a>
+                </form>
+            </td>
+        </tr>
+
     </tbody>
 </table>
