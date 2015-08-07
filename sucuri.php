@@ -432,11 +432,14 @@ class SucuriScan {
     public static function ini_get( $property = '' ){
         $ini_value = ini_get( $property );
 
-        if ( empty($ini_value) || is_null( $ini_value ) ) {
+        if ( $ini_value === false ) {
+            $ini_value = 'Undefined';
+        } elseif ( empty($ini_value) ) {
+            $ini_value = 'Off';
+        } elseif ( is_null( $ini_value ) ) {
             switch ( $property ) {
                 case 'error_log': $ini_value = 'error_log'; break;
                 case 'safe_mode': $ini_value = 'Off'; break;
-                case 'allow_url_fopen': $ini_value = '1'; break;
                 case 'memory_limit': $ini_value = '128M'; break;
                 case 'upload_max_filesize': $ini_value = '2M'; break;
                 case 'post_max_size': $ini_value = '8M'; break;
