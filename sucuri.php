@@ -199,6 +199,7 @@ if ( defined( 'SUCURISCAN' ) ) {
     $sucuriscan_notify_options = array(
         'sucuriscan_notify_plugin_change' => 'Receive email alerts for <strong>Sucuri</strong> plugin changes',
         'sucuriscan_prettify_mails' => 'Receive email alerts in HTML <em>(there may be issues with some mail services)</em>',
+        'sucuriscan_use_wpmail' => 'Use WordPress functions to send mails <em>(uncheck to use native PHP functions)</em>',
         'sucuriscan_lastlogin_redirection' => 'Allow redirection after login to report the last-login information',
         'sucuriscan_notify_scan_checksums' => 'Receive email alerts for core integrity checks',
         'sucuriscan_notify_user_registration' => 'user:Receive email alerts for new user registration',
@@ -2624,6 +2625,7 @@ class SucuriScanOption extends SucuriScanRequest {
             'sucuriscan_site_version' => '0.0',
             'sucuriscan_sitecheck_counter' => 0,
             'sucuriscan_sitecheck_scanner' => 'enabled',
+            'sucuriscan_use_wpmail' => 'enabled',
             'sucuriscan_verify_ssl_cert' => 'false',
             'sucuriscan_xhr_monitor' => 'disabled',
         );
@@ -5722,7 +5724,27 @@ class SucuriScanMail extends SucuriScanOption {
             }
 
             $subject = self::get_email_subject( $subject );
-            $mail_sent = wp_mail( $email, $subject, $message, $headers );
+
+            /**
+             * WordPress uses a library named PHPMailer [1] to send emails through the
+             * provided function wp_mail [2], unfortunately the debug information is
+             * completely removed and this makes it difficult to troubleshoots issues
+             * reported by users when the SMTP server in their sites is misconfigured. To
+             * reduce the number of tickets related with this issue we will provide an
+             * option to allow the users to choose which technique will be used to send the
+             * notifications.
+             *
+             * [1] https://github.com/PHPMailer/PHPMailer
+             * [2] https://developer.wordpress.org/reference/functions/wp_mail/
+             *
+             * @var boolean
+             */
+            if ( SucuriScanOption::is_enabled( ':use_wpmail' ) ) {
+                $mail_sent = wp_mail( $email, $subject, $message, $headers );
+            } else {
+                $headers = implode( "\r\n", $headers );
+                $mail_sent = @mail( $email, $subject, $message, $headers );
+            }
 
             if ( $mail_sent ) {
                 $emails_sent_num = (int) self::get_option( ':emails_sent' );
