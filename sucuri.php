@@ -158,6 +158,17 @@ define( 'SUCURISCAN_GET_PLUGINS_LIFETIME', 1800 );
  */
 if ( defined( 'SUCURISCAN' ) ) {
     /**
+     * Define the prefix for some actions and filters that rely in the
+     * differentiation of the type of site where the extension is being used. There
+     * are a few differences between a single site installation that must be
+     * correctly defined when the extension is in a different environment, for
+     * example, in a multisite installation.
+     *
+     * @var string
+     */
+    $sucuriscan_action_prefix = SucuriScan::is_multisite() ? 'network_' : '';
+
+    /**
      * List an associative array with the sub-pages of this plugin.
      *
      * @return array
@@ -283,7 +294,14 @@ if ( defined( 'SUCURISCAN' ) ) {
     add_action( 'admin_init', 'SucuriScanInterface::create_datastore_folder' );
     add_action( 'admin_init', 'SucuriScanInterface::handle_old_plugins' );
     add_action( 'admin_enqueue_scripts', 'SucuriScanInterface::enqueue_scripts', 1 );
-    add_action( 'admin_menu', 'SucuriScanInterface::add_interface_menu' );
+
+    /**
+     * Display extension menu and submenu items in the correct interface. For single
+     * site installations the menu items can be displayed normally as always but for
+     * multisite installations the menu items must be available only in the network
+     * panel and hidden in the administration panel of the subsites.
+     */
+    add_action( $sucuriscan_action_prefix . 'admin_menu', 'SucuriScanInterface::add_interface_menu' );
 
     /**
      * Attach Ajax requests to a custom page handler.
@@ -352,7 +370,7 @@ if ( defined( 'SUCURISCAN' ) ) {
      * the plugin to execute the filesystem scans, the project integrity, and the
      * email notifications.
      */
-    add_action( 'admin_notices', 'SucuriScanInterface::setup_notice' );
+    add_action( $sucuriscan_action_prefix . 'admin_notices', 'SucuriScanInterface::setup_notice' );
 
     /**
      * Heartbeat API
