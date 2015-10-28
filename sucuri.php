@@ -8985,7 +8985,8 @@ function sucuriscan_harden_errorlog(){
  *
  * @return void
  */
-function sucuriscan_page(){
+function sucuriscan_page()
+{
     SucuriScanInterface::check_permissions();
 
     // Process all form submissions.
@@ -8998,7 +8999,7 @@ function sucuriscan_page(){
         'AuditLogs' => sucuriscan_auditlogs(),
     );
 
-    echo SucuriScanTemplate::get_template( 'integrity', $template_variables );
+    echo SucuriScanTemplate::get_template('integrity', $template_variables);
 }
 
 /**
@@ -9008,23 +9009,24 @@ function sucuriscan_page(){
  *
  * @return void
  */
-function sucuriscan_integrity_form_submissions(){
-    if ( SucuriScanInterface::check_nonce() ) {
+function sucuriscan_integrity_form_submissions()
+{
+    if (SucuriScanInterface::check_nonce()) {
         // Force the execution of the filesystem scanner.
-        if ( SucuriScanRequest::post( ':force_scan' ) !== false ) {
-            SucuriScanEvent::notify_event( 'plugin_change', 'Filesystem scan forced at: ' . date( 'r' ) );
-            SucuriScanEvent::filesystem_scan( true );
+        if (SucuriScanRequest::post(':force_scan') !== false) {
+            SucuriScanEvent::notify_event('plugin_change', 'Filesystem scan forced at: ' . date('r'));
+            SucuriScanEvent::filesystem_scan(true);
         }
 
         // Restore, Remove, Mark as fixed the core files.
         $allowed_actions = '(restore|delete|fixed)';
-        $integrity_action = SucuriScanRequest::post( ':integrity_action', $allowed_actions );
+        $integrity_action = SucuriScanRequest::post(':integrity_action', $allowed_actions);
 
-        if ( $integrity_action !== false ) {
-            $cache = new SucuriScanCache( 'integrity' );
-            $integrity_files = SucuriScanRequest::post( ':integrity_files', '_array' );
-            $integrity_types = SucuriScanRequest::post( ':integrity_types', '_array' );
-            $files_selected = count( $integrity_files );
+        if ($integrity_action !== false) {
+            $cache = new SucuriScanCache('integrity');
+            $integrity_files = SucuriScanRequest::post(':integrity_files', '_array');
+            $integrity_types = SucuriScanRequest::post(':integrity_types', '_array');
+            $files_selected = count($integrity_files);
             $files_affected = array();
             $files_processed = 0;
             $action_titles = array(
@@ -9033,34 +9035,34 @@ function sucuriscan_integrity_form_submissions(){
                 'fixed' => 'Core file marked as fixed',
             );
 
-            if ( $integrity_files ) {
-                foreach ( (array) $integrity_files as $i => $file_path ) {
+            if ($integrity_files) {
+                foreach ((array) $integrity_files as $i => $file_path) {
                     $full_path = ABSPATH . $file_path;
                     $status_type = $integrity_types[ $i ];
 
-                    switch ( $integrity_action ) {
+                    switch ($integrity_action) {
                         case 'restore':
-                            $file_content = SucuriScanAPI::get_original_core_file( $file_path );
-                            if ( $file_content ) {
-                                $restored = @file_put_contents( $full_path, $file_content, LOCK_EX );
+                            $file_content = SucuriScanAPI::get_original_core_file($file_path);
+                            if ($file_content) {
+                                $restored = @file_put_contents($full_path, $file_content, LOCK_EX);
                                 $files_processed += ( $restored ? 1 : 0 );
                                 $files_affected[] = $full_path;
                             }
                             break;
                         case 'delete':
-                            if ( @unlink( $full_path ) ) {
+                            if (@unlink($full_path)) {
                                 $files_processed += 1;
                                 $files_affected[] = $full_path;
                             }
                             break;
                         case 'fixed':
-                            $cache_key = md5( $file_path );
+                            $cache_key = md5($file_path);
                             $cache_value = array(
                                 'file_path' => $file_path,
                                 'file_status' => $status_type,
                                 'ignored_at' => time(),
                             );
-                            $cached = $cache->add( $cache_key, $cache_value );
+                            $cached = $cache->add($cache_key, $cache_value);
                             $files_processed += ( $cached ? 1 : 0 );
                             $files_affected[] = $full_path;
                             break;
@@ -9068,20 +9070,26 @@ function sucuriscan_integrity_form_submissions(){
                 }
 
                 // Report files affected as a single event.
-                if ( ! empty($files_affected) ) {
-                    $message_tpl = ( count( $files_affected ) > 1 )
+                if (! empty($files_affected)) {
+                    $message_tpl = ( count($files_affected) > 1 )
                         ? '%s: (multiple entries): %s'
                         : '%s: %s';
                     $message = sprintf(
                         $message_tpl,
                         $action_titles[ $integrity_action ],
-                        @implode( ',', $files_affected )
+                        @implode(',', $files_affected)
                     );
 
-                    switch ( $integrity_action ) {
-                        case 'restore': SucuriScanEvent::report_info_event( $message ); break;
-                        case 'delete': SucuriScanEvent::report_notice_event( $message ); break;
-                        case 'fixed': SucuriScanEvent::report_warning_event( $message ); break;
+                    switch ($integrity_action) {
+                        case 'restore':
+                            SucuriScanEvent::report_info_event($message);
+                            break;
+                        case 'delete':
+                            SucuriScanEvent::report_notice_event($message);
+                            break;
+                        case 'fixed':
+                            SucuriScanEvent::report_warning_event($message);
+                            break;
                     }
                 }
 
@@ -9103,17 +9111,18 @@ function sucuriscan_integrity_form_submissions(){
  * @param  boolean $recursive Either TRUE or FALSE if the scan should be performed recursively.
  * @return array              List of arrays containing the md5sum and last modification time of the files found.
  */
-function sucuriscan_get_integrity_tree( $dir = './', $recursive = false ){
-    $abs_path = rtrim( ABSPATH, '/' );
+function sucuriscan_get_integrity_tree($dir = './', $recursive = false)
+{
+    $abs_path = rtrim(ABSPATH, '/');
 
     $file_info = new SucuriScanFileInfo();
     $file_info->ignore_files = false;
     $file_info->ignore_directories = false;
     $file_info->run_recursively = $recursive;
-    $file_info->scan_interface = SucuriScanOption::get_option( ':scan_interface' );
-    $integrity_tree = $file_info->get_directory_tree_md5( $dir, true );
+    $file_info->scan_interface = SucuriScanOption::get_option(':scan_interface');
+    $integrity_tree = $file_info->get_directory_tree_md5($dir, true);
 
-    if ( ! $integrity_tree ) {
+    if (! $integrity_tree) {
         $integrity_tree = array();
     }
 
@@ -9126,12 +9135,13 @@ function sucuriscan_get_integrity_tree( $dir = './', $recursive = false ){
  *
  * @return void
  */
-function sucuriscan_auditlogs(){
+function sucuriscan_auditlogs()
+{
     // Initialize the values for the pagination.
     $max_per_page = SUCURISCAN_AUDITLOGS_PER_PAGE;
     $page_number = SucuriScanTemplate::get_page_number();
     $logs_limit = $page_number * $max_per_page;
-    $audit_logs = SucuriScanAPI::get_logs( $logs_limit );
+    $audit_logs = SucuriScanAPI::get_logs($logs_limit);
 
     $template_variables = array(
         'PageTitle' => 'Audit Logs',
@@ -9144,51 +9154,50 @@ function sucuriscan_auditlogs(){
         'AuditLogs.EnableAuditReportVisibility' => 'hidden',
     );
 
-    if ( $audit_logs ) {
+    if ($audit_logs) {
         $counter_i = 0;
-        $total_items = count( $audit_logs->output_data );
+        $total_items = count($audit_logs->output_data);
         $iterator_start = ($page_number - 1) * $max_per_page;
         $iterator_end = $total_items;
 
-        if (
-            $audit_logs->total_entries >= $max_per_page
-            && SucuriScanOption::is_disabled( ':audit_report' )
+        if ($audit_logs->total_entries >= $max_per_page
+            && SucuriScanOption::is_disabled(':audit_report')
         ) {
             $template_variables['AuditLogs.EnableAuditReportVisibility'] = 'visible';
         }
 
-        for ( $i = $iterator_start; $i < $total_items; $i++ ) {
-            if ( $counter_i > $max_per_page ) {
+        for ($i = $iterator_start; $i < $total_items; $i++) {
+            if ($counter_i > $max_per_page) {
                 break;
             }
 
-            if ( isset($audit_logs->output_data[ $i ]) ) {
+            if (isset($audit_logs->output_data[ $i ])) {
                 $audit_log = $audit_logs->output_data[ $i ];
 
                 $css_class = ( $counter_i % 2 == 0 ) ? '' : 'alternate';
                 $snippet_data = array(
                     'AuditLog.CssClass' => $css_class,
-                    'AuditLog.Event' => SucuriScan::escape( $audit_log['event'] ),
-                    'AuditLog.EventTitle' => SucuriScan::escape( ucfirst( $audit_log['event'] ) ),
-                    'AuditLog.DateTime' => SucuriScan::datetime( $audit_log['timestamp'] ),
-                    'AuditLog.Account' => SucuriScan::escape( $audit_log['account'] ),
-                    'AuditLog.Username' => SucuriScan::escape( $audit_log['username'] ),
-                    'AuditLog.RemoteAddress' => SucuriScan::escape( $audit_log['remote_addr'] ),
-                    'AuditLog.Message' => SucuriScan::escape( $audit_log['message'] ),
+                    'AuditLog.Event' => SucuriScan::escape($audit_log['event']),
+                    'AuditLog.EventTitle' => SucuriScan::escape(ucfirst($audit_log['event'])),
+                    'AuditLog.DateTime' => SucuriScan::datetime($audit_log['timestamp']),
+                    'AuditLog.Account' => SucuriScan::escape($audit_log['account']),
+                    'AuditLog.Username' => SucuriScan::escape($audit_log['username']),
+                    'AuditLog.RemoteAddress' => SucuriScan::escape($audit_log['remote_addr']),
+                    'AuditLog.Message' => SucuriScan::escape($audit_log['message']),
                     'AuditLog.Extra' => '',
                 );
 
                 // Print every file_list information item in a separate table.
-                if ( $audit_log['file_list'] ) {
+                if ($audit_log['file_list']) {
                     $css_scrollable = $audit_log['file_list_count'] > 10 ? 'sucuriscan-list-as-table-scrollable' : '';
                     $snippet_data['AuditLog.Extra'] .= '<ul class="sucuriscan-list-as-table ' . $css_scrollable . '">';
-                    foreach ( $audit_log['file_list'] as $log_extra ) {
-                        $snippet_data['AuditLog.Extra'] .= '<li>' . SucuriScan::escape( $log_extra ) . '</li>';
+                    foreach ($audit_log['file_list'] as $log_extra) {
+                        $snippet_data['AuditLog.Extra'] .= '<li>' . SucuriScan::escape($log_extra) . '</li>';
                     }
                     $snippet_data['AuditLog.Extra'] .= '</ul>';
                 }
 
-                $template_variables['AuditLogs.List'] .= SucuriScanTemplate::get_snippet( 'integrity-auditlogs', $snippet_data );
+                $template_variables['AuditLogs.List'] .= SucuriScanTemplate::get_snippet('integrity-auditlogs', $snippet_data);
                 $counter_i += 1;
             }
         }
@@ -9196,14 +9205,14 @@ function sucuriscan_auditlogs(){
         $template_variables['AuditLogs.Count'] = $counter_i;
         $template_variables['AuditLogs.NoItemsVisibility'] = 'hidden';
 
-        if ( $total_items > 1 ) {
-            $max_pages = ceil( $audit_logs->total_entries / $max_per_page );
+        if ($total_items > 1) {
+            $max_pages = ceil($audit_logs->total_entries / $max_per_page);
 
-            if ( $max_pages > SUCURISCAN_MAX_PAGINATION_BUTTONS ) {
+            if ($max_pages > SUCURISCAN_MAX_PAGINATION_BUTTONS) {
                 $max_pages = SUCURISCAN_MAX_PAGINATION_BUTTONS;
             }
 
-            if ( $max_pages > 1 ) {
+            if ($max_pages > 1) {
                 $template_variables['AuditLogs.PaginationVisibility'] = 'visible';
                 $template_variables['AuditLogs.PaginationLinks'] = SucuriScanTemplate::get_pagination(
                     '%%SUCURI.URL.Home%%',
@@ -9214,7 +9223,7 @@ function sucuriscan_auditlogs(){
         }
     }
 
-    return SucuriScanTemplate::get_section( 'integrity-auditlogs', $template_variables );
+    return SucuriScanTemplate::get_section('integrity-auditlogs', $template_variables);
 }
 /**
  * Print a HTML code with the content of the logs audited by the remote Sucuri
@@ -9222,12 +9231,13 @@ function sucuriscan_auditlogs(){
  *
  * @return void
  */
-function sucuriscan_auditreport(){
+function sucuriscan_auditreport()
+{
     $audit_report = false;
-    $logs4report = SucuriScanOption::get_option( ':logs4report' );
+    $logs4report = SucuriScanOption::get_option(':logs4report');
 
-    if ( SucuriScanOption::is_enabled( ':audit_report' ) ) {
-        $audit_report = SucuriScanAPI::get_audit_report( $logs4report );
+    if (SucuriScanOption::is_enabled(':audit_report')) {
+        $audit_report = SucuriScanAPI::get_audit_report($logs4report);
     }
 
     $template_variables = array(
@@ -9242,40 +9252,40 @@ function sucuriscan_auditreport(){
         'AuditReport.Logs4Report' => $logs4report,
     );
 
-    if ( $audit_report ) {
-        $template_variables['AuditReport.EventColors'] = @implode( ',', $audit_report['event_colors'] );
+    if ($audit_report) {
+        $template_variables['AuditReport.EventColors'] = @implode(',', $audit_report['event_colors']);
 
         // Generate report chart data for the events per type.
-        foreach ( $audit_report['events_per_type'] as $event => $times ) {
+        foreach ($audit_report['events_per_type'] as $event => $times) {
             $template_variables['AuditReport.EventsPerType'] .= sprintf(
                 "[ '%s', %d ],\n",
-                ucwords( $event . "\x20events" ),
+                ucwords($event . "\x20events"),
                 $times
             );
         }
 
         // Generate report chart data for the events per login.
-        foreach ( $audit_report['events_per_login'] as $event => $times ) {
+        foreach ($audit_report['events_per_login'] as $event => $times) {
             $template_variables['AuditReport.EventsPerLogin'] .= sprintf(
                 "[ '%s', %d ],\n",
-                ucwords( $event . "\x20logins" ),
+                ucwords($event . "\x20logins"),
                 $times
             );
         }
 
         // Generate report chart data for the events per user.
-        foreach ( $audit_report['events_per_user'] as $event => $times ) {
-            $template_variables['AuditReport.EventsPerUserCategories'] .= sprintf( '"%s",', $event );
-            $template_variables['AuditReport.EventsPerUserSeries'] .= sprintf( '%d,', $times );
+        foreach ($audit_report['events_per_user'] as $event => $times) {
+            $template_variables['AuditReport.EventsPerUserCategories'] .= sprintf('"%s",', $event);
+            $template_variables['AuditReport.EventsPerUserSeries'] .= sprintf('%d,', $times);
         }
 
         // Generate report chart data for the events per remote address.
-        foreach ( $audit_report['events_per_ipaddress'] as $event => $times ) {
-            $template_variables['AuditReport.EventsPerIPAddressCategories'] .= sprintf( '"%s",', $event );
-            $template_variables['AuditReport.EventsPerIPAddressSeries'] .= sprintf( '%d,', $times );
+        foreach ($audit_report['events_per_ipaddress'] as $event => $times) {
+            $template_variables['AuditReport.EventsPerIPAddressCategories'] .= sprintf('"%s",', $event);
+            $template_variables['AuditReport.EventsPerIPAddressSeries'] .= sprintf('%d,', $times);
         }
 
-        return SucuriScanTemplate::get_section( 'integrity-auditreport', $template_variables );
+        return SucuriScanTemplate::get_section('integrity-auditreport', $template_variables);
     }
 
     return '';
@@ -9286,35 +9296,34 @@ function sucuriscan_auditreport(){
  *
  * @return string Panel with a warning advising that WordPress is outdated.
  */
-function sucuriscan_wordpress_outdated(){
+function sucuriscan_wordpress_outdated()
+{
     $site_version = SucuriScan::site_version();
     $updates = get_core_updates();
-    $cp = ( ! is_array( $updates ) || empty($updates) ? 1 : 0 );
+    $cp = ( ! is_array($updates) || empty($updates) ? 1 : 0 );
 
     $template_variables = array(
         'WordPress.Version' => $site_version,
         'WordPress.NewVersion' => '0.0.0',
         'WordPress.NewLocale' => 'default',
-        'WordPress.UpdateURL' => admin_url( 'update-core.php' ),
+        'WordPress.UpdateURL' => admin_url('update-core.php'),
         'WordPress.DownloadURL' => '#',
         'WordPress.UpdateVisibility' => 'hidden',
     );
 
-    if (
-        isset($updates[0])
+    if (isset($updates[0])
         && $updates[0] instanceof stdClass
-        && property_exists( $updates[0], 'version' )
-        && property_exists( $updates[0], 'download' )
+        && property_exists($updates[0], 'version')
+        && property_exists($updates[0], 'download')
     ) {
         $template_variables['WordPress.NewVersion'] = $updates[0]->version;
         $template_variables['WordPress.DownloadURL'] = $updates[0]->download;
 
-        if ( property_exists( $updates[0], 'locale' ) ) {
+        if (property_exists($updates[0], 'locale')) {
             $template_variables['WordPress.NewLocale'] = $updates[0]->locale;
         }
 
-        if (
-            $updates[0]->response == 'latest'
+        if ($updates[0]->response == 'latest'
             || $updates[0]->response == 'development'
             || $updates[0]->version == $site_version
         ) {
@@ -9322,11 +9331,11 @@ function sucuriscan_wordpress_outdated(){
         }
     }
 
-    if ( $cp == 0 ) {
+    if ($cp == 0) {
         $template_variables['WordPress.UpdateVisibility'] = 'visible';
     }
 
-    return SucuriScanTemplate::get_section( 'integrity-wpoutdate', $template_variables );
+    return SucuriScanTemplate::get_section('integrity-wpoutdate', $template_variables);
 }
 
 /**
@@ -9339,7 +9348,8 @@ function sucuriscan_wordpress_outdated(){
  * @param  boolean $send_email If the HTML code returned will be sent via email.
  * @return string              HTML code with a list of files that were affected.
  */
-function sucuriscan_core_files( $send_email = false ){
+function sucuriscan_core_files($send_email = false)
+{
     $site_version = SucuriScan::site_version();
     $affected_files = 0;
 
@@ -9352,48 +9362,47 @@ function sucuriscan_core_files( $send_email = false ){
         'CoreFiles.RemoteChecksumsURL' => '',
     );
 
-    if ( $site_version && SucuriScanOption::is_enabled( ':scan_checksums' ) ) {
+    if ($site_version && SucuriScanOption::is_enabled(':scan_checksums')) {
         // Check if there are added, removed, or modified files.
-        $latest_hashes = sucuriscan_check_core_integrity( $site_version );
+        $latest_hashes = sucuriscan_check_core_integrity($site_version);
         $template_variables['CoreFiles.RemoteChecksumsURL'] =
             'http://api.wordpress.org/core/checksums/1.0/'
             . '?version=' . $site_version . '&locale=en_US';
 
-        if ( $latest_hashes ) {
-            $cache = new SucuriScanCache( 'integrity' );
+        if ($latest_hashes) {
+            $cache = new SucuriScanCache('integrity');
             $ignored_files = $cache->get_all();
             $counter = 0;
 
-            foreach ( $latest_hashes as $list_type => $file_list ) {
-                if (
-                    $list_type == 'stable'
+            foreach ($latest_hashes as $list_type => $file_list) {
+                if ($list_type == 'stable'
                     || empty($file_list)
                 ) {
                     continue;
                 }
 
-                foreach ( $file_list as $file_info ) {
+                foreach ($file_list as $file_info) {
                     $file_path = $file_info['filepath'];
-                    $full_filepath = sprintf( '%s/%s', rtrim( ABSPATH, '/' ), $file_path );
+                    $full_filepath = sprintf('%s/%s', rtrim(ABSPATH, '/'), $file_path);
 
                     // Skip files that were marked as fixed.
-                    if ( $ignored_files ) {
+                    if ($ignored_files) {
                         // Get the checksum of the base file name.
-                        $file_path_checksum = md5( $file_path );
+                        $file_path_checksum = md5($file_path);
 
-                        if ( array_key_exists( $file_path_checksum, $ignored_files ) ) {
+                        if (array_key_exists($file_path_checksum, $ignored_files)) {
                             continue;
                         }
                     }
 
                     // Add extra information to the file list.
                     $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
-                    $file_size = @filesize( $full_filepath );
+                    $file_size = @filesize($full_filepath);
                     $is_fixable_html = '';
                     $is_fixable_text = '';
 
                     // Check whether the file can be fixed automatically or not.
-                    if ( $file_info['is_fixable'] !== true ) {
+                    if ($file_info['is_fixable'] !== true) {
                         $css_class .= ' sucuriscan-opacity';
                         $is_fixable_html = 'disabled="disbled"';
                         $is_fixable_text = '(must be fixed manually)';
@@ -9405,9 +9414,9 @@ function sucuriscan_core_files( $send_email = false ){
                         'CoreFiles.StatusType' => $list_type,
                         'CoreFiles.FilePath' => $file_path,
                         'CoreFiles.FileSize' => $file_size,
-                        'CoreFiles.FileSizeHuman' => SucuriScan::human_filesize( $file_size ),
-                        'CoreFiles.FileSizeNumber' => number_format( $file_size ),
-                        'CoreFiles.ModifiedAt' => SucuriScan::datetime( $file_info['modified_at'] ),
+                        'CoreFiles.FileSizeHuman' => SucuriScan::human_filesize($file_size),
+                        'CoreFiles.FileSizeNumber' => number_format($file_size),
+                        'CoreFiles.ModifiedAt' => SucuriScan::datetime($file_info['modified_at']),
                         'CoreFiles.IsFixtableFile' => $is_fixable_html,
                         'CoreFiles.IsNotFixable' => $is_fixable_text,
                     ));
@@ -9416,7 +9425,7 @@ function sucuriscan_core_files( $send_email = false ){
                 }
             }
 
-            if ( $counter > 0 ) {
+            if ($counter > 0) {
                 $template_variables['CoreFiles.ListCount'] = $counter;
                 $template_variables['CoreFiles.GoodVisibility'] = 'hidden';
                 $template_variables['CoreFiles.BadVisibility'] = 'visible';
@@ -9429,10 +9438,10 @@ function sucuriscan_core_files( $send_email = false ){
     }
 
     // Send an email notification with the affected files.
-    if ( $send_email === true ) {
-        if ( $affected_files > 0 ) {
-            $content = SucuriScanTemplate::get_section( 'notification-corefiles', $template_variables );
-            $sent = SucuriScanEvent::notify_event( 'scan_checksums', $content );
+    if ($send_email === true) {
+        if ($affected_files > 0) {
+            $content = SucuriScanTemplate::get_section('notification-corefiles', $template_variables);
+            $sent = SucuriScanEvent::notify_event('scan_checksums', $content);
 
             return $sent;
         }
@@ -9440,7 +9449,7 @@ function sucuriscan_core_files( $send_email = false ){
         return false;
     }
 
-    return SucuriScanTemplate::get_section( 'integrity-corefiles', $template_variables );
+    return SucuriScanTemplate::get_section('integrity-corefiles', $template_variables);
 }
 
 /**
@@ -9458,13 +9467,14 @@ function sucuriscan_core_files( $send_email = false ){
  * @param  integer $version Valid version number of the WordPress project.
  * @return array            Associative array with these keys: modified, stable, removed, added.
  */
-function sucuriscan_check_core_integrity( $version = 0 ){
-    $latest_hashes = SucuriScanAPI::get_official_checksums( $version );
-    $base_content_dir = defined( 'WP_CONTENT_DIR' )
-        ? basename( rtrim( WP_CONTENT_DIR, '/' ) )
+function sucuriscan_check_core_integrity($version = 0)
+{
+    $latest_hashes = SucuriScanAPI::get_official_checksums($version);
+    $base_content_dir = defined('WP_CONTENT_DIR')
+        ? basename(rtrim(WP_CONTENT_DIR, '/'))
         : '';
 
-    if ( ! $latest_hashes ) {
+    if (! $latest_hashes) {
         return false;
     }
 
@@ -9476,35 +9486,33 @@ function sucuriscan_check_core_integrity( $version = 0 ){
     );
 
     // Get current filesystem tree.
-    $wp_top_hashes = sucuriscan_get_integrity_tree( ABSPATH , false );
-    $wp_admin_hashes = sucuriscan_get_integrity_tree( ABSPATH . 'wp-admin', true );
-    $wp_includes_hashes = sucuriscan_get_integrity_tree( ABSPATH . 'wp-includes', true );
-    $wp_core_hashes = array_merge( $wp_top_hashes, $wp_admin_hashes, $wp_includes_hashes );
+    $wp_top_hashes = sucuriscan_get_integrity_tree(ABSPATH, false);
+    $wp_admin_hashes = sucuriscan_get_integrity_tree(ABSPATH . 'wp-admin', true);
+    $wp_includes_hashes = sucuriscan_get_integrity_tree(ABSPATH . 'wp-includes', true);
+    $wp_core_hashes = array_merge($wp_top_hashes, $wp_admin_hashes, $wp_includes_hashes);
 
     // Compare remote and local checksums and search removed files.
-    foreach ( $latest_hashes as $file_path => $remote_checksum ) {
-        if ( sucuriscan_ignore_integrity_filepath( $file_path ) ) {
+    foreach ($latest_hashes as $file_path => $remote_checksum) {
+        if (sucuriscan_ignore_integrity_filepath($file_path)) {
             continue;
         }
 
-        $full_filepath = sprintf( '%s/%s', ABSPATH, $file_path );
+        $full_filepath = sprintf('%s/%s', ABSPATH, $file_path);
 
         // Patch for custom content directory path.
-        if (
-            ! file_exists( $full_filepath )
-            && strpos( $file_path, 'wp-content' ) !== false
-            && defined( 'WP_CONTENT_DIR' )
+        if (! file_exists($full_filepath)
+            && strpos($file_path, 'wp-content') !== false
+            && defined('WP_CONTENT_DIR')
         ) {
-            $file_path = str_replace( 'wp-content', $base_content_dir, $file_path );
+            $file_path = str_replace('wp-content', $base_content_dir, $file_path);
             $full_filepath = ABSPATH . '/' . $file_path;
         }
 
         // Check whether the official file exists or not.
-        if ( file_exists( $full_filepath ) ) {
-            $local_checksum = @md5_file( $full_filepath );
+        if (file_exists($full_filepath)) {
+            $local_checksum = @md5_file($full_filepath);
 
-            if (
-                $local_checksum !== false
+            if ($local_checksum !== false
                 && $local_checksum === $remote_checksum
             ) {
                 $output['stable'][] = array(
@@ -9513,8 +9521,8 @@ function sucuriscan_check_core_integrity( $version = 0 ){
                     'modified_at' => 0,
                 );
             } else {
-                $modified_at = @filemtime( $full_filepath );
-                $is_fixable = (bool) is_writable( $full_filepath );
+                $modified_at = @filemtime($full_filepath);
+                $is_fixable = (bool) is_writable($full_filepath);
                 $output['modified'][] = array(
                     'filepath' => $file_path,
                     'is_fixable' => $is_fixable,
@@ -9522,7 +9530,7 @@ function sucuriscan_check_core_integrity( $version = 0 ){
                 );
             }
         } else {
-            $is_fixable = is_writable( dirname( $full_filepath ) );
+            $is_fixable = is_writable(dirname($full_filepath));
             $output['removed'][] = array(
                 'filepath' => $file_path,
                 'is_fixable' => $is_fixable,
@@ -9532,18 +9540,18 @@ function sucuriscan_check_core_integrity( $version = 0 ){
     }
 
     // Search added files (files not common in a normal wordpress installation).
-    foreach ( $wp_core_hashes as $file_path => $extra_info ) {
-        $file_path = str_replace( DIRECTORY_SEPARATOR, '/', $file_path );
-        $file_path = preg_replace( '/^\.\/(.*)/', '$1', $file_path );
+    foreach ($wp_core_hashes as $file_path => $extra_info) {
+        $file_path = str_replace(DIRECTORY_SEPARATOR, '/', $file_path);
+        $file_path = preg_replace('/^\.\/(.*)/', '$1', $file_path);
 
-        if ( sucuriscan_ignore_integrity_filepath( $file_path ) ) {
+        if (sucuriscan_ignore_integrity_filepath($file_path)) {
             continue;
         }
 
-        if ( ! array_key_exists( $file_path, $latest_hashes ) ) {
+        if (! array_key_exists($file_path, $latest_hashes)) {
             $full_filepath = ABSPATH . '/' . $file_path;
-            $modified_at = @filemtime( $full_filepath );
-            $is_fixable = (bool) is_writable( $full_filepath );
+            $modified_at = @filemtime($full_filepath);
+            $is_fixable = (bool) is_writable($full_filepath);
             $output['added'][] = array(
                 'filepath' => $file_path,
                 'is_fixable' => $is_fixable,
@@ -9561,7 +9569,8 @@ function sucuriscan_check_core_integrity( $version = 0 ){
  * @param  string  $file_path File path that will be compared.
  * @return boolean            TRUE if the file should be ignored, FALSE otherwise.
  */
-function sucuriscan_ignore_integrity_filepath( $file_path = '' ){
+function sucuriscan_ignore_integrity_filepath($file_path = '')
+{
     global $wp_local_package;
 
     // List of files that will be ignored from the integrity checking.
@@ -9592,8 +9601,7 @@ function sucuriscan_ignore_integrity_filepath( $file_path = '' ){
      * of the project, basically they have files with new variables specifying the
      * language that will be used in the admin panel, site options, and emails.
      */
-    if (
-        isset($wp_local_package)
+    if (isset($wp_local_package)
         && $wp_local_package != 'en_US'
     ) {
         $ignore_files[] = 'wp-includes\/version\.php';
@@ -9601,8 +9609,8 @@ function sucuriscan_ignore_integrity_filepath( $file_path = '' ){
     }
 
     // Determine whether a file must be ignored from the integrity checks or not.
-    foreach ( $ignore_files as $ignore_pattern ) {
-        if ( preg_match( '/'.$ignore_pattern.'/', $file_path ) ) {
+    foreach ($ignore_files as $ignore_pattern) {
+        if (preg_match('/'.$ignore_pattern.'/', $file_path)) {
             return true;
         }
     }
@@ -9615,7 +9623,8 @@ function sucuriscan_ignore_integrity_filepath( $file_path = '' ){
  *
  * @return void
  */
-function sucuriscan_modified_files(){
+function sucuriscan_modified_files()
+{
     $valid_day_ranges = array( 1, 3, 7, 30, 60 );
     $template_variables = array(
         'ModifiedFiles.List' => '',
@@ -9626,12 +9635,12 @@ function sucuriscan_modified_files(){
     );
 
     // Find files modified in the last days.
-    $back_days = SucuriScanRequest::post( ':last_days', '[0-9]+' );
+    $back_days = SucuriScanRequest::post(':last_days', '[0-9]+');
 
-    if ( $back_days !== false ) {
-        if ( $back_days <= 0 ) {
+    if ($back_days !== false) {
+        if ($back_days <= 0) {
             $back_days = 1;
-        } elseif ( $back_days >= 60 ) {
+        } elseif ($back_days >= 60) {
             $back_days = 60;
         }
     } else {
@@ -9639,34 +9648,35 @@ function sucuriscan_modified_files(){
     }
 
     // Fix data type for the back days variable.
-    $back_days = intval( $back_days );
+    $back_days = intval($back_days);
     $template_variables['ModifiedFiles.Days'] = $back_days;
 
     // Generate the options for the select field of the page form.
-    foreach ( $valid_day_ranges as $day ) {
+    foreach ($valid_day_ranges as $day) {
         $selected_option = ($back_days == $day) ? 'selected="selected"' : '';
         $template_variables['ModifiedFiles.SelectOptions'] .= sprintf(
             '<option value="%d" %s>%d</option>',
-            $day, $selected_option, $day
+            $day,
+            $selected_option,
+            $day
         );
     }
 
     // The scanner for modified files can be disabled from the settings page.
-    if ( SucuriScanOption::is_enabled( ':scan_modfiles' ) ) {
+    if (SucuriScanOption::is_enabled(':scan_modfiles')) {
         // Search modified files among the project's files.
-        $content_hashes = sucuriscan_get_integrity_tree( WP_CONTENT_DIR, true );
+        $content_hashes = sucuriscan_get_integrity_tree(WP_CONTENT_DIR, true);
 
-        if ( ! empty($content_hashes) ) {
-            $back_days = current_time( 'timestamp' ) - ( $back_days * 86400);
+        if (! empty($content_hashes)) {
+            $back_days = current_time('timestamp') - ( $back_days * 86400);
             $counter = 0;
 
-            foreach ( $content_hashes as $file_path => $file_info ) {
-                if (
-                    isset($file_info['modified_at'])
+            foreach ($content_hashes as $file_path => $file_info) {
+                if (isset($file_info['modified_at'])
                     && $file_info['modified_at'] >= $back_days
                 ) {
                     $css_class = ( $counter % 2 == 0 ) ? '' : 'alternate';
-                    $mod_date = SucuriScan::datetime( $file_info['modified_at'] );
+                    $mod_date = SucuriScan::datetime($file_info['modified_at']);
 
                     $template_variables['ModifiedFiles.List'] .= SucuriScanTemplate::get_snippet('integrity-modifiedfiles', array(
                         'ModifiedFiles.CssClass' => $css_class,
@@ -9674,14 +9684,14 @@ function sucuriscan_modified_files(){
                         'ModifiedFiles.FilePath' => $file_path,
                         'ModifiedFiles.DateTime' => $mod_date,
                         'ModifiedFiles.FileSize' => $file_info['filesize'],
-                        'ModifiedFiles.FileSizeHuman' => SucuriScan::human_filesize( $file_info['filesize'] ),
-                        'ModifiedFiles.FileSizeNumber' => number_format( $file_info['filesize'] ),
+                        'ModifiedFiles.FileSizeHuman' => SucuriScan::human_filesize($file_info['filesize']),
+                        'ModifiedFiles.FileSizeNumber' => number_format($file_info['filesize']),
                     ));
                     $counter += 1;
                 }
             }
 
-            if ( $counter > 0 ) {
+            if ($counter > 0) {
                 $template_variables['ModifiedFiles.NoFilesVisibility'] = 'hidden';
             }
         }
@@ -9689,7 +9699,7 @@ function sucuriscan_modified_files(){
         $template_variables['ModifiedFiles.DisabledVisibility'] = 'visible';
     }
 
-    return SucuriScanTemplate::get_section( 'integrity-modifiedfiles', $template_variables );
+    return SucuriScanTemplate::get_section('integrity-modifiedfiles', $template_variables);
 }
 
 /**
