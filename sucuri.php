@@ -7133,6 +7133,7 @@ function sucuriscan_sitecheck_info( $scan_results = array() ){
  */
 function sucuriscan_sitecheck_scanner_results( $scan_results = false, $template_variables = array() ){
     $secvars = array(
+        'CacheLifeTime' => SUCURISCAN_SITECHECK_LIFETIME,
         'WebsiteStatus' => 'Site status unknown',
         'NoMalwareRowVisibility' => 'visible',
         'FixButtonVisibility' => 'hidden',
