@@ -7996,12 +7996,11 @@ class SucuriScanHardening extends SucuriScan {
      * Currently supports Apache 2.2 and 2.4 and denies access to all PHP files with
      * any mixed extension case.
      *
-     * @param  string $directory Valid directory path.
-     * @return array             List of access control rules.
+     * @return array List of access control rules.
      */
-    private static function get_rules( $directory = '' ){
-        $directory = basename( $directory );
-        $rules = array(
+    private static function get_rules()
+    {
+        return array(
             '<FilesMatch "\.(?i:php)$">',
             '  <IfModule !mod_authz_core.c>',
             '    Order allow,deny',
@@ -8012,17 +8011,6 @@ class SucuriScanHardening extends SucuriScan {
             '  </IfModule>',
             '</FilesMatch>',
         );
-
-        if ( $directory == 'wp-includes' ) {
-            $rules[] = '<Files wp-tinymce.php>';
-            $rules[] = '  Allow from all';
-            $rules[] = '</Files>';
-            $rules[] = '<Files ms-files.php>';
-            $rules[] = '  Allow from all';
-            $rules[] = '</Files>';
-        }
-
-        return $rules;
     }
 
     /**
@@ -8034,29 +8022,29 @@ class SucuriScanHardening extends SucuriScan {
      * @param  string  $directory Valid directory path where to place the access rules.
      * @return boolean            True if the rules are successfully added, false otherwise.
      */
-    public static function harden_directory( $directory = '' ){
-        if (
-            file_exists( $directory)
-            && is_writable( $directory )
-            && is_dir( $directory )
+    public static function harden_directory($directory = '')
+    {
+        if (file_exists($directory)
+            && is_writable($directory)
+            && is_dir($directory)
         ) {
             $fhandle = false;
-            $target = $directory . '/.htaccess';
-            $deny_rules = self::get_rules( $directory );
+            $target = self::htaccess($directory);
+            $deny_rules = self::get_rules();
 
-            if ( file_exists( $target ) ) {
-                self::fix_previous_hardening( $directory );
-                $fhandle = @fopen( $target, 'a' );
+            if (file_exists($target)) {
+                self::fix_previous_hardening($directory);
+                $fhandle = @fopen($target, 'a');
             } else {
-                $fhandle = @fopen( $target, 'w' );
+                $fhandle = @fopen($target, 'w');
             }
 
-            if ( $fhandle ) {
-                $rules_str = implode( "\n", $deny_rules );
-                $written = fwrite( $fhandle, $rules_str );
-                fclose( $fhandle );
+            if ($fhandle) {
+                $rules_str = implode("\n", $deny_rules) . "\n";
+                $written = @fwrite($fhandle, $rules_str);
+                @fclose($fhandle);
 
-                return (bool) ( $written !== false );
+                return (bool) ($written !== false);
             }
         }
 
@@ -8071,22 +8059,23 @@ class SucuriScanHardening extends SucuriScan {
      * @param  string  $directory Valid directory path where to access rules are.
      * @return boolean            True if the rules are successfully deleted, false otherwise.
      */
-    public static function unharden_directory( $directory = '' ){
-        if ( self::is_hardened( $directory ) ) {
-            $deny_rules = self::get_rules( $directory );
-            $fpath = $directory . '/.htaccess';
-            $content = @file_get_contents( $fpath );
+    public static function unharden_directory($directory = '')
+    {
+        if (self::is_hardened($directory)) {
+            $deny_rules = self::get_rules();
+            $fpath = self::htaccess($directory);
+            $content = @file_get_contents($fpath);
 
-            if ( $content ) {
-                $rules_str = implode( "\n", $deny_rules );
-                $content = str_replace( $rules_str, '', $content );
-                $written = @file_put_contents( $fpath, $content );
+            if ($content) {
+                $rules_str = implode("\n", $deny_rules);
+                $content = str_replace($rules_str, '', $content);
+                $written = @file_put_contents($fpath, $content);
 
-                if ( filesize( $fpath ) === 0 ) {
-                    @unlink( $fpath );
+                if (filesize($fpath) === 0) {
+                    @unlink($fpath);
                 }
 
-                return (bool) ( $written !== false );
+                return (bool) ($written !== false);
             }
         }
 
@@ -8099,17 +8088,18 @@ class SucuriScanHardening extends SucuriScan {
      * @param  string  $directory Valid directory path.
      * @return boolean            True if the access control file was fixed.
      */
-    private static function fix_previous_hardening( $directory = '' ){
-        $fpath = $directory . '/.htaccess';
-        $content = @file_get_contents( $fpath );
+    private static function fix_previous_hardening($directory = '')
+    {
+        $fpath = self::htaccess($directory);
+        $content = @file_get_contents($fpath);
         $rules = "<Files *.php>\ndeny from all\n</Files>";
 
-        if ( $content ) {
-            if ( strpos( $content, $rules ) !== false ) {
-                $content = str_replace( $rules, '', $content );
-                $written = @file_put_contents( $fpath, $content );
+        if ($content) {
+            if (strpos($content, $rules) !== false) {
+                $content = str_replace($rules, '', $content);
+                $written = @file_put_contents($fpath, $content);
 
-                return (bool) ( $written !== false );
+                return (bool) ($written !== false);
             }
         }
 
@@ -8122,22 +8112,17 @@ class SucuriScanHardening extends SucuriScan {
      * @param  string  $directory Valid directory path.
      * @return boolean            True if the directory is hardened, false otherwise.
      */
-    public static function is_hardened( $directory = '' ){
-        if (
-            file_exists( $directory )
-            && is_dir( $directory )
-        ) {
-            $fpath = $directory . '/.htaccess';
+    public static function is_hardened($directory = '')
+    {
+        if (file_exists($directory) && is_dir($directory)) {
+            $fpath = self::htaccess($directory);
 
-            if (
-                file_exists( $fpath )
-                && is_readable( $fpath )
-            ) {
-                $rules = self::get_rules( $directory );
-                $rules_str = implode( "\n", $rules );
-                $content = @file_get_contents( $fpath );
+            if (file_exists($fpath) && is_readable($fpath)) {
+                $rules = self::get_rules();
+                $rules_str = implode("\n", $rules);
+                $content = @file_get_contents($fpath);
 
-                if ( strpos( $content, $rules_str ) !== false ) {
+                if (strpos($content, $rules_str) !== false) {
                     return true;
                 }
             }
@@ -8146,6 +8131,67 @@ class SucuriScanHardening extends SucuriScan {
         return false;
     }
 
+    private static function htaccess($folder = '')
+    {
+        $folder = str_replace(ABSPATH, '', $folder);
+        $bpath = rtrim(ABSPATH, DIRECTORY_SEPARATOR);
+        $folder_path = $bpath . '/' . $folder;
+        $htaccess = $folder_path . '/.htaccess';
+
+        return $htaccess;
+    }
+
+    private static function whitelist_rule($file = '')
+    {
+        $file = str_replace('/', '', $file);
+        $file = str_replace('<', '', $file);
+        $file = str_replace('>', '', $file);
+
+        return sprintf("<Files %s>\n\x20\x20Allow from all\n</Files>\n", $file);
+    }
+
+    public static function whitelist($file = '', $folder = '')
+    {
+        $htaccess = self::htaccess($folder);
+
+        if (file_exists($htaccess)) {
+            if (is_writable($htaccess)) {
+                $rules = self::whitelist_rule($file);
+                @file_put_contents($htaccess, $rules, FILE_APPEND);
+            } else {
+                throw new Exception('Access control file is not writable');
+            }
+        } else {
+            throw new Exception('Access control file does not exists');
+        }
+    }
+
+    public static function dewhitelist($file = '', $folder = '')
+    {
+        $htaccess = self::htaccess($folder);
+
+        if (file_exists($htaccess)
+            && is_readable($htaccess)
+            && is_writable($htaccess)
+        ) {
+            $content = @file_get_contents($htaccess);
+            $rules = self::whitelist_rule($file);
+            $content = str_replace($rules, '', $content);
+            @file_put_contents($htaccess, $content);
+        }
+    }
+
+    public static function get_whitelisted($folder = '')
+    {
+        $htaccess = self::htaccess($folder);
+        $content = @file_get_contents($htaccess);
+
+        if (@preg_match_all('/<Files (\S+)>/', $content, $matches)) {
+            return $matches[1];
+        }
+
+        return false;
+    }
 }
 
 /**
@@ -8159,8 +8205,16 @@ class SucuriScanHardening extends SucuriScan {
 function sucuriscan_hardening_page(){
     SucuriScanInterface::check_permissions();
 
-    if (
-        SucuriScanRequest::post( ':run_hardening' )
+    $template_variables = array(
+        'Hardening.Panel' => sucuriscan_hardening_panel(),
+        'Hardening.Whitelist' => sucuriscan_hardening_whitelist(),
+    );
+
+    echo SucuriScanTemplate::get_template('hardening', $template_variables);
+}
+
+function sucuriscan_hardening_panel(){
+    if (SucuriScanRequest::post(':run_hardening')
         && ! SucuriScanInterface::check_nonce()
     ) {
         unset($_POST['sucuriscan_run_hardening']);
@@ -8184,9 +8238,9 @@ function sucuriscan_hardening_page(){
         'Hardening.ErrorLog' => sucuriscan_harden_errorlog(),
     );
 
-    if ( SucuriScan::is_nginx_server() === true ) {
+    if (SucuriScan::is_nginx_server() === true) {
         $template_variables['Hardening.NginxPhpFpm'] = sucuriscan_harden_nginx_phpfpm();
-    } elseif ( SucuriScan::is_iis_server() === true ) {
+    } elseif (SucuriScan::is_iis_server() === true) {
         /* TODO: Include IIS (Internet Information Services) hardening options. */
     } else {
         $template_variables['Hardening.Upload'] = sucuriscan_harden_upload();
@@ -8194,7 +8248,71 @@ function sucuriscan_hardening_page(){
         $template_variables['Hardening.WpIncludes'] = sucuriscan_harden_wpincludes();
     }
 
-    echo SucuriScanTemplate::get_template( 'hardening', $template_variables );
+    return SucuriScanTemplate::get_section('hardening-panel', $template_variables);
+}
+
+function sucuriscan_hardening_whitelist(){
+    $template_variables = array(
+        'HardeningWhitelist.List' => '',
+        'HardeningWhitelist.NoItemsVisibility' => 'visible',
+    );
+    $allowed_folders = array(
+        'wp-includes',
+        'wp-content',
+        'wp-content/uploads',
+    );
+
+    // Add a new file to the hardening whitelist.
+    if ($fwhite = SucuriScanRequest::post(':hardening_whitelist')) {
+        $folder = SucuriScanRequest::post(':hardening_folder');
+
+        if (in_array($folder, $allowed_folders)) {
+            try {
+                SucuriScanHardening::whitelist($fwhite, $folder);
+                SucuriScanInterface::info('File was whitelisted from the hardening');
+            } catch (Exception $e) {
+                SucuriScanInterface::error($e->getMessage());
+            }
+        } else {
+            SucuriScanInterface::error('Specified folder is not hardened by this plugin');
+        }
+    }
+
+    // Remove a file from the hardening whitelist.
+    if ($rmfwhite = SucuriScanRequest::post(':hardening_rmfwhite', '_array')) {
+        foreach ($rmfwhite as $fpath) {
+            $fpath = str_replace('/.*/', '|', $fpath);
+            $parts = explode('|', $fpath, 2);
+            SucuriScanHardening::dewhitelist($parts[1], $parts[0]);
+        }
+
+        SucuriScanInterface::info('Selected files were processed successfully');
+    }
+
+    // Read the access control file and retrieve the whitelisted files.
+    $counter = 0;
+    foreach ($allowed_folders as $folder) {
+        $files = SucuriScanHardening::get_whitelisted($folder);
+
+        if ($files !== false) {
+            $template_variables['HardeningWhitelist.NoItemsVisibility'] = 'hidden';
+
+            foreach ($files as $file) {
+                $css_class = ($counter % 2 === 0) ? '' : 'alternate';
+                $fregexp = sprintf('%s/.*/%s', $folder, $file);
+                $html = SucuriScanTemplate::get_snippet('hardening-whitelist', array(
+                    'HardeningWhitelist.CssClass' => $css_class,
+                    'HardeningWhitelist.File' => SucuriScan::escape($file),
+                    'HardeningWhitelist.Folder' => SucuriScan::escape($folder),
+                    'HardeningWhitelist.Regexp' => SucuriScan::escape($fregexp),
+                ));
+                $template_variables['HardeningWhitelist.List'] .= $html;
+                $counter++;
+            }
+        }
+    }
+
+    return SucuriScanTemplate::get_section('hardening-whitelist', $template_variables);
 }
 
 /**
@@ -8481,6 +8599,8 @@ function sucuriscan_harden_wpincludes(){
 
             if ( $result === true ) {
                 $message = 'Hardening applied to the library directory';
+                SucuriScanHardening::whitelist('wp-tinymce.php', 'wp-includes');
+                SucuriScanHardening::whitelist('ms-files.php', 'wp-includes');
                 SucuriScanEvent::report_notice_event( $message );
                 SucuriScanInterface::info( $message );
             } else {

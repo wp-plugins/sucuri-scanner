@@ -58,7 +58,7 @@
                 </th>
                 <th width="80" class="manage-column">Status</th>
                 <th width="100" class="manage-column">File Size</th>
-                <th width="170" class="manage-column">Modified At</th>
+                <th width="180" class="manage-column">Modified At</th>
                 <th class="manage-column">File Path</th>
             </tr>
         </thead>
