@@ -12912,3 +12912,4 @@ function sucuriscan_server_info(){
 
     return SucuriScanTemplate::get_section( 'infosys-serverinfo', $template_variables );
 }
+
