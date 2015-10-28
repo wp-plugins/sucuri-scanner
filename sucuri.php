@@ -2574,6 +2574,7 @@ class SucuriScanOption extends SucuriScanRequest {
             'sucuriscan_collect_wrong_passwords' => 'disabled',
             'sucuriscan_comment_monitor' => 'disabled',
             'sucuriscan_datastore_path' => '',
+            'sucuriscan_dismiss_setup' => 'disabled',
             'sucuriscan_dns_lookups' => 'enabled',
             'sucuriscan_email_subject' => 'Sucuri Alert, :domain, :event',
             'sucuriscan_emails_per_hour' => 5,
@@ -7001,12 +7002,18 @@ class SucuriScanInterface {
             && SucuriScanRequest::post( ':recover_key' ) === false
             && ! SucuriScanRequest::post( ':manual_api_key' )
         ) {
-            echo SucuriScanTemplate::get_section( 'setup-notice' );
-            echo SucuriScanTemplate::get_modal('setup-form', array(
-                'Visibility' => 'hidden',
-                'Title' => 'Sucuri API key generation',
-                'CssClass' => 'sucuriscan-setup-instructions',
-            ));
+            if (SucuriScanRequest::get(':dismiss_setup') !== false) {
+                SucuriScanOption::update_option(':dismiss_setup', 'enabled');
+            } elseif (SucuriScanOption::is_enabled(':dismiss_setup')) {
+                /* Do not display API key generation form. */
+            } else {
+                echo SucuriScanTemplate::get_section('setup-notice');
+                echo SucuriScanTemplate::get_modal('setup-form', array(
+                    'Visibility' => 'hidden',
+                    'Title' => 'Sucuri API key generation',
+                    'CssClass' => 'sucuriscan-setup-instructions',
+                ));
+            }
         }
     }
 

@@ -42,7 +42,7 @@
 .wp-core-ui .sucuriscan-btnblock{display:block;width:100%;text-align:center}
 /* Modal Window */
 .sucuriscan-overlay{position:fixed;top:0;left:0;bottom:0;right:0;z-index:9990;background:rgba(0, 0, 0, 0.5)}
-.sucuriscan-modal{position:fixed;top:52px;left:26%;z-index:9990;width:48%}
+.sucuriscan-modal{position:absolute;top:25px;left:15%;z-index:9990;width:55%}
 .sucuriscan-modal-outside{position:relative;left:0;border:1px solid #ddd}
 .sucuriscan-modal-inside{background:#fff;padding:20px}
 .sucuriscan-modal-header{padding:0;border-bottom:1px solid #ddd}
@@ -90,6 +90,7 @@
 .sucuriscan-table-setup{}
 .sucuriscan-table-setup td{vertical-align:top}
 .sucuriscan-table-setup .sucuriscan-description{font-size:12px;margin-top:10px}
+.sucuriscan-dismiss-setup{font-size:10px;line-height:28px}
 /* Table Styles */
 .sucuriscan-maincontent .sucuriscan-table{margin-top:12px}
 .sucuriscan-maincontent .sucuriscan-table tr > th{border-top:1px solid #e5e5e5;border-bottom:1px solid #e5e5e5}
@@ -296,7 +297,7 @@ td.sucuriscan-corefiles-warning > div{background:#f2dede;color:#a94442;border-co
 .sucuriscan-apikey-registered .sucuriscan-sitelogo{background-position:0 -17px;height:83px}
 /* Setup Instructions Modal */
 .sucuriscan-setup-instructions{}
-.sucuriscan-setup-instructions .form-table{}
+.sucuriscan-setup-instructions .form-table{margin-top:15px}
 .sucuriscan-setup-instructions .form-table td{padding:0;padding-bottom:12px}
 .sucuriscan-setup-instructions .form-table select{max-width:400px}
 /* Pagination Styles */
