@@ -58,4 +58,10 @@
     <a href="https://wordpress.org/support/plugin/sucuri-scanner" target="_blank"
     class="button button-primary sucuriscan-supportbtn">Visit Support Forum</a>
 
+    <form action="%%SUCURI.URL.Settings%%" method="post">
+        <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
+        <input type="hidden" name="sucuriscan_ads_visibility" value="disable" />
+        <button type="submit" class="button-link sucuriscan-hide-ads">Hide this column</button>
+    </form>
+
 </div>

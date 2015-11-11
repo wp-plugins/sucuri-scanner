@@ -15,7 +15,7 @@
 
         <tr>
             <th>&nbsp;</th>
-            <th width="160">Date</th>
+            <th width="170">Date</th>
             <th>Username</th>
             <th>IP Address</th>
             <th>Event Message</th>
