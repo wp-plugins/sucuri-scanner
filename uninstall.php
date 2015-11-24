@@ -25,7 +25,10 @@ $sucuriscan_option_names = array(
     'audit_report',
     'cloudproxy_apikey',
     'collect_wrong_passwords',
+    'comment_monitor',
     'datastore_path',
+    'dismiss_setup',
+    'dns_lookups',
     'email_subject',
     'emails_per_hour',
     'emails_sent',
@@ -50,6 +53,7 @@ $sucuriscan_option_names = array(
     'notify_plugin_installed',
     'notify_plugin_updated',
     'notify_post_publication',
+    'notify_scan_checksums',
     'notify_settings_updated',
     'notify_success_login',
     'notify_theme_activated',
@@ -75,7 +79,9 @@ $sucuriscan_option_names = array(
     'site_version',
     'sitecheck_counter',
     'sitecheck_scanner',
+    'use_wpmail',
     'verify_ssl_cert',
+    'xhr_monitor',
 );
 
 $sucuriscan_storage_path = get_option( 'sucuriscan_datastore_path' );

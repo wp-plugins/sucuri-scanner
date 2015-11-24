@@ -5,9 +5,17 @@
     them as long as the domain name and email address are different. The key is used
     to authenticate the HTTP requests sent by the plugin to a public API service
     managed by Sucuri Inc. Do not generate the key if you disagree with this.
-    Contact us at <a href="mailto:info@sucuri.net">info@sucuri.net</a> if you
-    believe that sensitive data is being sent to us.
 </p>
+
+<div class="sucuriscan-inline-alert-info">
+    <p>
+        If you experience issues generating the API key you can request one sending the
+        domain name and email address that you want to use to <a href="mailto:info@sucuri.net">
+        info@sucuri.net</a>. Note that setting a key in a development environment does
+        not makes sense, if you are trying to do that in a local or stage environment
+        please consider to dismiss this alert.
+    </p>
+</div>
 
 <form action="%%SUCURI.URL.Settings%%" method="post">
     <input type="hidden" name="sucuriscan_page_nonce" value="%%SUCURI.PageNonce%%" />
@@ -50,5 +58,13 @@
         </tbody>
     </table>
 
-    <button type="submit" class="button button-primary">Proceed</button>
+    <div class="sucuriscan-clearfix">
+        <div class="sucuriscan-pull-left">
+            <button type="submit" class="button button-primary">Proceed</button>
+        </div>
+        <div class="sucuriscan-pull-right">
+            <a href="%%SUCURI.URL.Home%%&sucuriscan_dismiss_setup"
+            class="sucuriscan-dismiss-setup">Do not show this again</a>
+        </div>
+    </div>
 </form>
