@@ -3,8 +3,8 @@ Contributors: dd@sucuri.net
 Donate Link: http://sucuri.net/
 Tags: malware, security, firewall, scan, spam, virus, sucuri, protection,WordPress Security, Login Security,Security Auditing,File Integrity,htaccess,phishing,backdoors,SQL Injection, RFI, LFI, XSS, CSRF, website firewall, Website Security, Performance Optimization, Zero Day, Software Vulnerability, Exploits, Hacks, Attackers, Bad Actors, Reverse Proxy, Two Factor Security, Two Factor Authentication, Security Logs, HeatBleed Vulnerability, Website Protection, Bash Vulnerability, RevSlider Vulnerability, MailPoet Vulnerability, Malware Prevention, Website Firewall, Website AntiVirus, Security Response, Security Detection, Security Prevention
 Requires at least:3.2
-Stable tag:1.7.13
-Tested up to: 4.2.3
+Stable tag: 1.7.14
+Tested up to: 4.3.1
 
 The Sucuri WordPress Security plugin is a security toolset for security integrity monitoring, malware detection and security hardening.
 
@@ -351,6 +351,25 @@ service from the WordPress dashboard.
 
 
 == Changelog ==
+
+= 1.7.14 =
+* Added alternative method to send email alerts
+* Added button to reset options with explanation
+* Added suggestion for new users to check plugin settings
+* Allow mark as fixed non-writable core files
+* Fixed display menus items single or network panels
+* Fixed handle boolean values in PHP config retrieval
+* Fixed non-standard content location in core integrity
+* Fixed user identifier as integer on password reset
+* Modified css and js files to reduce size
+* Modified do not load resources on hidden sidebar
+* Modified fully redesign of general settings page
+* Modified hide update warning if versions are the same
+* Modified wording of post-types alert settings
+* Removed ellipsis of long IPv6 addresses in last logins
+* Removed unnecessary dns lookups in infosys page
+* Removed unnecessary monospace fonts in settings status
+* Removed unnecessary ssl verification option processor
 
 = 1.7.13 =
 * Fixed issue affecting site performance
